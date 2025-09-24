@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>BankingSystemAPI.Domain</name>
+    </assembly>
+    <members>
+        <member name="T:BankingSystemAPI.Domain.Constant.InterestType">
+            <summary>
+            Interest payment frequency for savings accounts.
+            </summary>
+        </member>
+        <member name="F:BankingSystemAPI.Domain.Constant.InterestType.Monthly">
+            <summary>
+            Interest applied every month (value = 1).
+            </summary>
+        </member>
+        <member name="F:BankingSystemAPI.Domain.Constant.InterestType.Quarterly">
+            <summary>
+            Interest applied every quarter (value = 2).
+            </summary>
+        </member>
+        <member name="F:BankingSystemAPI.Domain.Constant.InterestType.Annually">
+            <summary>
+            Interest applied annually (value = 3).
+            </summary>
+        </member>
+        <member name="F:BankingSystemAPI.Domain.Constant.InterestType.every5minutes">
+            <summary>
+            For testing purposes: interest applied every 5 minutes (value = 4).
+            </summary>
+        </member>
+    </members>
+</doc>

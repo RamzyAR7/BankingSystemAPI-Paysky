@@ -1,0 +1,370 @@
+using BankingSystemAPI.Application.DTOs.Account;
+using BankingSystemAPI.Application.Interfaces.Identity;
+using BankingSystemAPI.Application.Interfaces.Repositories;
+using BankingSystemAPI.Application.Interfaces.Services;
+using BankingSystemAPI.Application.Interfaces.UnitOfWork;
+using BankingSystemAPI.Application.Mapping;
+using BankingSystemAPI.Application.Services;
+using BankingSystemAPI.Domain.Entities;
+using BankingSystemAPI.Infrastructure.Context;
+using BankingSystemAPI.Infrastructure.Identity;
+using BankingSystemAPI.Infrastructure.Jobs;
+using BankingSystemAPI.Infrastructure.Mapping;
+using BankingSystemAPI.Infrastructure.Repositories;
+using BankingSystemAPI.Infrastructure.Seeding;
+using BankingSystemAPI.Infrastructure.Services;
+using BankingSystemAPI.Infrastructure.Setting;
+using BankingSystemAPI.Infrastructure.UnitOfWork;
+using BankingSystemAPI.Presentation.Filters;
+using BankingSystemAPI.Presentation.Middlewares;
+using BankingSystemAPI.Presentation.Swagger;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Reflection;
+using System.Text;
+using System.Text.Json;
+using System.Threading.RateLimiting;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add logging filter as a service so DI can inject ILogger
+builder.Services.AddScoped<RequestResponseLoggingFilter>();
+
+builder.Services.AddControllers(options =>
+{
+    // register globally
+    options.Filters.AddService<RequestResponseLoggingFilter>();
+});
+
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+
+#region Rate Limiting
+// Policies:
+// - "AuthPolicy": limits anonymous or auth attempts (login/refresh) per IP.
+// - "MoneyPolicy": limits financial operations per authenticated user (falls back to IP for anonymous).
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = 429;
+
+    options.OnRejected = async (context, ct) =>
+    {
+        // Add Retry-After header and a JSON body explaining the rejection
+        context.HttpContext.Response.Headers["Retry-After"] = "60";
+        context.HttpContext.Response.ContentType = "application/json";
+        context.HttpContext.Response.StatusCode = 429;
+        var payload = JsonSerializer.Serialize(new { code = 429, message = "Too many requests. Please try again later." });
+        await context.HttpContext.Response.WriteAsync(payload, ct);
+    };
+
+    options.AddPolicy("AuthPolicy", context =>
+    {
+        // partition by remote IP for auth endpoints
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0
+        });
+    });
+
+    options.AddPolicy("MoneyPolicy", context =>
+    {
+        // partition by authenticated user id if present, otherwise by IP
+        var userId = context.User?.FindFirst("uid")?.Value;
+        var key = !string.IsNullOrEmpty(userId) ? userId : (context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+        return RateLimitPartition.GetTokenBucketLimiter(key, _ => new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = 20,
+            TokensPerPeriod = 20,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0
+        });
+    });
+
+});
+#endregion
+
+#region Swagger
+var info = new OpenApiInfo()
+{
+    Title = "Banking System API",
+    Version = "v1",
+    Description = "This API serves as the backbone of the Bank System platform, enabling seamless account and transaction management. It provides a range of endpoints for creating and managing user accounts, and tracking financial activities. Built with scalability and security in mind, the API supports robust error handling, logging, and integration with modern banking workflows.\r\n\r\nDesigned for developers, it includes detailed request and response structures, offering flexibility for integration into diverse applications. Whether for personal finance tools, corporate banking solutions, or payment platforms, this API facilitates efficient and reliable financial operations.",
+    Contact = new OpenApiContact()
+    {
+        Name = "Ahmed Bassem Ramzy",
+        Email = "rameya683@gmail.com",
+    }
+};
+
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", info);
+
+    // Add JWT Bearer definition
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token.",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = ParameterLocation.Header
+            },
+            new List<string>()
+        }
+    });
+
+    // Include XML comments (controller and DTO comments)
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+
+    // Keep all controllers and order by group mapping
+    options.DocInclusionPredicate((docName, apiDesc) => true);
+
+    var groupOrder = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Auth"] = 0,
+        ["Users"] = 1,
+        ["UserRoles"] = 2,
+        ["Roles"] = 3,
+        ["RoleClaims"] = 4,
+        ["Accounts"] = 5,
+        ["CheckingAccounts"] = 6,
+        ["SavingsAccounts"] = 7,
+        ["AccountTransactions"] = 8,
+        ["Transactions"] = 9, 
+        ["Currency"] = 10,
+        ["Default"] = 99
+    };
+
+    options.OrderActionsBy(apiDesc =>
+    {
+        var group = apiDesc.GroupName ?? "Default";
+        var orderKey = groupOrder.TryGetValue(group, out var v) ? v : groupOrder["Default"];
+        // return string with numeric prefix to sort
+        return $"{orderKey:00}_{group}_{apiDesc.RelativePath}";
+    });
+
+    // Register our operation filters
+    options.OperationFilter<RateLimitResponsesOperationFilter>();
+    options.OperationFilter<AuthResponsesOperationFilter>();
+    options.OperationFilter<DefaultResponsesOperationFilter>();
+});
+#endregion
+
+#region DbContext and Identity
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(option =>
+{
+    option.Password.RequiredLength = 9;
+    option.Password.RequireDigit = true;
+    option.Password.RequireLowercase = true;
+    option.Password.RequireUppercase = true;
+    option.Password.RequireNonAlphanumeric = false;
+    option.User.RequireUniqueEmail = true;
+}).AddEntityFrameworkStores<ApplicationDbContext>()
+  .AddDefaultTokenProviders();
+
+#endregion
+
+#region Register Repositories and Unit of Work
+// Register Unit of Work
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+// Register Repositories via UnitOfWork in the UnitOfWork
+builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
+builder.Services.AddScoped<IAccountTransactionRepository, AccountTransactionRepository>();
+builder.Services.AddScoped<IInterestLogRepository, InterestLogRepository>();
+builder.Services.AddScoped<ICurrencyRepository, CurrencyRepository>();
+builder.Services.AddScoped<IBankRepository, BankRepository>();
+#endregion
+
+#region Register Services
+
+// Bank
+builder.Services.AddScoped<IBankService, BankService>();
+// Identity
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IUserRolesService, UserRolesService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IRoleClaimsService, RoleClaimsService>();
+// Accounts
+builder.Services.AddScoped<IAccountService, AccountService>();
+// Register closed generic implementations for account type services (separate create/edit DTOs)
+builder.Services.AddScoped<IAccountTypeService<CheckingAccount, CheckingAccountReqDto, CheckingAccountEditDto, CheckingAccountDto>, CheckingAccountService>();
+builder.Services.AddScoped<IAccountTypeService<SavingsAccount, SavingsAccountReqDto, SavingsAccountEditDto, SavingsAccountDto>, SavingsAccountService>();
+builder.Services.AddScoped<ISavingsAccountService, SavingsAccountService>();
+
+// Currency
+builder.Services.AddScoped<ICurrencyService,  CurrencyService>();
+
+// Register IHttpContextAccessor for services that need access to the current user
+builder.Services.AddHttpContextAccessor();
+
+// Register CurrentUserService helper
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+// Register BankAuthorizationHelper
+builder.Services.AddScoped<BankingSystemAPI.Application.Interfaces.Identity.IBankAuthorizationHelper, BankingSystemAPI.Infrastructure.Identity.BankAuthorizationHelper>();
+
+// Register Transaction Service
+builder.Services.AddScoped<ITransactionService, TransactionService>();
+
+// Register helper service
+builder.Services.AddScoped<ITransactionHelperService, TransactionHelperService>();
+
+#endregion
+
+#region Register Job Services
+builder.Services.AddHostedService<RefreshTokenCleanupJob>();
+builder.Services.AddHostedService<AddInterestJob>();
+#endregion
+
+#region Register AutoMapper
+// Register mapping profiles explicitly to match the available AddAutoMapper overload
+builder.Services.AddAutoMapper(cfg =>
+{
+    cfg.AddProfile<MappingProfile>();
+    cfg.AddProfile<IdentityMappingProfile>();
+});
+#endregion
+
+#region JWT
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = "JwtBearer";
+    options.DefaultChallengeScheme = "JwtBearer";
+})
+.AddJwtBearer("JwtBearer", options =>
+{
+    var jwt = builder.Configuration.GetSection("Jwt").Get<JwtSettings>();
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidIssuer = jwt.Issuer,
+        ValidAudience = jwt.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key))
+    };
+
+    // Validate security stamp included in token matches current user security stamp
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async ctx =>
+        {
+            var userManager = ctx.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+            var uid = ctx.Principal?.FindFirst("uid")?.Value;
+            var tokenStamp = ctx.Principal?.FindFirst("sst")?.Value;
+
+            if (string.IsNullOrEmpty(uid) || string.IsNullOrEmpty(tokenStamp))
+            {
+                ctx.Fail("Invalid token");
+                return;
+            }
+
+            var user = await userManager.FindByIdAsync(uid);
+            if (user == null)
+            {
+                ctx.Fail("User not found");
+                return;
+            }
+
+            var currentStamp = await userManager.GetSecurityStampAsync(user);
+            if (!string.Equals(tokenStamp, currentStamp, StringComparison.Ordinal))
+            {
+                ctx.Fail("Token security stamp mismatch");
+                return;
+            }
+        }
+    };
+});
+#endregion
+
+var app = builder.Build();
+
+#region Seeding Data
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        var db = services.GetRequiredService<ApplicationDbContext>();
+        db.Database.Migrate();
+
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
+
+        // Seed roles
+        await IdentitySeeding.SeedingRoleAsync(roleManager);
+
+        // Seed users
+        await IdentitySeeding.SeedingUsersAsync(userManager, roleManager, db);
+
+        // Seed currencies
+        await CurrencySeeding.SeedAsync(db);
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        logger.LogInformation("Seeding data completed.");
+        Console.ResetColor();
+    }
+    catch (Exception ex)
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        logger.LogError(ex, "An error occurred seeding the DB.");
+        Console.ResetColor();
+    }
+}
+#endregion
+
+// Configure the HTTP request pipeline.
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+// Add timing middleware after exception middleware so exceptions are still captured
+app.UseMiddleware<RequestTimingMiddleware>();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Enable rate limiting middleware globally (policies selected via EnableRateLimiting attribute)
+app.UseRateLimiter();
+
+app.MapControllers();
+
+app.Run();

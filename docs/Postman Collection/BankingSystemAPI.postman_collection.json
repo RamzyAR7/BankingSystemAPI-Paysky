@@ -1,0 +1,1000 @@
+{
+    "info": {
+        "_postman_id": "a2a1d877-1b59-4191-9655-4799a1f8d4a1",
+        "name": "BankingSystemAPI",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Auth",
+            "item": [
+                {
+                    "name": "Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"superadmin@paysky.io\",\n  \"password\": \"SuperAdmin@123\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "auth", "login"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Refresh Token",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/refresh-token",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "auth", "refresh-token"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/logout",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "auth", "logout"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Revoke Token",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/revoke-token/{{userId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "auth", "revoke-token", "{{userId}}"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Accounts",
+            "item": [
+                {
+                    "name": "Get Account By Id",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/accounts/1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "accounts", "1"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Account By Account Number",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/accounts/by-number/123456789",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "accounts", "by-number", "123456789"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Accounts By User Id",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/accounts/by-user/1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "accounts", "by-user", "1"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Accounts By National Id",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/accounts/by-national-id/12345678901234",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "accounts", "by-national-id", "12345678901234"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Account",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/accounts/1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "accounts", "1"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Many Accounts",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "[1, 2, 3]",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/accounts/bulk",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "accounts", "bulk"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Users",
+            "item": [
+                {
+                    "name": "Get All Users",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "users"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get User By Username",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/by-username/testuser",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "users", "by-username", "testuser"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get User By Id",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "users", "1"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create User",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"testuser@example.com\",\n    \"username\": \"testuser\",\n    \"fullName\": \"Test User\",\n    \"nationalId\": \"1234567890\",\n    \"phoneNumber\": \"1234567890\",\n    \"dateOfBirth\": \"2000-01-01\",\n    \"password\": \"Password123!\",\n    \"passwordConfirm\": \"Password123!\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "users"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update User",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"testuser@example.com\",\n    \"username\": \"testuser\",\n    \"fullName\": \"Test User Updated\",\n    \"nationalId\": \"1234567890\",\n    \"phoneNumber\": \"1234567890\",\n    \"dateOfBirth\": \"2000-01-01\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "users", "1"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Change User Password",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"currentPassword\": \"Password123!\",\n    \"newPassword\": \"NewPassword123!\",\n    \"confirmNewPassword\": \"NewPassword123!\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/1/password",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "users", "1", "password"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete User",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "users", "1"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Range Of Users",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "[\"1\", \"2\"]",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/bulk",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "users", "bulk"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get My Info",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/me",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "users", "me"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Set User Active Status",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/1/active?isActive=true",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "users", "1", "active"],
+                            "query": [
+                                {
+                                    "key": "isActive",
+                                    "value": "true"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Roles",
+            "item": [
+                {
+                    "name": "Get All Roles",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/roles/GetAllRoles",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "roles", "GetAllRoles"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Role",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"New Role\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/roles/CreateRole",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "roles", "CreateRole"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Role",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/roles/DeleteRole/1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "roles", "DeleteRole", "1"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "RoleClaims",
+            "item": [
+                {
+                    "name": "Assign Claims to Role",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"roleName\": \"Admin\",\n    \"claims\": [\"Permission.User.Create\", \"Permission.User.Read\"]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/roleclaims/Assign",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "roleclaims", "Assign"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get All Claims",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/roleclaims/GetAllClaims",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "roleclaims", "GetAllClaims"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "UserRoles",
+            "item": [
+                {
+                    "name": "Assign Roles to User",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"userId\": \"1\",\n    \"role\": \"Admin\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/userroles/Assign",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "userroles", "Assign"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Transactions",
+            "item": [
+                {
+                    "name": "Get Transaction History",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/transactions/1/history",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "transactions", "1", "history"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Transaction By Id",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/transactions/1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "transactions", "1"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get All Transactions",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/transactions",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "transactions"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Currency",
+            "item": [
+                {
+                    "name": "Get All Currencies",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/currency",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "currency"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Currency By Id",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/currency/1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "currency", "1"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Currency",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"code\": \"EGP\",\n    \"isBase\": true,\n    \"exchangeRate\": 1\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/currency",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "currency"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Currency",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"code\": \"EGP\",\n    \"isBase\": true,\n    \"exchangeRate\": 1\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/currency/1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "currency", "1"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Currency",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/currency/1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "currency", "1"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Set Currency Active Status",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/currency/1/active?isActive=true",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "currency", "1", "active"],
+                            "query": [
+                                {
+                                    "key": "isActive",
+                                    "value": "true"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "CheckingAccounts",
+            "item": [
+                {
+                    "name": "Get All Checking Accounts",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/checking-accounts",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "checking-accounts"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Checking Account",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"userId\": \"1\",\n    \"currencyId\": 1,\n    \"initialBalance\": 1000,\n    \"overdraftLimit\": 500\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/checking-accounts",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "checking-accounts"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Checking Account",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"userId\": \"1\",\n    \"currencyId\": 1,\n    \"overdraftLimit\": 1000\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/checking-accounts/1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "checking-accounts", "1"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Set Checking Account Active Status",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/checking-accounts/1/active?isActive=true",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "checking-accounts", "1", "active"],
+                            "query": [
+                                {
+                                    "key": "isActive",
+                                    "value": "true"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "SavingsAccounts",
+            "item": [
+                {
+                    "name": "Get All Savings Accounts",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/savings-accounts",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "savings-accounts"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Savings Account",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"userId\": \"1\",\n    \"currencyId\": 1,\n    \"initialBalance\": 1000,\n    \"interestRate\": 5,\n    \"interestType\": 0\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/savings-accounts",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "savings-accounts"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Savings Account",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"userId\": \"1\",\n    \"currencyId\": 1,\n    \"interestRate\": 6,\n    \"interestType\": 0\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/savings-accounts/1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "savings-accounts", "1"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Set Savings Account Active Status",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/savings-accounts/1/active?isActive=true",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "savings-accounts", "1", "active"],
+                            "query": [
+                                {
+                                    "key": "isActive",
+                                    "value": "true"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get All Interest Logs",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/savings-accounts/interest-logs",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "savings-accounts", "interest-logs"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Interest Logs By Account Id",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/savings-accounts/1/interest-logs",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "savings-accounts", "1", "interest-logs"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Role Hierarchy",
+            "item": [
+                {
+                    "name": "Add Parent",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"childRole\": \"ChildRoleName\",\n  \"parentRole\": \"ParentRoleName\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/rolehierarchy/add-parent",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "rolehierarchy", "add-parent"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Add Parents",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"childRole\": \"ChildRoleName\",\n  \"parentRoles\": [\n    \"ParentRole1\",\n    \"ParentRole2\"\n  ]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/rolehierarchy/add-parents",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "rolehierarchy", "add-parents"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Remove Parent",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/rolehierarchy/remove-parent?childRole=ChildRoleName&parentRole=ParentRoleName",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "rolehierarchy", "remove-parent"],
+                            "query": [
+                                {
+                                    "key": "childRole",
+                                    "value": "ChildRoleName"
+                                },
+                                {
+                                    "key": "parentRole",
+                                    "value": "ParentRoleName"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Remove Parents",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "[\"ParentRole1\", \"ParentRole2\"]",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/rolehierarchy/remove-parents/ChildRoleName",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "rolehierarchy", "remove-parents", "ChildRoleName"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Parents",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/rolehierarchy/RoleName/parents",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "rolehierarchy", "RoleName", "parents"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Ancestors",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/rolehierarchy/RoleName/ancestors",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "rolehierarchy", "RoleName", "ancestors"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Children",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/rolehierarchy/RoleName/children",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "rolehierarchy", "RoleName", "children"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Descendants",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/rolehierarchy/RoleName/descendants",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "rolehierarchy", "RoleName", "descendants"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Can Manage",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/rolehierarchy/can-manage?actingRole=ActingRoleName&targetRole=TargetRoleName",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "rolehierarchy", "can-manage"],
+                            "query": [
+                                {
+                                    "key": "actingRole",
+                                    "value": "ActingRoleName"
+                                },
+                                {
+                                    "key": "targetRole",
+                                    "value": "TargetRoleName"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Role Hierarchy",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/rolehierarchy/hierarchy",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "rolehierarchy", "hierarchy"]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        }
+    ]
+}

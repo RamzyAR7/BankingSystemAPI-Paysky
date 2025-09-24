@@ -1,0 +1,476 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>BankingSystemAPI.Presentation</name>
+    </assembly>
+    <members>
+        <member name="T:BankingSystemAPI.Presentation.Controllers.AccountController">
+            <summary>
+            Account management endpoints.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AccountController.GetById(System.Int32)">
+            <summary>
+            Get account by id.
+            </summary>
+            <param name="id">Account identifier.</param>
+            <returns>Account details.</returns>
+            <response code="200">Returns the account details.</response>
+            <response code="400">Invalid account id supplied.</response>
+            <response code="404">Account not found.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AccountController.GetByAccountNumber(System.String)">
+            <summary>
+            Get account by account number.
+            </summary>
+            <param name="accountNumber">Account number to search by.</param>
+            <returns>Account details when found.</returns>
+            <response code="200">Returns the account details.</response>
+            <response code="400">Invalid or missing account number.</response>
+            <response code="404">Account not found.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AccountController.GetByUserId(System.String)">
+            <summary>
+            Get all accounts for a user.
+            </summary>
+            <param name="userId">User identifier.</param>
+            <returns>List of accounts for the user.</returns>
+            <response code="200">Returns a list of accounts (may be empty).</response>
+            <response code="400">Invalid user id supplied.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AccountController.GetByNationalId(System.String)">
+            <summary>
+            Get accounts by national ID.
+            </summary>
+            <param name="nationalId">National identifier.</param>
+            <returns>Accounts matching the national ID.</returns>
+            <response code="200">Returns accounts matching the national id.</response>
+            <response code="400">Invalid national id supplied.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AccountController.Delete(System.Int32)">
+            <summary>
+            Delete account by id.
+            </summary>
+            <param name="id">Account identifier.</param>
+            <response code="204">Account deleted successfully.</response>
+            <response code="400">Invalid request.</response>
+            <response code="404">Account not found.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AccountController.DeleteMany(System.Collections.Generic.IEnumerable{System.Int32})">
+            <summary>
+            Delete multiple accounts.
+            </summary>
+            <param name="ids">List of account ids to delete.</param>
+            <response code="204">Accounts deleted successfully.</response>
+            <response code="400">Invalid request.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AccountController.SetActive(System.Int32,System.Boolean)">
+            <summary>
+            Set account active/inactive.
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Presentation.Controllers.AccountTransactionsController">
+            <summary>
+            Endpoints to perform transactions on accounts (deposit, withdraw, transfer) and read balance.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AccountTransactionsController.Deposit(BankingSystemAPI.Application.DTOs.Transactions.DepositReqDto)">
+            <summary>
+            Deposit money into an account.
+            </summary>
+            <param name="request">Deposit request containing account id and amount.</param>
+            <response code="200">Deposit completed successfully and transaction details returned.</response>
+            <response code="400">Invalid request (validation error or insufficient data).</response>
+            <response code="401">Unauthorized.</response>
+            <response code="403">Forbidden - insufficient permissions.</response>
+            <response code="404">Account not found.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AccountTransactionsController.Withdraw(BankingSystemAPI.Application.DTOs.Transactions.WithdrawReqDto)">
+            <summary>
+            Withdraw money from an account.
+            </summary>
+            <param name="request">Withdraw request containing account id and amount.</param>
+            <response code="200">Withdrawal completed successfully and transaction details returned.</response>
+            <response code="400">Invalid request or insufficient funds.</response>
+            <response code="401">Unauthorized.</response>
+            <response code="403">Forbidden - insufficient permissions.</response>
+            <response code="404">Account not found.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AccountTransactionsController.Transfer(BankingSystemAPI.Application.DTOs.Transactions.TransferReqDto)">
+            <summary>
+            Transfer money between accounts.
+            </summary>
+            <param name="request">Transfer request containing source, target and amount.</param>
+            <response code="200">Transfer completed successfully and transaction details returned.</response>
+            <response code="400">Invalid request.</response>
+            <response code="401">Unauthorized.</response>
+            <response code="403">Forbidden - insufficient permissions.</response>
+            <response code="404">Source or target account not found.</response>
+            <response code="409">Conflict (e.g., concurrent update or insufficient funds).</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AccountTransactionsController.GetBalance(System.Int32)">
+            <summary>
+            Get current balance of an account.
+            </summary>
+            <param name="id">Account identifier.</param>
+            <response code="200">Returns the current balance.</response>
+            <response code="400">Invalid account id.</response>
+            <response code="401">Unauthorized.</response>
+            <response code="403">Forbidden - insufficient permissions.</response>
+            <response code="404">Account not found.</response>
+        </member>
+        <member name="T:BankingSystemAPI.Presentation.Controllers.AuthController">
+            <summary>
+            Authentication endpoints (login, refresh, logout, revoke tokens).
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AuthController.Login(BankingSystemAPI.Application.DTOs.Auth.LoginReqDto)">
+            <summary>
+            Login with credentials and receive authentication data.
+            </summary>
+            <param name="request">Login request containing username and password.</param>
+            <response code="200">Returns authentication data (tokens).</response>
+            <response code="400">Invalid request model.</response>
+            <response code="401">Invalid credentials.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AuthController.RefreshToken">
+            <summary>
+            Refresh authentication token using refresh token present in cookies.
+            </summary>
+            <response code="200">Returns refreshed authentication data.</response>
+            <response code="401">Invalid or expired refresh token.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AuthController.Logout">
+            <summary>
+            Logout current user and revoke refresh token.
+            </summary>
+            <response code="200">Logout succeeded.</response>
+            <response code="401">User not authenticated.</response>
+            <response code="400">Logout failed.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.AuthController.RevokeToken(System.String)">
+            <summary>
+            Revoke refresh token for a specific user.
+            </summary>
+            <param name="userId">User identifier whose token should be revoked.</param>
+            <response code="200">Token revoked successfully.</response>
+            <response code="400">Invalid user id supplied.</response>
+            <response code="401">Unauthorized.</response>
+            <response code="404">User not found.</response>
+        </member>
+        <member name="T:BankingSystemAPI.Presentation.Controllers.CheckingAccountController">
+            <summary>
+            Endpoints to manage checking accounts.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.CheckingAccountController.GetAll(System.Int32,System.Int32)">
+            <summary>
+            Get paginated list of checking accounts.
+            </summary>
+            <response code="200">Returns a page of checking accounts.</response>
+            <response code="400">Invalid paging parameters.</response>
+            <response code="401">Unauthorized.</response>
+            <response code="403">Forbidden.</response>
+            <response code="400">Bad request.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.CheckingAccountController.Create(BankingSystemAPI.Application.DTOs.Account.CheckingAccountReqDto)">
+            <summary>
+            Create a new checking account.
+            </summary>
+            <response code="201">Account created.</response>
+            <response code="400">Invalid request.</response>
+            <response code="401">Unauthorized.</response>
+            <response code="403">Forbidden.</response>
+            <response code="409">Conflict.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.CheckingAccountController.Update(System.Int32,BankingSystemAPI.Application.DTOs.Account.CheckingAccountEditDto)">
+            <summary>
+            Update an existing checking account.
+            </summary>
+            <response code="200">Account updated.</response>
+            <response code="400">Invalid request.</response>
+            <response code="401">Unauthorized.</response>
+            <response code="403">Forbidden.</response>
+            <response code="404">Account not found.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.CheckingAccountController.SetActive(System.Int32,System.Boolean)">
+            <summary>
+            Set account active/inactive.
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Presentation.Controllers.CurrencyController">
+            <summary>
+            Currency management endpoints.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.CurrencyController.GetAll">
+            <summary>
+            Get all currencies.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.CurrencyController.GetById(System.Int32)">
+            <summary>
+            Get currency by id.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.CurrencyController.Create(BankingSystemAPI.Application.DTOs.Currency.CurrencyReqDto)">
+            <summary>
+            Create a new currency.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.CurrencyController.Update(System.Int32,BankingSystemAPI.Application.DTOs.Currency.CurrencyReqDto)">
+            <summary>
+            Update an existing currency.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.CurrencyController.Delete(System.Int32)">
+            <summary>
+            Delete a currency.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.CurrencyController.SetActive(System.Int32,System.Boolean)">
+            <summary>
+            Set currency active/inactive.
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Presentation.Controllers.RoleClaimsController">
+            <summary>
+            Role claims management endpoints.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.RoleClaimsController.UpdateRoleClaims(BankingSystemAPI.Application.DTOs.Role.UpdateRoleClaimsDto)">
+            <summary>
+            Update role claims for a role.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.RoleClaimsController.GetAllClaims">
+            <summary>
+            Get all role claims grouped by category.
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Presentation.Controllers.RoleController">
+            <summary>
+            Role management endpoints.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.RoleController.GetAllRoles">
+            <summary>
+            Get all roles.
+            </summary>
+            <response code="200">Returns a list of roles.</response>
+            <response code="404">No roles found.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.RoleController.CreateRole(BankingSystemAPI.Application.DTOs.Role.RoleReqDto)">
+            <summary>
+            Create a new role.
+            </summary>
+            <response code="200">Role created successfully.</response>
+            <response code="400">Invalid role data.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.RoleController.DeleteRole(System.String)">
+            <summary>
+            Delete a role by id.
+            </summary>
+            <response code="200">Role deleted successfully.</response>
+            <response code="400">Invalid role id.</response>
+            <response code="404">Role not found.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="T:BankingSystemAPI.Presentation.Controllers.SavingsAccountController">
+            <summary>
+            Endpoints to manage savings accounts.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.SavingsAccountController.GetAll(System.Int32,System.Int32)">
+            <summary>
+            Get paginated list of savings accounts.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.SavingsAccountController.Create(BankingSystemAPI.Application.DTOs.Account.SavingsAccountReqDto)">
+            <summary>
+            Create a new savings account.
+            </summary>
+            <remarks>
+            Example request body:
+            {
+              "userId": "string",
+              "currencyId": 1,
+              "initialDeposit": 100.00,
+              "interestType": 1 // 1=Monthly, 2=Quarterly, 3=Annually, 4=every5minutes (testing)
+            }
+            </remarks>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.SavingsAccountController.Update(System.Int32,BankingSystemAPI.Application.DTOs.Account.SavingsAccountEditDto)">
+            <summary>
+            Update an existing savings account.
+            </summary>
+            <remarks>
+            Example request body:
+            {
+              "currencyId": 1,
+              "isActive": true,
+              "interestType": 2 // 1=Monthly, 2=Quarterly, 3=Annually, 4=every5minutes (testing)
+            }
+            </remarks>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.SavingsAccountController.SetActive(System.Int32,System.Boolean)">
+            <summary>
+            Set account active/inactive.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.SavingsAccountController.GetAllInterestLogs(System.Int32,System.Int32)">
+            <summary>
+            Get all interest logs with pagination.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.SavingsAccountController.GetInterestLogsByAccountId(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Get all interest logs for a specific account with pagination.
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Presentation.Controllers.TransactionsController">
+            <summary>
+            Operations to read transaction history and list transactions.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.TransactionsController.GetTransactionHistory(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Get paginated transaction history for an account.
+            </summary>
+            <param name="accountId">Account identifier whose history will be returned.</param>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.TransactionsController.GetById(System.Int32)">
+            <summary>
+            Get transaction by id.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.TransactionsController.GetAllTransactions(System.Int32,System.Int32)">
+            <summary>
+            Get paginated list of all transactions.
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Presentation.Controllers.UserController">
+            <summary>
+            User management endpoints.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.GetAllUsers(System.Int32,System.Int32)">
+            <summary>
+            Get all users.
+            </summary>
+            <response code="200">Returns list of users.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.GetUsersByBankId(System.Int32)">
+            <summary>
+            Get users by bank id.
+            SuperAdmin can view all users regardless of bankId; non-super-admins are restricted to their own bank; clients get empty list.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.GetUsersByBankName(System.String)">
+            <summary>
+            Get users by bank name.
+            SuperAdmin can view all users or filter by bank name; non-super-admins are restricted to their own bank; clients get empty list.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.GetUserByUsername(System.String)">
+            <summary>
+            Get user by username.
+            </summary>
+            <response code="200">Returns the user.</response>
+            <response code="404">User not found.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.GetUserById(System.String)">
+            <summary>
+            Get user by id.
+            </summary>
+            <response code="200">Returns the user.</response>
+            <response code="404">User not found.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.CreateUser(BankingSystemAPI.Application.DTOs.User.UserReqDto)">
+            <summary>
+            Create a new user.
+            </summary>
+            <response code="201">User created.</response>
+            <response code="400">Invalid user data.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.UpdateUser(System.String,BankingSystemAPI.Application.DTOs.User.UserEditDto)">
+            <summary>
+            Update an existing user.
+            </summary>
+            <response code="200">User updated.</response>
+            <response code="400">Invalid request.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.ChangeUserPassword(System.String,BankingSystemAPI.Application.DTOs.User.ChangePasswordReqDto)">
+            <summary>
+            Change a user's password.
+            </summary>
+            <response code="200">Password changed.</response>
+            <response code="400">Invalid request.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.DeleteUser(System.String)">
+            <summary>
+            Delete a user by id.
+            </summary>
+            <response code="200">User deleted.</response>
+            <response code="400">Invalid request.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.DeleteRangeOfUsers(System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Delete range of users.
+            </summary>
+            <response code="200">Users deleted.</response>
+            <response code="400">Invalid request.</response>
+            <response code="401">Unauthorized.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.GetMyInfo">
+            <summary>
+            Get current authenticated user's info.
+            </summary>
+            <response code="200">Returns the current user's info.</response>
+            <response code="401">Unauthorized.</response>
+            <response code="404">User not found.</response>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.SetActive(System.String,System.Boolean)">
+            <summary>
+            Set user active/inactive.
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Presentation.Controllers.UserRolesController">
+            <summary>
+            Endpoints to manage user roles assignment.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserRolesController.UpdateUserRoles(BankingSystemAPI.Application.DTOs.User.UpdateUserRolesDto)">
+            <summary>
+            Assign roles to a user.
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Presentation.Middlewares.RequestTimingMiddleware">
+            <summary>
+            Middleware that measures the time taken to process each HTTP request and logs it.
+            Uses colored console output to stand out from other logs.
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Presentation.Swagger.DefaultResponsesOperationFilter">
+            <summary>
+            Adds common response codes to operations when they are not already documented.
+            Useful for documenting 400/404/409/500 responses across the API.
+            </summary>
+        </member>
+    </members>
+</doc>

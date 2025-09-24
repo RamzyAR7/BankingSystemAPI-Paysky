@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>9120c974-9345-4e65-bd77-4bb3bd698118</UserSecretsId>
+    <DockerDefaultTargetOS>Windows</DockerDefaultTargetOS>
+    <!-- Generate XML documentation file for Swagger -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Ensure the documentation file is written to the build output with the assembly name so Program.cs can locate it -->
+    <DocumentationFile>$(OutputPath)$(AssemblyName).xml</DocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BankingSystemAPI.Application\BankingSystemAPI.Application.csproj" />
+    <ProjectReference Include="..\BankingSystemAPI.Domain\BankingSystemAPI.Domain.csproj" />
+    <ProjectReference Include="..\BankingSystemAPI.Infrastructure\BankingSystemAPI.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
