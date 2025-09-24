@@ -99,7 +99,6 @@ namespace BankingSystemAPI.Presentation.Middlewares
         {
             if (ex == null) return ex;
 
-            // Unwrap AggregateException which may wrap exceptions thrown from tasks
             if (ex is AggregateException agg && agg.InnerException != null)
             {
                 ex = agg.Flatten().InnerException ?? ex;

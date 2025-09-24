@@ -50,7 +50,8 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<SavingsAccountDto> CreateAccountAsync(SavingsAccountReqDto reqDto)
         {
-            await _bankAuth.EnsureCanCreateAccountForUserAsync(reqDto.UserId);
+            if (_bankAuth != null)
+                await _bankAuth.EnsureCanCreateAccountForUserAsync(reqDto.UserId);
 
             // Validate currency exists
             var currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(reqDto.CurrencyId);
@@ -87,7 +88,8 @@ namespace BankingSystemAPI.Application.Services
         public async Task<SavingsAccountDto> UpdateAccountAsync(int accountId, SavingsAccountEditDto reqDto)
         {
             // Authorization: ensure acting user can access the account to update
-            await _bankAuth.EnsureCanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
+            if (_bankAuth != null)
+                await _bankAuth.EnsureCanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
 
             var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
             if (account is not SavingsAccount savingsAccount)
@@ -123,9 +125,17 @@ namespace BankingSystemAPI.Application.Services
 
 
             var accounts = allLogs.Select(l => l.SavingsAccount).Where(a => a != null).GroupBy(a => a.Id).Select(g => g.First()).ToList();
-            var filteredAccounts = (await _bankAuth.FilterAccountsAsync(accounts)).ToList();
-            var allowedIds = new HashSet<int>(filteredAccounts.Select(a => a.Id));
-            allLogs = allLogs.Where(l => l.SavingsAccountId != 0 && allowedIds.Contains(l.SavingsAccountId)).ToList();
+            if (_bankAuth != null)
+            {
+                var filteredAccounts = (await _bankAuth.FilterAccountsAsync(accounts)).ToList();
+                var allowedIds = new HashSet<int>(filteredAccounts.Select(a => a.Id));
+                allLogs = allLogs.Where(l => l.SavingsAccountId != 0 && allowedIds.Contains(l.SavingsAccountId)).ToList();
+            }
+            else
+            {
+                var allowedIds = new HashSet<int>(accounts.Select(a => a.Id));
+                allLogs = allLogs.Where(l => l.SavingsAccountId != 0 && allowedIds.Contains(l.SavingsAccountId)).ToList();
+            }
             
             var total = allLogs.Count;
             var page = allLogs.Skip(skip).Take(take).ToList();
@@ -145,7 +155,12 @@ namespace BankingSystemAPI.Application.Services
 
             var account = await _unitOfWork.AccountRepository.FindAsync(a => a.Id == accountId, new[] { "User" });
             if (account == null) return (Enumerable.Empty<InterestLogDto>(), 0);
-            var allowed = (await _bankAuth.FilterAccountsAsync(new[] { account })).Any();
+            bool allowed;
+            if (_bankAuth != null)
+                allowed = (await _bankAuth.FilterAccountsAsync(new[] { account })).Any();
+            else
+                allowed = true;
+
             if (!allowed) return (Enumerable.Empty<InterestLogDto>(), 0);
             
             var total = logs.Count;

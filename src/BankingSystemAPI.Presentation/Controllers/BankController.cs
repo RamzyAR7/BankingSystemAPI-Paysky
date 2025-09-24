@@ -126,7 +126,7 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Update(int id, [FromBody] BankingSystemAPI.Application.DTOs.Bank.BankEditDto dto)
+        public async Task<IActionResult> Update(int id, [FromBody] BankEditDto dto)
         {
             if (dto == null)
                 return BadRequest("Bank data is required.");

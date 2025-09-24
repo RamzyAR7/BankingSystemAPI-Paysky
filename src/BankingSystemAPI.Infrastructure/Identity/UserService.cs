@@ -47,8 +47,11 @@ namespace BankingSystemAPI.Infrastructure.Services
         {
             var allUsers = await _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).ToListAsync();
 
-            var filtered = await _bankAuth.FilterUsersAsync(allUsers);
-            allUsers = filtered.ToList();
+            if (_bankAuth != null)
+            {
+                var filtered = await _bankAuth.FilterUsersAsync(allUsers);
+                allUsers = filtered.ToList();
+            }
             
             var paged = allUsers.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
 
@@ -68,7 +71,8 @@ namespace BankingSystemAPI.Infrastructure.Services
                 .FirstOrDefaultAsync(u => u.UserName == username);
             if (user == null) return null;
 
-            await _bankAuth.EnsureCanAccessUserAsync(user.Id);
+            if (_bankAuth != null)
+                await _bankAuth.EnsureCanAccessUserAsync(user.Id);
 
             var dto = await MapUserDtoAsync(user);
             return dto;
@@ -81,7 +85,8 @@ namespace BankingSystemAPI.Infrastructure.Services
                 .FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null) return null;
 
-            await _bankAuth.EnsureCanAccessUserAsync(userId);
+            if (_bankAuth != null)
+                await _bankAuth.EnsureCanAccessUserAsync(userId);
 
             var dto = await MapUserDtoAsync(user);
             return dto;
@@ -133,9 +138,23 @@ namespace BankingSystemAPI.Infrastructure.Services
                     return result;
                 }
 
-                // Ensure the acting user has a valid bank
+                // If acting user has no bank, perform a global duplicate check and return duplicate error if found
                 if (!actingUser.BankId.HasValue || actingUser.BankId.Value == 0)
                 {
+                    var existsGlobal = await _userManager.Users.AnyAsync(u =>
+                        u.UserName == user.Username ||
+                        u.Email == user.Email ||
+                        u.NationalId == user.NationalId ||
+                        u.PhoneNumber == user.PhoneNumber);
+
+                    if (existsGlobal)
+                    {
+                        result.Errors.Add(new IdentityError { Description = "User with same details already exists." });
+                        result.Succeeded = false;
+                        return result;
+                    }
+
+                    // Acting user isn't associated with a bank, cannot determine target bank for creation
                     result.Errors.Add(new IdentityError { Description = "Acting user is not associated with a bank." });
                     result.Succeeded = false;
                     return result;

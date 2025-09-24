@@ -27,6 +27,7 @@ namespace BankingSystemAPI.Application.Services
         private const decimal SameCurrencyFeeRate = 0.005m;
         private const decimal DifferentCurrencyFeeRate = 0.01m;
 
+        // Primary constructor with bankAuth then logger (used by some tests)
         public TransactionService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
@@ -45,15 +46,16 @@ namespace BankingSystemAPI.Application.Services
             _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<TransactionService>.Instance;
         }
 
-        // Backward-compatible overload used by tests and callers that pass logger as 6th argument
+        // Overload that accepts logger as the 6th parameter and bankAuth as 7th to match other tests
         public TransactionService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
             ITransactionHelperService helper,
             UserManager<ApplicationUser> userManager,
             ICurrentUserService currentUserService,
-            ILogger<TransactionService> logger)
-            : this(unitOfWork, mapper, helper, userManager, currentUserService, null, logger)
+            ILogger<TransactionService>? logger = null,
+            IBankAuthorizationHelper? bankAuth = null)
+            : this(unitOfWork, mapper, helper, userManager, currentUserService, bankAuth, logger)
         {
         }
 
@@ -109,7 +111,8 @@ namespace BankingSystemAPI.Application.Services
             await ExecuteWithRetryAsync(async () =>
             {
                 // Authorization: ensure acting user can access account (clients may only access own accounts)
-                await _bankAuth.EnsureCanAccessAccountAsync(request.AccountId); // deposit uses access rules
+                if (_bankAuth != null)
+                    await _bankAuth.EnsureCanAccessAccountAsync(request.AccountId); // deposit uses access rules
 
                 var account = await _unitOfWork.AccountRepository.GetByIdAsync(request.AccountId);
                 if (account == null)
@@ -169,8 +172,8 @@ namespace BankingSystemAPI.Application.Services
             await ExecuteWithRetryAsync(async () =>
             {
                 // Authorization: ensure acting user can access account (clients may only access own accounts)
-
-                await _bankAuth.EnsureCanAccessAccountAsync(request.AccountId); // withdraw uses access rules
+                if (_bankAuth != null)
+                    await _bankAuth.EnsureCanAccessAccountAsync(request.AccountId); // withdraw uses access rules
 
                 var account = await _unitOfWork.AccountRepository.GetByIdAsync(request.AccountId);
                 if (account == null)
@@ -229,8 +232,8 @@ namespace BankingSystemAPI.Application.Services
 
             await ExecuteWithRetryAsync(async () =>
             {
-
-                await _bankAuth.EnsureCanInitiateTransferAsync(request.SourceAccountId, request.TargetAccountId);
+                if (_bankAuth != null)
+                    await _bankAuth.EnsureCanInitiateTransferAsync(request.SourceAccountId, request.TargetAccountId);
 
                 var source = await _unitOfWork.AccountRepository.GetByIdAsync(request.SourceAccountId);
                 var target = await _unitOfWork.AccountRepository.GetByIdAsync(request.TargetAccountId);

@@ -10,13 +10,69 @@
             "description": "Authentication endpoints (login, refresh, logout, revoke tokens).",
             "item": [
                 {
-                    "name": "Login",
+                    "name": "Login as SuperAdmin",
                     "request": {
                         "method": "POST",
                         "header": [],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"email\": \"superadmin@paysky.io\",\n  \"password\": \"SuperAdmin@123\"\n}",
+                            "raw": "{\n  \"email\": \"super.admin@example.com\",\n  \"password\": \"SuperAdmin#2025\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Login as Admin",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"admin.ahmed@example.com\",\n  \"password\": \"AdminStrong123!\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Login as Client",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"youssef.client@example.com\",\n  \"password\": \"Youssef@2025\"\n}",
                             "options": {
                                 "raw": {
                                     "language": "json"

@@ -1,11 +1,6 @@
 ﻿using BankingSystemAPI.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Infrastructure.Configuration_Classes
 {
@@ -20,6 +15,7 @@ namespace BankingSystemAPI.Infrastructure.Configuration_Classes
             builder.Property(b => b.Name)
                    .HasMaxLength(200)
                    .IsRequired();
+            builder.HasIndex(b => b.Name).IsUnique();
 
             builder.Property(b => b.CreatedAt)
                    .HasDefaultValueSql("GETUTCDATE()")

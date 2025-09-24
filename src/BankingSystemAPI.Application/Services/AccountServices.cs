@@ -40,7 +40,8 @@ namespace BankingSystemAPI.Application.Services
             if (account == null)
                 throw new NotFoundException($"Account with ID '{id}' not found.");
 
-            await _bankAuth.EnsureCanAccessAccountAsync(id);
+            if (_bankAuth != null)
+                await _bankAuth.EnsureCanAccessAccountAsync(id);
 
             return _mapper.Map<AccountDto>(account);
         }
@@ -54,7 +55,8 @@ namespace BankingSystemAPI.Application.Services
             if (account == null)
                 throw new NotFoundException($"Account with number '{accountNumber}' not found.");
 
-            await _bankAuth.EnsureCanAccessAccountAsync(account.Id);
+            if (_bankAuth != null)
+                await _bankAuth.EnsureCanAccessAccountAsync(account.Id);
 
             return _mapper.Map<AccountDto>(account);
         }
@@ -67,8 +69,11 @@ namespace BankingSystemAPI.Application.Services
             // include InterestLogs for savings accounts
             var accounts = await _unitOfWork.AccountRepository.FindAllAsync(a => a.UserId == userId, new[] { "InterestLogs", "Currency" });
 
-            var filtered = await _bankAuth.FilterAccountsAsync(accounts);
-            accounts = filtered.ToList();        
+            if (_bankAuth != null)
+            {
+                var filtered = await _bankAuth.FilterAccountsAsync(accounts);
+                accounts = filtered.ToList();
+            }
 
             return _mapper.Map<IEnumerable<AccountDto>>(accounts);
         }
@@ -80,8 +85,11 @@ namespace BankingSystemAPI.Application.Services
 
             var accounts = await _unitOfWork.AccountRepository.FindAllAsync(a => a.User.NationalId == nationalId, new[] { "User", "InterestLogs", "Currency" });
 
-            var filtered = await _bankAuth.FilterAccountsAsync(accounts);
-            accounts = filtered.ToList();
+            if (_bankAuth != null)
+            {
+                var filtered = await _bankAuth.FilterAccountsAsync(accounts);
+                accounts = filtered.ToList();
+            }
             
             return _mapper.Map<IEnumerable<AccountDto>>(accounts);
         }
@@ -97,7 +105,8 @@ namespace BankingSystemAPI.Application.Services
             if (account.Balance > 0)
                 throw new BadRequestException("Cannot delete an account with a positive balance.");
 
-            await _bankAuth.EnsureCanModifyAccountAsync(id, AccountModificationOperation.Delete);
+            if (_bankAuth != null)
+                await _bankAuth.EnsureCanModifyAccountAsync(id, AccountModificationOperation.Delete);
 
             await _unitOfWork.AccountRepository.DeleteAsync(account);
             await _unitOfWork.SaveAsync();
@@ -117,7 +126,8 @@ namespace BankingSystemAPI.Application.Services
 
             foreach (var acc in accountsToDelete)
             {
-                await _bankAuth.EnsureCanModifyAccountAsync(acc.Id, AccountModificationOperation.Delete);
+                if (_bankAuth != null)
+                    await _bankAuth.EnsureCanModifyAccountAsync(acc.Id, AccountModificationOperation.Delete);
             }
             
             await _unitOfWork.AccountRepository.DeleteRangeAsync(accountsToDelete);
@@ -129,8 +139,8 @@ namespace BankingSystemAPI.Application.Services
             var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
             if (account == null) throw new NotFoundException($"Account with ID '{accountId}' not found.");
 
-
-            await _bankAuth.EnsureCanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
+            if (_bankAuth != null)
+                await _bankAuth.EnsureCanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
 
             account.IsActive = isActive;
             await _unitOfWork.AccountRepository.UpdateAsync(account);

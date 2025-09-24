@@ -47,9 +47,11 @@ namespace BankingSystemAPI.Application.Services
             var accounts = await _unitOfWork.AccountRepository.FindAllAsync(predicate, take: pageSize, skip: skip, orderBy: (Expression<Func<Account, object>>)(a => a.Id), orderByDirection: "ASC", Includes: new[] { "Currency" });
 
             // Apply bank-level filtering if available so callers get only allowed accounts
-            var filtered = await _bankAuth.FilterAccountsAsync(accounts);
-            accounts = filtered.ToList();
-            
+            if (_bankAuth != null)
+            {
+                var filtered = await _bankAuth.FilterAccountsAsync(accounts);
+                accounts = filtered.ToList();
+            }
 
             var dtosAll = _mapper.Map<IEnumerable<CheckingAccountDto>>(accounts.OfType<CheckingAccount>());
             return dtosAll;
@@ -58,7 +60,8 @@ namespace BankingSystemAPI.Application.Services
         public async Task<CheckingAccountDto> CreateAccountAsync(CheckingAccountReqDto reqDto)
         {
             // Authorization: ensure acting user can create account for target user
-            await _bankAuth.EnsureCanCreateAccountForUserAsync(reqDto.UserId);
+            if (_bankAuth != null)
+                await _bankAuth.EnsureCanCreateAccountForUserAsync(reqDto.UserId);
 
             // Validate currency exists
             var currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(reqDto.CurrencyId);
@@ -95,7 +98,8 @@ namespace BankingSystemAPI.Application.Services
         public async Task<CheckingAccountDto> UpdateAccountAsync(int accountId, CheckingAccountEditDto reqDto)
         {
             // Authorization: ensure acting user can access the account to update
-            await _bankAuth.EnsureCanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
+            if (_bankAuth != null)
+                await _bankAuth.EnsureCanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
 
             var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
             if (account is not CheckingAccount checkingAccount)

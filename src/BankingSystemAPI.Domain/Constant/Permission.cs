@@ -19,7 +19,6 @@ namespace BankingSystemAPI.Domain.Constant
             public const string ChangePassword = "Permission.User.ChangePassword";
             public const string DeleteRange = "Permission.User.DeleteRange";
             public const string ReadSelf = "Permission.User.ReadSelf";
-
         }
         public static class UserRoles
         {

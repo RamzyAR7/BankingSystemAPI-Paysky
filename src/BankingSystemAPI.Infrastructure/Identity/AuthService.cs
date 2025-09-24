@@ -280,11 +280,11 @@ namespace BankingSystemAPI.Infrastructure.Identity
                 }
             }
 
-            // Add a combined "claims" claim that lists permission values for quick access (optional)
-            if (permissionValues.Any())
-            {
-                claimsList.Add(new Claim("claims", string.Join(",", permissionValues)));
-            }
+            //// Add a combined "claims" claim that lists permission values for quick access (optional)
+            //if (permissionValues.Any())
+            //{
+            //    claimsList.Add(new Claim("claims", string.Join(",", permissionValues)));
+            //}
 
             // Add bank id
             claimsList.Add(new Claim("bankid", user.BankId.ToString()));

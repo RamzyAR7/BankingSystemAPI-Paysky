@@ -1,18 +1,21 @@
 ﻿using BankingSystemAPI.Application.Interfaces.Repositories;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Context;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class BankRepository : GenericRepository<Bank>, IBankRepository
     {
+        private readonly ApplicationDbContext _context;
         public BankRepository(ApplicationDbContext context) : base(context)
         {
+            _context = context;
+        }
+
+        public async Task<bool> HasUsersAsync(int bankId)
+        {
+            return await _context.Users.AnyAsync(u => u.BankId == bankId);
         }
     }
 }
