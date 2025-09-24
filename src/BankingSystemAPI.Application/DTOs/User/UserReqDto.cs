@@ -58,12 +58,12 @@ namespace BankingSystemAPI.Application.DTOs.User
         /// <summary>
         /// User role.
         /// </summary>
-        public string Role { get; set; }
+        public string? Role { get; set; }
 
         /// <summary>
         /// Bank identifier.
         /// </summary>
-        public int BankId { get; set; }
+        public int? BankId { get; set; }
 
         /// <summary>
         /// Plain text password. Must be provided when creating a user.

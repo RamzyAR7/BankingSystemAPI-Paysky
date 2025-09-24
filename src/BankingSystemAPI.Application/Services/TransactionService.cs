@@ -109,8 +109,7 @@ namespace BankingSystemAPI.Application.Services
             await ExecuteWithRetryAsync(async () =>
             {
                 // Authorization: ensure acting user can access account (clients may only access own accounts)
-                if (_bankAuth != null)
-                    await _bankAuth.EnsureCanAccessAccountAsync(request.AccountId); // deposit uses access rules
+                await _bankAuth.EnsureCanAccessAccountAsync(request.AccountId); // deposit uses access rules
 
                 var account = await _unitOfWork.AccountRepository.GetByIdAsync(request.AccountId);
                 if (account == null)
@@ -170,8 +169,8 @@ namespace BankingSystemAPI.Application.Services
             await ExecuteWithRetryAsync(async () =>
             {
                 // Authorization: ensure acting user can access account (clients may only access own accounts)
-                if (_bankAuth != null)
-                    await _bankAuth.EnsureCanAccessAccountAsync(request.AccountId); // withdraw uses access rules
+
+                await _bankAuth.EnsureCanAccessAccountAsync(request.AccountId); // withdraw uses access rules
 
                 var account = await _unitOfWork.AccountRepository.GetByIdAsync(request.AccountId);
                 if (account == null)
@@ -230,9 +229,8 @@ namespace BankingSystemAPI.Application.Services
 
             await ExecuteWithRetryAsync(async () =>
             {
-                // Authorization: ensure acting user can initiate this transfer according to bank rules
-                if (_bankAuth != null)
-                    await _bankAuth.EnsureCanInitiateTransferAsync(request.SourceAccountId, request.TargetAccountId);
+
+                await _bankAuth.EnsureCanInitiateTransferAsync(request.SourceAccountId, request.TargetAccountId);
 
                 var source = await _unitOfWork.AccountRepository.GetByIdAsync(request.SourceAccountId);
                 var target = await _unitOfWork.AccountRepository.GetByIdAsync(request.TargetAccountId);
@@ -381,7 +379,7 @@ namespace BankingSystemAPI.Application.Services
             {
                 var filtered = await _bankAuth.FilterTransactionsAsync(new[] { trx });
                 if (!filtered.Any())
-                    throw new BankingSystemAPI.Application.Exceptions.ForbiddenException("Access to requested transaction is forbidden.");
+                    throw new ForbiddenException("Access to requested transaction is forbidden.");
             }
 
             return _mapper.Map<TransactionResDto>(trx);

@@ -168,6 +168,16 @@ namespace BankingSystemAPI.Infrastructure.Services
                         Permission.Transaction.ReadAllHistory,
                         Permission.Transaction.ReadById
                     },
+                    ControllerType.Bank => new[]
+                    {
+                        Permission.Bank.Create,
+                        Permission.Bank.Update,
+                        Permission.Bank.Delete,
+                        Permission.Bank.ReadAll,
+                        Permission.Bank.ReadById,
+                        Permission.Bank.ReadByName,
+                        Permission.Bank.SetActive
+                    },
                     _ => Array.Empty<string>()
                 };
 

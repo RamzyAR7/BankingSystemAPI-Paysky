@@ -154,12 +154,13 @@ builder.Services.AddSwaggerGen(options =>
         ["UserRoles"] = 2,
         ["Roles"] = 3,
         ["RoleClaims"] = 4,
-        ["Accounts"] = 5,
-        ["CheckingAccounts"] = 6,
-        ["SavingsAccounts"] = 7,
-        ["AccountTransactions"] = 8,
-        ["Transactions"] = 9, 
-        ["Currency"] = 10,
+        ["Banks"] = 5,
+        ["Accounts"] = 6,
+        ["CheckingAccounts"] = 7,
+        ["SavingsAccounts"] = 8,
+        ["AccountTransactions"] = 9,
+        ["Transactions"] = 10,
+        ["Currency"] = 11,
         ["Default"] = 99
     };
 
@@ -233,14 +234,14 @@ builder.Services.AddHttpContextAccessor();
 // Register CurrentUserService helper
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-// Register BankAuthorizationHelper
-builder.Services.AddScoped<BankingSystemAPI.Application.Interfaces.Identity.IBankAuthorizationHelper, BankingSystemAPI.Infrastructure.Identity.BankAuthorizationHelper>();
-
 // Register Transaction Service
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 
 // Register helper service
 builder.Services.AddScoped<ITransactionHelperService, TransactionHelperService>();
+
+// Register Authrization Scope helper service
+builder.Services.AddScoped<IBankAuthorizationHelper, BankAuthorizationHelper>();
 
 #endregion
 

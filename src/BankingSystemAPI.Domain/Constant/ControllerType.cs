@@ -18,6 +18,7 @@ namespace BankingSystemAPI.Domain.Constant
         CheckingAccount,
         SavingsAccount,
         Currency,
-        Transaction
+        Transaction,
+        Bank
     }
 }

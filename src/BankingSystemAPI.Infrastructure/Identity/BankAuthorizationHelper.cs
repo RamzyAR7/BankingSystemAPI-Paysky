@@ -76,7 +76,7 @@ namespace BankingSystemAPI.Infrastructure.Identity
             var actingUser = await GetActingUserAsync();
             if (actingUser == null) throw new ForbiddenException("Acting user not found.");
 
-            // Allow users to access themselves (read-only)
+            // Allow users to access themselves
             if (!string.IsNullOrEmpty(actingUser.Id) && string.Equals(actingUser.Id, targetUserId, StringComparison.OrdinalIgnoreCase))
                 return;
 

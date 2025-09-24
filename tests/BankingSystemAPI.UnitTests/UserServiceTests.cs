@@ -49,10 +49,10 @@ namespace BankingSystemAPI.UnitTests
             _currentUserMock.Setup(c => c.IsInRoleAsync(It.IsAny<string>())).ReturnsAsync(true);
 
             // create a concrete RoleManager to avoid Moq/Castle constructor proxy issues
-            var roleStore = new RoleStore<IdentityRole>(_context);
-            var roleManager = new RoleManager<IdentityRole>(roleStore,
-                new IRoleValidator<IdentityRole>[] { new RoleValidator<IdentityRole>() },
-                new UpperInvariantLookupNormalizer(), new IdentityErrorDescriber(), new NullLogger<RoleManager<IdentityRole>>());
+            var roleStore = new RoleStore<ApplicationRole>(_context);
+            var roleManager = new RoleManager<ApplicationRole>(roleStore,
+                new IRoleValidator<ApplicationRole>[] { new RoleValidator<ApplicationRole>() },
+                new UpperInvariantLookupNormalizer(), new IdentityErrorDescriber(), new NullLogger<RoleManager<ApplicationRole>>());
 
             _service = new UserService(_userManager, _mapper, _currentUserMock.Object, roleManager);
 

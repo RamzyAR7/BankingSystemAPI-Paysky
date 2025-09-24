@@ -33,6 +33,7 @@ namespace BankingSystemAPI.Infrastructure.Seeding
                 FullName = "Super Admin",
                 Email = "superadmin@paysky.io",
                 NationalId = "12345678901234",
+                PhoneNumber = "01027746531",
                 DateOfBirth = new DateTime(2000, 1, 1),
             };
 
@@ -53,6 +54,7 @@ namespace BankingSystemAPI.Infrastructure.Seeding
                     await _roleManager.SeedClaimsToRoleAsync(UserRole.SuperAdmin.ToString(), ControllerType.SavingsAccount.ToString());
                     await _roleManager.SeedClaimsToRoleAsync(UserRole.SuperAdmin.ToString(), ControllerType.Currency.ToString());
                     await _roleManager.SeedClaimsToRoleAsync(UserRole.SuperAdmin.ToString(), ControllerType.Transaction.ToString());
+                    await _roleManager.SeedClaimsToRoleAsync(UserRole.SuperAdmin.ToString(), ControllerType.Bank.ToString());
                 }
             }
 
@@ -68,8 +70,6 @@ namespace BankingSystemAPI.Infrastructure.Seeding
                 Permission.User.ChangePassword,
                 Permission.User.DeleteRange,
                 Permission.User.ReadSelf,
-
-                Permission.UserRoles.Assign,
 
                 Permission.Auth.RevokeToken,
 
@@ -231,6 +231,16 @@ namespace BankingSystemAPI.Infrastructure.Seeding
                         Permission.Transaction.Transfer,
                         Permission.Transaction.ReadAllHistory,
                         Permission.Transaction.ReadById
+                    },
+                    nameof(ControllerType.Bank) => new[]
+                    {
+                        Permission.Bank.Create,
+                        Permission.Bank.Update,
+                        Permission.Bank.Delete,
+                        Permission.Bank.ReadAll,
+                        Permission.Bank.ReadById,
+                        Permission.Bank.ReadByName,
+                        Permission.Bank.SetActive
                     },
                     _ => Array.Empty<string>()
                 };

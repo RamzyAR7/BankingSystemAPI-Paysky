@@ -15,7 +15,7 @@ namespace BankingSystemAPI.Domain.Entities
         public bool IsActive { get; set; } = true;
 
         // Foreign Key of Bank
-        public int BankId { get; set; }
+        public int? BankId { get; set; }
         public Bank Bank { get; set; }
 
         public ICollection<Account> Accounts { get; set; } = new List<Account>();

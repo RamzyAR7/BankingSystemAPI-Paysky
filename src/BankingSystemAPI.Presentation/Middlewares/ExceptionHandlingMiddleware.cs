@@ -40,9 +40,12 @@ namespace BankingSystemAPI.Presentation.Middlewares
         {
             context.Response.ContentType = "application/json";
 
+            // Unwrap AggregateException / inner exceptions so wrapped custom exceptions are handled properly
+            var realException = GetInnermostException(exception);
+
             int statusCode;
 
-            switch (exception)
+            switch (realException)
             {
                 case AccountNotFoundException:
                 case TransactionNotFoundException:
@@ -81,7 +84,7 @@ namespace BankingSystemAPI.Presentation.Middlewares
             var error = new ErrorDetails
             {
                 Code = statusCode.ToString(),
-                Message = exception.Message,
+                Message = realException.Message,
                 RequestId = requestId
             };
 
@@ -90,6 +93,22 @@ namespace BankingSystemAPI.Presentation.Middlewares
 
             var result = JsonSerializer.Serialize(error);
             await context.Response.WriteAsync(result);
+        }
+
+        private Exception GetInnermostException(Exception ex)
+        {
+            if (ex == null) return ex;
+
+            // Unwrap AggregateException which may wrap exceptions thrown from tasks
+            if (ex is AggregateException agg && agg.InnerException != null)
+            {
+                ex = agg.Flatten().InnerException ?? ex;
+            }
+
+            while (ex.InnerException != null)
+                ex = ex.InnerException;
+
+            return ex;
         }
 
         private class ErrorDetails

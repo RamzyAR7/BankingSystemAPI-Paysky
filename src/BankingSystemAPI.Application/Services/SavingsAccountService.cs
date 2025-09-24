@@ -50,9 +50,7 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<SavingsAccountDto> CreateAccountAsync(SavingsAccountReqDto reqDto)
         {
-            // Authorization: ensure acting user can create account for the target user
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanCreateAccountForUserAsync(reqDto.UserId);
+            await _bankAuth.EnsureCanCreateAccountForUserAsync(reqDto.UserId);
 
             // Validate currency exists
             var currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(reqDto.CurrencyId);
@@ -89,8 +87,7 @@ namespace BankingSystemAPI.Application.Services
         public async Task<SavingsAccountDto> UpdateAccountAsync(int accountId, SavingsAccountEditDto reqDto)
         {
             // Authorization: ensure acting user can access the account to update
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanModifyAccountAsync(accountId, BankingSystemAPI.Domain.Constant.AccountModificationOperation.Edit);
+            await _bankAuth.EnsureCanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
 
             var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
             if (account is not SavingsAccount savingsAccount)
@@ -124,15 +121,12 @@ namespace BankingSystemAPI.Application.Services
             var allLogs = (await _unitOfWork.InterestLogRepository.FindAllAsync(null, int.MaxValue, 0, null, "DESC", new[] { "SavingsAccount" }))
                 .ToList();
 
-            // If bank-level filtering is configured, restrict logs to those whose account is allowed
-            if (_bankAuth != null)
-            {
-                var accounts = allLogs.Select(l => l.SavingsAccount).Where(a => a != null).GroupBy(a => a.Id).Select(g => g.First()).ToList();
-                var filteredAccounts = (await _bankAuth.FilterAccountsAsync(accounts)).ToList();
-                var allowedIds = new HashSet<int>(filteredAccounts.Select(a => a.Id));
-                allLogs = allLogs.Where(l => l.SavingsAccountId != 0 && allowedIds.Contains(l.SavingsAccountId)).ToList();
-            }
 
+            var accounts = allLogs.Select(l => l.SavingsAccount).Where(a => a != null).GroupBy(a => a.Id).Select(g => g.First()).ToList();
+            var filteredAccounts = (await _bankAuth.FilterAccountsAsync(accounts)).ToList();
+            var allowedIds = new HashSet<int>(filteredAccounts.Select(a => a.Id));
+            allLogs = allLogs.Where(l => l.SavingsAccountId != 0 && allowedIds.Contains(l.SavingsAccountId)).ToList();
+            
             var total = allLogs.Count;
             var page = allLogs.Skip(skip).Take(take).ToList();
             var dtos = _mapper.Map<IEnumerable<InterestLogDto>>(page);
@@ -149,15 +143,11 @@ namespace BankingSystemAPI.Application.Services
             // Load logs for the specific account with navigation
             var logs = (await _unitOfWork.InterestLogRepository.FindAllAsync(l => l.SavingsAccountId == accountId, int.MaxValue, 0, null, "DESC", new[] { "SavingsAccount" })).ToList();
 
-            // If bank-level filtering is configured, ensure the account is allowed; if not, return empty list
-            if (_bankAuth != null)
-            {
-                var account = await _unitOfWork.AccountRepository.FindAsync(a => a.Id == accountId, new[] { "User" });
-                if (account == null) return (Enumerable.Empty<InterestLogDto>(), 0);
-                var allowed = (await _bankAuth.FilterAccountsAsync(new[] { account })).Any();
-                if (!allowed) return (Enumerable.Empty<InterestLogDto>(), 0);
-            }
-
+            var account = await _unitOfWork.AccountRepository.FindAsync(a => a.Id == accountId, new[] { "User" });
+            if (account == null) return (Enumerable.Empty<InterestLogDto>(), 0);
+            var allowed = (await _bankAuth.FilterAccountsAsync(new[] { account })).Any();
+            if (!allowed) return (Enumerable.Empty<InterestLogDto>(), 0);
+            
             var total = logs.Count;
             var page = logs.Skip(skip).Take(take).ToList();
             var dtos = _mapper.Map<IEnumerable<InterestLogDto>>(page);

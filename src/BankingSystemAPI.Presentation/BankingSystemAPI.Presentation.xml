@@ -164,6 +164,95 @@
             <response code="401">Unauthorized.</response>
             <response code="404">User not found.</response>
         </member>
+        <member name="T:BankingSystemAPI.Presentation.Controllers.BankController">
+            <summary>
+            Controller that manages bank resources.
+            </summary>
+            <remarks>
+            Exposes endpoints to perform CRUD operations on banks and to change their active status.
+            All endpoints require authentication and appropriate permissions provided via the <c>PermissionFilterFactory</c>.
+            </remarks>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BankController.#ctor(BankingSystemAPI.Application.Interfaces.Services.IBankService)">
+            <summary>
+            Initializes a new instance of the <see cref="T:BankingSystemAPI.Presentation.Controllers.BankController"/> class.
+            </summary>
+            <param name="bankService">Service used to manage banks.</param>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BankController.GetAll(System.Int32,System.Int32)">
+            <summary>
+            Retrieves a paginated list of banks.
+            </summary>
+            <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+            <param name="pageSize">Number of items per page. Defaults to 10.</param>
+            <returns>
+            200 OK with a list of banks when successful.
+            401 Unauthorized if the caller is not authenticated.
+            </returns>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BankController.GetById(System.Int32)">
+            <summary>
+            Retrieves a bank by its identifier.
+            </summary>
+            <param name="id">The identifier of the bank to retrieve.</param>
+            <returns>
+            200 OK with the bank when found.
+            404 Not Found when no bank exists with the provided id.
+            </returns>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BankController.GetByName(System.String)">
+            <summary>
+            Retrieves a bank by its name.
+            </summary>
+            <param name="name">The name of the bank to retrieve.</param>
+            <returns>
+            200 OK with the bank when found.
+            404 Not Found when no bank exists with the provided name.
+            </returns>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BankController.Create(BankingSystemAPI.Application.DTOs.Bank.BankReqDto)">
+            <summary>
+            Creates a new bank.
+            </summary>
+            <param name="dto">The bank data to create.</param>
+            <returns>
+            201 Created with the created bank when successful.
+            400 Bad Request when the provided data is null or invalid.
+            </returns>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BankController.Update(System.Int32,BankingSystemAPI.Application.DTOs.Bank.BankEditDto)">
+            <summary>
+            Updates an existing bank.
+            </summary>
+            <param name="id">The identifier of the bank to update.</param>
+            <param name="dto">The updated bank data.</param>
+            <returns>
+            200 OK with the updated bank when successful.
+            400 Bad Request when the provided data is null or invalid.
+            404 Not Found when no bank exists with the provided id.
+            </returns>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BankController.Delete(System.Int32)">
+            <summary>
+            Deletes a bank by its identifier.
+            </summary>
+            <param name="id">The identifier of the bank to delete.</param>
+            <returns>
+            200 OK when the bank was successfully deleted.
+            404 Not Found when no bank exists with the provided id.
+            </returns>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BankController.SetActive(System.Int32,System.Boolean)">
+            <summary>
+            Sets the active status of a bank.
+            </summary>
+            <param name="id">The identifier of the bank to modify.</param>
+            <param name="isActive">Boolean flag indicating whether the bank should be active.</param>
+            <returns>
+            200 OK when the active status change request is processed.
+            404 Not Found may be returned by the implementation if the bank does not exist.
+            </returns>
+        </member>
         <member name="T:BankingSystemAPI.Presentation.Controllers.CheckingAccountController">
             <summary>
             Endpoints to manage checking accounts.

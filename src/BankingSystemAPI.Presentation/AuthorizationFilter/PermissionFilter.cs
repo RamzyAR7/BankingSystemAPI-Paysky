@@ -1,6 +1,8 @@
-﻿using BankingSystemAPI.Application.Exceptions;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Presentation.AuthorizationFilter
@@ -18,13 +20,21 @@ namespace BankingSystemAPI.Presentation.AuthorizationFilter
             var user = context.HttpContext.User;
             if (user?.Identity is not { IsAuthenticated: true })
             {
-                throw new UnauthorizedException("User is not authenticated.");
+                context.Result = new ObjectResult(new { message = "User i`s not authenticated." })
+                {
+                    StatusCode = StatusCodes.Status401Unauthorized
+                };
+                return Task.CompletedTask;
             }
-
             var hasPermission = user.Claims.Any(c => string.Equals(c.Type, "Permission", System.StringComparison.OrdinalIgnoreCase) && c.Value == _permission);
+
             if (!hasPermission)
             {
-                throw new ForbiddenException($"Missing required permission: {_permission}");
+                context.Result = new ObjectResult(new { message = $"Missing required permission: {_permission}" })
+                {
+                    StatusCode = StatusCodes.Status403Forbidden
+                };
+                return Task.CompletedTask;
             }
 
             return Task.CompletedTask;

@@ -21,17 +21,20 @@ namespace BankingSystemAPI.Infrastructure.Identity
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly JwtSettings _jwt;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IBankAuthorizationHelper? _bankAuth;
 
         public AuthService(
             UserManager<ApplicationUser> userManager,
             RoleManager<ApplicationRole> roleManager,
             IOptions<JwtSettings> jwt,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            IBankAuthorizationHelper? bankAuth = null)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _jwt = jwt.Value;
             _httpContextAccessor = httpContextAccessor;
+            _bankAuth = bankAuth;
         }
 
         public async Task<AuthResultDto> LoginAsync(LoginReqDto request)
@@ -209,6 +212,9 @@ namespace BankingSystemAPI.Infrastructure.Identity
                 result.Succeeded = false;
                 return result;
             }
+
+            // Authorization: ensure the caller may access the target user's bank
+            await _bankAuth?.EnsureCanAccessUserAsync(userId);
 
             var activeTokens = user.RefreshTokens.Where(x => x.IsActive).ToList();
             if (!activeTokens.Any())

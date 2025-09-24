@@ -40,9 +40,7 @@ namespace BankingSystemAPI.Application.Services
             if (account == null)
                 throw new NotFoundException($"Account with ID '{id}' not found.");
 
-            // Single-item access should enforce authorization and may throw
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanAccessAccountAsync(id);
+            await _bankAuth.EnsureCanAccessAccountAsync(id);
 
             return _mapper.Map<AccountDto>(account);
         }
@@ -56,8 +54,7 @@ namespace BankingSystemAPI.Application.Services
             if (account == null)
                 throw new NotFoundException($"Account with number '{accountNumber}' not found.");
 
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanAccessAccountAsync(account.Id);
+            await _bankAuth.EnsureCanAccessAccountAsync(account.Id);
 
             return _mapper.Map<AccountDto>(account);
         }
@@ -70,11 +67,8 @@ namespace BankingSystemAPI.Application.Services
             // include InterestLogs for savings accounts
             var accounts = await _unitOfWork.AccountRepository.FindAllAsync(a => a.UserId == userId, new[] { "InterestLogs", "Currency" });
 
-            if (_bankAuth != null)
-            {
-                var filtered = await _bankAuth.FilterAccountsAsync(accounts);
-                accounts = filtered.ToList();
-            }
+            var filtered = await _bankAuth.FilterAccountsAsync(accounts);
+            accounts = filtered.ToList();        
 
             return _mapper.Map<IEnumerable<AccountDto>>(accounts);
         }
@@ -86,12 +80,9 @@ namespace BankingSystemAPI.Application.Services
 
             var accounts = await _unitOfWork.AccountRepository.FindAllAsync(a => a.User.NationalId == nationalId, new[] { "User", "InterestLogs", "Currency" });
 
-            if (_bankAuth != null)
-            {
-                var filtered = await _bankAuth.FilterAccountsAsync(accounts);
-                accounts = filtered.ToList();
-            }
-
+            var filtered = await _bankAuth.FilterAccountsAsync(accounts);
+            accounts = filtered.ToList();
+            
             return _mapper.Map<IEnumerable<AccountDto>>(accounts);
         }
 
@@ -106,9 +97,7 @@ namespace BankingSystemAPI.Application.Services
             if (account.Balance > 0)
                 throw new BadRequestException("Cannot delete an account with a positive balance.");
 
-            // Authorization: ensure caller can delete the account
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanModifyAccountAsync(id, AccountModificationOperation.Delete);
+            await _bankAuth.EnsureCanModifyAccountAsync(id, AccountModificationOperation.Delete);
 
             await _unitOfWork.AccountRepository.DeleteAsync(account);
             await _unitOfWork.SaveAsync();
@@ -126,15 +115,11 @@ namespace BankingSystemAPI.Application.Services
             if (accountsToDelete.Any(a => a.Balance > 0))
                 throw new BadRequestException("Cannot delete accounts that have a positive balance.");
 
-            // Authorization: ensure caller can delete each account - this will throw if any are forbidden
-            if (_bankAuth != null)
+            foreach (var acc in accountsToDelete)
             {
-                foreach (var acc in accountsToDelete)
-                {
-                    await _bankAuth.EnsureCanModifyAccountAsync(acc.Id, AccountModificationOperation.Delete);
-                }
+                await _bankAuth.EnsureCanModifyAccountAsync(acc.Id, AccountModificationOperation.Delete);
             }
-
+            
             await _unitOfWork.AccountRepository.DeleteRangeAsync(accountsToDelete);
             await _unitOfWork.SaveAsync();
         }
@@ -144,9 +129,8 @@ namespace BankingSystemAPI.Application.Services
             var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
             if (account == null) throw new NotFoundException($"Account with ID '{accountId}' not found.");
 
-            // Authorization: ensure caller can modify the account
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
+
+            await _bankAuth.EnsureCanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
 
             account.IsActive = isActive;
             await _unitOfWork.AccountRepository.UpdateAsync(account);

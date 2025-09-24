@@ -32,7 +32,8 @@ namespace BankingSystemAPI.Infrastructure.Configuration_Classes
             builder.HasMany(b => b.ApplicationUsers)
                    .WithOne(u => u.Bank)
                    .HasForeignKey(u => u.BankId)
-                   .OnDelete(DeleteBehavior.Restrict);
+                   .OnDelete(DeleteBehavior.Restrict)
+                   .IsRequired(false);   
         }
     }
 }
