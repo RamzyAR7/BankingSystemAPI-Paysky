@@ -9,6 +9,8 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
     public class UnitOfWork : IUnitOfWork, IDisposable
     {
         // Repositories
+        public IUserRepository UserRepository { get; set; }
+        public IRoleRepository RoleRepository { get; set; }
         public IAccountRepository AccountRepository { get; }
         public ITransactionRepository TransactionRepository { get; }
         public IAccountTransactionRepository AccountTransactionRepository { get; }
@@ -23,6 +25,8 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
         public static AsyncLocal<bool> TransactionActive = new AsyncLocal<bool>();
 
         public UnitOfWork(
+            IUserRepository userRepository,
+            IRoleRepository roleRepository,
             IAccountRepository accountRepository,
             ITransactionRepository transactionRepository,
             IAccountTransactionRepository accountTransactionRepository,
@@ -32,6 +36,8 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
             ApplicationDbContext context
         )
         {
+            UserRepository = userRepository;
+            RoleRepository = roleRepository;
             AccountRepository = accountRepository;
             TransactionRepository = transactionRepository;
             AccountTransactionRepository = accountTransactionRepository;
@@ -39,6 +45,28 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
             CurrencyRepository = currencyRepository;
             BankRepository = bankRepository;
             _context = context;
+        }
+
+        // Backwards-compatible constructor for older tests that passed repos in different order
+        public UnitOfWork(
+            IAccountRepository accountRepository,
+            ITransactionRepository transactionRepository,
+            IAccountTransactionRepository accountTransactionRepository,
+            IInterestLogRepository interestLogRepository,
+            ICurrencyRepository currencyRepository,
+            IBankRepository bankRepository,
+            ApplicationDbContext context)
+            : this(
+                  new Infrastructure.Repositories.UserRepository(context),
+                  new Infrastructure.Repositories.RoleRepository(context),
+                  accountRepository,
+                  transactionRepository,
+                  accountTransactionRepository,
+                  interestLogRepository,
+                  currencyRepository,
+                  bankRepository,
+                  context)
+        {
         }
 
         // Start a transaction

@@ -8,8 +8,7 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Interfaces.Repositories
 {
-    public interface IAccountTransactionRepository: IGenericRepository<AccountTransaction>
+    public interface IAccountTransactionRepository: IGenericRepository<AccountTransaction, int>
     {
-
     }
 }

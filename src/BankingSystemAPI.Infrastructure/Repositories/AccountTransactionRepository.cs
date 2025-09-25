@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
-    public class AccountTransactionRepository : GenericRepository<AccountTransaction>, IAccountTransactionRepository
+    public class AccountTransactionRepository : GenericRepository<AccountTransaction, int>, IAccountTransactionRepository
     {
         public AccountTransactionRepository(ApplicationDbContext context) : base(context)
         {

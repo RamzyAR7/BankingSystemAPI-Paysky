@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Linq.Expressions;
 using BankingSystemAPI.Domain.Constant;
-using Microsoft.AspNetCore.Identity;
+using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Identity;
 
 
@@ -21,17 +21,13 @@ namespace BankingSystemAPI.Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly ICurrentUserService _currentUserService;
-        private readonly IBankAuthorizationHelper? _bankAuth;
+        private readonly IAccountAuthorizationService? _accountAuth;
 
-        public CheckingAccountService(IUnitOfWork unitOfWork, IMapper mapper, UserManager<ApplicationUser> userManager, ICurrentUserService currentUserService, IBankAuthorizationHelper? bankAuth = null)
+        public CheckingAccountService(IUnitOfWork unitOfWork, IMapper mapper, IAccountAuthorizationService? accountAuth = null)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
-            _userManager = userManager;
-            _currentUserService = currentUserService;
-            _bankAuth = bankAuth;
+            _accountAuth = accountAuth;
         }
 
         public async Task<IEnumerable<CheckingAccountDto>> GetAccountsAsync(int pageNumber, int pageSize)
@@ -40,16 +36,26 @@ namespace BankingSystemAPI.Application.Services
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
-            var skip = (pageNumber - 1) * pageSize;
+            var take = Math.Max(1, pageSize);
+            var skip = (Math.Max(1, pageNumber) - 1) * take;
 
             Expression<Func<Account, bool>> predicate = a => a is CheckingAccount;
 
-            var accounts = await _unitOfWork.AccountRepository.FindAllAsync(predicate, take: pageSize, skip: skip, orderBy: (Expression<Func<Account, object>>)(a => a.Id), orderByDirection: "ASC", Includes: new[] { "Currency" });
+            // Use GetPagedAsync with expression-based include for Currency
+            var (results, total) = await _unitOfWork.AccountRepository.GetPagedAsync(
+                predicate,
+                take,
+                skip,
+                (Expression<Func<Account, object>>)(a => a.Id),
+                "ASC",
+                new[] { (Expression<Func<Account, object>>)(a => a.Currency) });
+
+            var accounts = results;
 
             // Apply bank-level filtering if available so callers get only allowed accounts
-            if (_bankAuth != null)
+            if (_accountAuth != null)
             {
-                var filtered = await _bankAuth.FilterAccountsAsync(accounts);
+                var filtered = await _accountAuth.FilterAccountsAsync(accounts);
                 accounts = filtered.ToList();
             }
 
@@ -60,8 +66,8 @@ namespace BankingSystemAPI.Application.Services
         public async Task<CheckingAccountDto> CreateAccountAsync(CheckingAccountReqDto reqDto)
         {
             // Authorization: ensure acting user can create account for target user
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanCreateAccountForUserAsync(reqDto.UserId);
+            if (_accountAuth != null)
+                await _accountAuth.CanCreateAccountForUserAsync(reqDto.UserId);
 
             // Validate currency exists
             var currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(reqDto.CurrencyId);
@@ -70,16 +76,16 @@ namespace BankingSystemAPI.Application.Services
             if (!currency.IsActive)
                 throw new BadRequestException("Cannot create account with inactive currency.");
 
-            // Ensure target user exists
-            var user = await _userManager.FindByIdAsync(reqDto.UserId);
+            // Ensure target user exists via repository
+            var user = await _unitOfWork.UserRepository.FindWithIncludesAsync(u => u.Id == reqDto.UserId, new Expression<Func<ApplicationUser, object>>[] { u => u.Accounts, u => u.Bank }, true);
             if (user == null)
                 throw new NotFoundException($"User with ID '{reqDto.UserId}' not found.");
             if (!user.IsActive)
                 throw new BadRequestException("Cannot create account for inactive user.");
 
-            // Cannot create account for user without any role
-            var targetRoles = await _userManager.GetRolesAsync(user);
-            if (targetRoles == null || !targetRoles.Any())
+            // Ensure user has a role assigned
+            var targetRole = await _unitOfWork.RoleRepository.GetRoleByUserIdAsync(reqDto.UserId);
+            if (targetRole == null || string.IsNullOrWhiteSpace(targetRole.Name))
                 throw new BadRequestException("Cannot create account for a user that has no role assigned. Assign a role first.");
 
             var newAccount = _mapper.Map<CheckingAccount>(reqDto);
@@ -98,8 +104,8 @@ namespace BankingSystemAPI.Application.Services
         public async Task<CheckingAccountDto> UpdateAccountAsync(int accountId, CheckingAccountEditDto reqDto)
         {
             // Authorization: ensure acting user can access the account to update
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
+            if (_accountAuth != null)
+                await _accountAuth.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
 
             var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
             if (account is not CheckingAccount checkingAccount)

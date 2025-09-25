@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
-    public class BankRepository : GenericRepository<Bank>, IBankRepository
+    public class BankRepository : GenericRepository<Bank, int>, IBankRepository
     {
         private readonly ApplicationDbContext _context;
         public BankRepository(ApplicationDbContext context) : base(context)

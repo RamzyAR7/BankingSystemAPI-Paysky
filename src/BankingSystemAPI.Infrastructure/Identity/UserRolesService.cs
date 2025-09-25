@@ -1,3 +1,4 @@
+using BankingSystemAPI.Application.Authorization.Helpers;
 using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Domain.Constant;
@@ -10,6 +11,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using BankingSystemAPI.Application.Interfaces.Authorization;
 
 namespace BankingSystemAPI.Infrastructure.Services
 {
@@ -77,8 +79,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             var targetRoleName = dto.Role.Trim();
 
             // Get acting user's role from store (single-role invariant)
-            string? currentUserRole = await _currentUserService.GetRoleFromStoreAsync();
-
+            var currentUserRole = await _currentUserService.GetRoleFromStoreAsync();
             var isSuperAdmin = await _currentUserService.IsInRoleAsync(UserRole.SuperAdmin.ToString());
 
             // Validate target role exists

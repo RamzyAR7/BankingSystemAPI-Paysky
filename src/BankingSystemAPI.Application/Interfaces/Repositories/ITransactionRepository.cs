@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Interfaces.Repositories
 {
-    public interface ITransactionRepository: IGenericRepository<Transaction>
+    public interface ITransactionRepository: IGenericRepository<Transaction, int>
     {
     }
 }

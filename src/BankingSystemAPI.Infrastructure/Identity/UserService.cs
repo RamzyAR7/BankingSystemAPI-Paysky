@@ -7,6 +7,8 @@ using BankingSystemAPI.Domain.Constant;
 using Microsoft.EntityFrameworkCore;
 using BankingSystemAPI.Application.Exceptions;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
+using BankingSystemAPI.Application.Interfaces.Authorization;
+using BankingSystemAPI.Application.Authorization.Helpers;
 
 
 namespace BankingSystemAPI.Infrastructure.Services
@@ -17,15 +19,15 @@ namespace BankingSystemAPI.Infrastructure.Services
         private readonly IMapper _mapper;
         private readonly ICurrentUserService _currentUserService;
         private readonly RoleManager<ApplicationRole> _roleManager;
-        private readonly IBankAuthorizationHelper? _bankAuth;
+        private readonly IUserAuthorizationService? _userAuth;
         private readonly IUnitOfWork? _uow;
-        public UserService(UserManager<ApplicationUser> userManager, IMapper mapper, ICurrentUserService currentUserService, RoleManager<ApplicationRole> roleManager, IUnitOfWork? uow = null, IBankAuthorizationHelper? bankAuth = null)
+        public UserService(UserManager<ApplicationUser> userManager, IMapper mapper, ICurrentUserService currentUserService, RoleManager<ApplicationRole> roleManager, IUnitOfWork? uow = null, IUserAuthorizationService? userAuth = null)
         {
             _userManager = userManager;
             _mapper = mapper;
             _currentUserService = currentUserService;
             _roleManager = roleManager;
-            _bankAuth = bankAuth;
+            _userAuth = userAuth;
             _uow = uow;
         }
 
@@ -47,9 +49,9 @@ namespace BankingSystemAPI.Infrastructure.Services
         {
             var allUsers = await _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).ToListAsync();
 
-            if (_bankAuth != null)
+            if (_userAuth != null)
             {
-                var filtered = await _bankAuth.FilterUsersAsync(allUsers);
+                var filtered = await _userAuth.FilterUsersAsync(allUsers);
                 allUsers = filtered.ToList();
             }
             
@@ -71,8 +73,8 @@ namespace BankingSystemAPI.Infrastructure.Services
                 .FirstOrDefaultAsync(u => u.UserName == username);
             if (user == null) return null;
 
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanAccessUserAsync(user.Id);
+            if (_userAuth != null)
+                await _userAuth.CanViewUserAsync(user.Id);
 
             var dto = await MapUserDtoAsync(user);
             return dto;
@@ -85,8 +87,8 @@ namespace BankingSystemAPI.Infrastructure.Services
                 .FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null) return null;
 
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanAccessUserAsync(userId);
+            if (_userAuth != null)
+                await _userAuth.CanViewUserAsync(userId);
 
             var dto = await MapUserDtoAsync(user);
             return dto;
@@ -97,8 +99,8 @@ namespace BankingSystemAPI.Infrastructure.Services
             // Acting user info
             var actingUserId = _currentUserService.UserId;
             var actingRole = await _currentUserService.GetRoleFromStoreAsync();
-            var isSuperAdmin = string.Equals(actingRole, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase);
-            var isClient = string.Equals(actingRole, UserRole.Client.ToString(), StringComparison.OrdinalIgnoreCase);
+            var isSuperAdmin = string.Equals(actingRole.Name, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase);
+            var isClient = string.Equals(actingRole.Name, UserRole.Client.ToString(), StringComparison.OrdinalIgnoreCase);
 
             int? targetBankId = null;
             string targetRole = UserRole.Client.ToString();
@@ -252,9 +254,9 @@ namespace BankingSystemAPI.Infrastructure.Services
                 return result;
             }
 
-            if (_bankAuth != null)
+            if (_userAuth != null)
                 // ensure caller is allowed to edit this user
-                await _bankAuth.EnsureCanModifyUserAsync(userId, UserModificationOperation.Edit);
+                await _userAuth.CanModifyUserAsync(userId, UserModificationOperation.Edit);
 
             var duplicate = await _userManager.Users.AnyAsync(u =>
                 u.Id != userId &&
@@ -295,14 +297,14 @@ namespace BankingSystemAPI.Infrastructure.Services
                 return result;
             }
 
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanModifyUserAsync(userId, UserModificationOperation.ChangePassword);
+            if (_userAuth != null)
+                await _userAuth.CanModifyUserAsync(userId, UserModificationOperation.ChangePassword);
 
             // Acting user info
             var actingUserId = _currentUserService.UserId;
             var actingRole = await _currentUserService.GetRoleFromStoreAsync();
-            var isSuperAdmin = string.Equals(actingRole, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase);
-            var isClient = string.Equals(actingRole, UserRole.Client.ToString(), StringComparison.OrdinalIgnoreCase);
+            var isSuperAdmin = string.Equals(actingRole.Name, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase);
+            var isClient = string.Equals(actingRole.Name, UserRole.Client.ToString(), StringComparison.OrdinalIgnoreCase);
             var isSelf = !string.IsNullOrEmpty(actingUserId) && string.Equals(actingUserId, userId, StringComparison.OrdinalIgnoreCase);
 
             // Get target user's roles
@@ -378,8 +380,8 @@ namespace BankingSystemAPI.Infrastructure.Services
                 return result;
             }
 
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanModifyUserAsync(userId, UserModificationOperation.Delete);
+            if (_userAuth != null)
+                await _userAuth.CanModifyUserAsync(userId, UserModificationOperation.Delete);
 
             var actingUserId = _currentUserService.UserId;
             if (!string.IsNullOrEmpty(actingUserId) && string.Equals(actingUserId, userId, StringComparison.OrdinalIgnoreCase))
@@ -416,8 +418,8 @@ namespace BankingSystemAPI.Infrastructure.Services
                 var existingUser = await _userManager.FindByIdAsync(userId);
                 if (existingUser != null)
                 {
-                    if (_bankAuth != null)
-                        await _bankAuth.EnsureCanModifyUserAsync(userId, UserModificationOperation.Delete);
+                    if (_userAuth != null)
+                        await _userAuth.CanModifyUserAsync(userId, UserModificationOperation.Delete);
 
                     var identityResult = await _userManager.DeleteAsync(existingUser);
                     if (!identityResult.Succeeded)
@@ -439,8 +441,8 @@ namespace BankingSystemAPI.Infrastructure.Services
                 .FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null) return null;
 
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanAccessUserAsync(userId);
+            if (_userAuth != null)
+                await _userAuth.CanViewUserAsync(userId);
 
             var dto = await MapUserDtoAsync(user);
             return dto;
@@ -451,8 +453,8 @@ namespace BankingSystemAPI.Infrastructure.Services
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null) throw new NotFoundException($"User with ID '{userId}' not found.");
 
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanModifyUserAsync(userId, UserModificationOperation.Edit);
+            if (_userAuth != null)
+                await _userAuth.CanModifyUserAsync(userId, UserModificationOperation.Edit);
 
             user.IsActive = isActive;
             await _userManager.UpdateAsync(user);
@@ -460,14 +462,15 @@ namespace BankingSystemAPI.Infrastructure.Services
 
         public async Task<IList<UserResDto>> GetUsersByBankIdAsync(int bankId)
         {
-            if (_bankAuth != null)
+            if (_userAuth != null)
             {
-                var isClient = await _bankAuth.IsClientAsync();
-                if (isClient)
+                var role = await _currentUserService.GetRoleFromStoreAsync();
+                if (RoleHelper.IsClient(role.Name))
                     return new List<UserResDto>();
             }
 
-            var isSuper = _bankAuth == null ? false : await _bankAuth.IsSuperAdminAsync();
+            var roleForSuper = await _currentUserService.GetRoleFromStoreAsync();
+            var isSuper = RoleHelper.IsSuperAdmin(roleForSuper.Name);
 
             List<ApplicationUser> users;
             if (isSuper)
@@ -481,7 +484,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             else
             {
                 // Only allow searching by the acting user's own bank
-                var actingUser =  await _bankAuth.GetActingUserAsync();
+                var actingUser =  await _userManager.FindByIdAsync(_currentUserService.UserId);
                 if (actingUser == null)
                     return new List<UserResDto>();
                 bankId = actingUser.BankId ?? 0;
@@ -494,9 +497,9 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
 
             // Apply filtering to the collection to ensure consistent rules
-            if (_bankAuth != null)
+            if (_userAuth != null)
             {
-                var filtered = await _bankAuth.FilterUsersAsync(users);
+                var filtered = await _userAuth.FilterUsersAsync(users);
                 users = filtered.ToList();
             }
 
@@ -511,17 +514,18 @@ namespace BankingSystemAPI.Infrastructure.Services
 
          public async Task<IList<UserResDto>> GetUsersByBankNameAsync(string bankName)
         {
-            if (_bankAuth != null)
+            if (_userAuth != null)
             {
-                var isClient = await _bankAuth.IsClientAsync();
-                if (isClient)
+                var role = await _currentUserService.GetRoleFromStoreAsync();
+                if (RoleHelper.IsClient(role.Name))
                     return new List<UserResDto>();
             }
 
-            var isSuper = _bankAuth == null ? false : await _bankAuth.IsSuperAdminAsync();
+            var roleForSuper2 = await _currentUserService.GetRoleFromStoreAsync();
+            var isSuper2 = RoleHelper.IsSuperAdmin(roleForSuper2.Name);
 
             List<ApplicationUser> users;
-            if (isSuper)
+            if (isSuper2)
             {
                 if (string.IsNullOrWhiteSpace(bankName))
                 {
@@ -541,7 +545,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
             else
             {
-                var actingUser = _bankAuth == null ? null : await _bankAuth.GetActingUserAsync();
+                var actingUser = _userAuth == null ? null : await _userManager.FindByIdAsync(_currentUserService.UserId);
                 if (actingUser == null || actingUser.Bank == null)
                     return new List<UserResDto>();
                 bankName = actingUser.Bank.Name;
@@ -554,9 +558,9 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
 
             // Apply filtering to the collection
-            if (_bankAuth != null)
+            if (_userAuth != null)
             {
-                var filtered = await _bankAuth.FilterUsersAsync(users);
+                var filtered = await _userAuth.FilterUsersAsync(users);
                 users = filtered.ToList();
             }
 

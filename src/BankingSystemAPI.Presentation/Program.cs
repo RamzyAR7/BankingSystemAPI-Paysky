@@ -1,23 +1,22 @@
-using BankingSystemAPI.Application.DTOs.Account;
-using BankingSystemAPI.Application.Interfaces.Identity;
-using BankingSystemAPI.Application.Interfaces.Repositories;
-using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
-using BankingSystemAPI.Application.Mapping;
+using BankingSystemAPI.Application.Interfaces.Repositories;
+using BankingSystemAPI.Infrastructure.UnitOfWork;
+using BankingSystemAPI.Infrastructure.Repositories;
+using BankingSystemAPI.Application.DTOs.Account;
+using BankingSystemAPI.Application.AuthorizationServices;
+using BankingSystemAPI.Application.Interfaces.Authorization;
+using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Services;
+using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Domain.Entities;
+using BankingSystemAPI.Application.Mapping;
 using BankingSystemAPI.Infrastructure.Context;
 using BankingSystemAPI.Infrastructure.Identity;
 using BankingSystemAPI.Infrastructure.Jobs;
 using BankingSystemAPI.Infrastructure.Mapping;
-using BankingSystemAPI.Infrastructure.Repositories;
 using BankingSystemAPI.Infrastructure.Seeding;
 using BankingSystemAPI.Infrastructure.Services;
 using BankingSystemAPI.Infrastructure.Setting;
-using BankingSystemAPI.Infrastructure.UnitOfWork;
-using BankingSystemAPI.Presentation.Filters;
-using BankingSystemAPI.Presentation.Middlewares;
-using BankingSystemAPI.Presentation.Swagger;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +26,11 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
+using BankingSystemAPI.Presentation.Swagger;
+using BankingSystemAPI.Application.Authorization;
+using BankingSystemAPI.Presentation.Middlewares;
+using BankingSystemAPI.Presentation.Filters;
+using BankingSystemAPI.Application.Authorization.Helpers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -200,6 +204,8 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(option =>
 // Register Unit of Work
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Register Repositories via UnitOfWork in the UnitOfWork
+builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 builder.Services.AddScoped<IAccountTransactionRepository, AccountTransactionRepository>();
@@ -241,8 +247,10 @@ builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<ITransactionHelperService, TransactionHelperService>();
 
 // Register Authrization Scope helper service
-builder.Services.AddScoped<IBankAuthorizationHelper, BankAuthorizationHelper>();
-
+builder.Services.AddScoped<IScopeResolver, ScopeResolver>();
+builder.Services.AddScoped<IAccountAuthorizationService, AccountAuthorizationService>();
+builder.Services.AddScoped<IUserAuthorizationService, UserAuthorizationService>();
+builder.Services.AddScoped<ITransactionAuthorizationService, TransactionAuthorizationService>();
 #endregion
 
 #region Register Job Services
@@ -368,4 +376,4 @@ app.UseRateLimiter();
 
 app.MapControllers();
 
-app.Run();
+app.Run();app.Run();

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using BankingSystemAPI.Application.DTOs.User;
 using Microsoft.AspNetCore.Http;
 using BankingSystemAPI.Application.Interfaces.Identity;
+using BankingSystemAPI.Application.Interfaces.Authorization;
 
 namespace BankingSystemAPI.UnitTests
 {
@@ -62,7 +63,7 @@ namespace BankingSystemAPI.UnitTests
 
             // set current user to seeded user and role as Admin (non-super, non-client) so CreateUserAsync uses acting user's bank scope
             _currentUserMock.SetupGet(c => c.UserId).Returns(user.Id);
-            _currentUserMock.Setup(c => c.GetRoleFromStoreAsync()).ReturnsAsync("Admin");
+            _currentUserMock.Setup(c => c.GetRoleFromStoreAsync()).ReturnsAsync(new ApplicationRole { Name = "Admin" });
         }
 
         [Fact]

@@ -17,6 +17,7 @@ using Microsoft.EntityFrameworkCore;
 using BankingSystemAPI.Infrastructure.Repositories;
 using BankingSystemAPI.Infrastructure.UnitOfWork;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using BankingSystemAPI.Application.Interfaces.Authorization;
 
 namespace BankingSystemAPI.UnitTests
 {

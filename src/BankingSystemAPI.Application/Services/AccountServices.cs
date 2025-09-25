@@ -11,6 +11,8 @@ using System.Text;
 using System.Threading.Tasks;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Domain.Constant;
+using BankingSystemAPI.Application.Interfaces.Authorization;
+using System.Linq.Expressions;
 
 namespace BankingSystemAPI.Application.Services
 {
@@ -18,16 +20,16 @@ namespace BankingSystemAPI.Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
-        private readonly IBankAuthorizationHelper? _bankAuth;
+        private readonly IAccountAuthorizationService? _accountAuth;
 
         public AccountService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
-            IBankAuthorizationHelper? bankAuth = null)
+            IAccountAuthorizationService? accountAuth = null)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
-            _bankAuth = bankAuth;
+            _accountAuth = accountAuth;
         }
 
         public async Task<AccountDto> GetAccountByIdAsync(int id)
@@ -40,8 +42,8 @@ namespace BankingSystemAPI.Application.Services
             if (account == null)
                 throw new NotFoundException($"Account with ID '{id}' not found.");
 
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanAccessAccountAsync(id);
+            if (_accountAuth != null)
+                await _accountAuth.CanViewAccountAsync(id);
 
             return _mapper.Map<AccountDto>(account);
         }
@@ -55,8 +57,8 @@ namespace BankingSystemAPI.Application.Services
             if (account == null)
                 throw new NotFoundException($"Account with number '{accountNumber}' not found.");
 
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanAccessAccountAsync(account.Id);
+            if (_accountAuth != null)
+                await _accountAuth.CanViewAccountAsync(account.Id);
 
             return _mapper.Map<AccountDto>(account);
         }
@@ -69,9 +71,9 @@ namespace BankingSystemAPI.Application.Services
             // include InterestLogs for savings accounts
             var accounts = await _unitOfWork.AccountRepository.FindAllAsync(a => a.UserId == userId, new[] { "InterestLogs", "Currency" });
 
-            if (_bankAuth != null)
+            if (_accountAuth != null)
             {
-                var filtered = await _bankAuth.FilterAccountsAsync(accounts);
+                var filtered = await _accountAuth.FilterAccountsAsync(accounts);
                 accounts = filtered.ToList();
             }
 
@@ -85,9 +87,9 @@ namespace BankingSystemAPI.Application.Services
 
             var accounts = await _unitOfWork.AccountRepository.FindAllAsync(a => a.User.NationalId == nationalId, new[] { "User", "InterestLogs", "Currency" });
 
-            if (_bankAuth != null)
+            if (_accountAuth != null)
             {
-                var filtered = await _bankAuth.FilterAccountsAsync(accounts);
+                var filtered = await _accountAuth.FilterAccountsAsync(accounts);
                 accounts = filtered.ToList();
             }
             
@@ -105,8 +107,8 @@ namespace BankingSystemAPI.Application.Services
             if (account.Balance > 0)
                 throw new BadRequestException("Cannot delete an account with a positive balance.");
 
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanModifyAccountAsync(id, AccountModificationOperation.Delete);
+            if (_accountAuth != null)
+                await _accountAuth.CanModifyAccountAsync(id, AccountModificationOperation.Delete);
 
             await _unitOfWork.AccountRepository.DeleteAsync(account);
             await _unitOfWork.SaveAsync();
@@ -126,8 +128,8 @@ namespace BankingSystemAPI.Application.Services
 
             foreach (var acc in accountsToDelete)
             {
-                if (_bankAuth != null)
-                    await _bankAuth.EnsureCanModifyAccountAsync(acc.Id, AccountModificationOperation.Delete);
+                if (_accountAuth != null)
+                    await _accountAuth.CanModifyAccountAsync(acc.Id, AccountModificationOperation.Delete);
             }
             
             await _unitOfWork.AccountRepository.DeleteRangeAsync(accountsToDelete);
@@ -139,8 +141,8 @@ namespace BankingSystemAPI.Application.Services
             var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
             if (account == null) throw new NotFoundException($"Account with ID '{accountId}' not found.");
 
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
+            if (_accountAuth != null)
+                await _accountAuth.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
 
             account.IsActive = isActive;
             await _unitOfWork.AccountRepository.UpdateAsync(account);

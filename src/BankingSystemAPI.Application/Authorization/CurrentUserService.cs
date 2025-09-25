@@ -1,10 +1,10 @@
-using BankingSystemAPI.Application.Interfaces.Identity;
 using Microsoft.AspNetCore.Http;
-using System.Collections.Generic;
+using BankingSystemAPI.Domain.Entities;
+using BankingSystemAPI.Application.Interfaces.Identity;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace BankingSystemAPI.Infrastructure.Services
+namespace BankingSystemAPI.Application.Authorization
 {
     public class CurrentUserService : ICurrentUserService
     {
@@ -29,23 +29,21 @@ namespace BankingSystemAPI.Infrastructure.Services
 
         public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
 
-        public Task<string?> GetRoleFromStoreAsync()
+        public Task<ApplicationRole> GetRoleFromStoreAsync()
         {
             var user = _httpContextAccessor.HttpContext?.User;
-            var primary = user?.FindFirst("role")?.Value;
-            if (!string.IsNullOrEmpty(primary)) return Task.FromResult<string?>(primary);
-
-            var fromRoleClaim = user?.Claims?.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
-            if (!string.IsNullOrEmpty(fromRoleClaim)) return Task.FromResult<string?>(fromRoleClaim);
-
-            return Task.FromResult<string?>(null);
+            var roleName = user?.FindFirst("role")?.Value;
+            if (string.IsNullOrEmpty(roleName))
+            {
+                roleName = user?.Claims?.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+            }
+            return Task.FromResult(new ApplicationRole { Name = roleName });
         }
 
         public Task<bool> IsInRoleAsync(string roleName)
         {
             var user = _httpContextAccessor.HttpContext?.User;
             if (user == null || string.IsNullOrEmpty(roleName)) return Task.FromResult(false);
-
             var inRole = user.Claims.Any(c => (c.Type == System.Security.Claims.ClaimTypes.Role || c.Type == "role") && string.Equals(c.Value, roleName, System.StringComparison.OrdinalIgnoreCase));
             return Task.FromResult(inRole);
         }

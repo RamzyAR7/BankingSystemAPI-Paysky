@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
-    public class CurrencyRepository : GenericRepository<Currency>, ICurrencyRepository
+    public class CurrencyRepository : GenericRepository<Currency, int>, ICurrencyRepository
     {
         public CurrencyRepository(ApplicationDbContext context) : base(context)
         {

@@ -9,6 +9,8 @@ namespace BankingSystemAPI.Application.Interfaces.UnitOfWork
 {
     public interface IUnitOfWork: IDisposable
     {
+        IRoleRepository RoleRepository { get; }
+        IUserRepository UserRepository { get; }
         IAccountRepository AccountRepository { get; }
         ITransactionRepository TransactionRepository { get; }
         IAccountTransactionRepository AccountTransactionRepository { get; }

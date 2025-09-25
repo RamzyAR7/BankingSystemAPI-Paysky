@@ -12,6 +12,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
+using BankingSystemAPI.Application.Interfaces.Authorization;
 
 namespace BankingSystemAPI.Infrastructure.Identity
 {
@@ -21,20 +22,20 @@ namespace BankingSystemAPI.Infrastructure.Identity
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly JwtSettings _jwt;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly IBankAuthorizationHelper? _bankAuth;
+        private readonly IUserAuthorizationService? _userAuth;
 
         public AuthService(
             UserManager<ApplicationUser> userManager,
             RoleManager<ApplicationRole> roleManager,
             IOptions<JwtSettings> jwt,
             IHttpContextAccessor httpContextAccessor,
-            IBankAuthorizationHelper? bankAuth = null)
+            IUserAuthorizationService? userAuth = null)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _jwt = jwt.Value;
             _httpContextAccessor = httpContextAccessor;
-            _bankAuth = bankAuth;
+            _userAuth = userAuth;
         }
 
         public async Task<AuthResultDto> LoginAsync(LoginReqDto request)
@@ -214,7 +215,7 @@ namespace BankingSystemAPI.Infrastructure.Identity
             }
 
             // Authorization: ensure the caller may access the target user's bank
-            await _bankAuth?.EnsureCanAccessUserAsync(userId);
+            await _userAuth?.CanViewUserAsync(userId);
 
             var activeTokens = user.RefreshTokens.Where(x => x.IsActive).ToList();
             if (!activeTokens.Any())

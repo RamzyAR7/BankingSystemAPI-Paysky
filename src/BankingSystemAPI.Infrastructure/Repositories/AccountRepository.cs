@@ -11,17 +11,12 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
-    public class AccountRepository : GenericRepository<Account>, IAccountRepository
+    public class AccountRepository : GenericRepository<Account, int>, IAccountRepository
     {
         private readonly DbSet<Account> _accountDbSet;
         public AccountRepository(ApplicationDbContext context) : base(context)
         {
             _accountDbSet = context.Set<Account>();
-        }
-
-        public async Task<IEnumerable<Account>> GetAccountsByNationalIdAsync(string nationalId)
-        {
-            return await _accountDbSet.AsNoTracking().Include(a=> a.User).Where(a => a.User.NationalId == nationalId).ToListAsync();
         }
 
         public async Task<IEnumerable<T>> GetAccountsByTypeAsync<T>(int pageNumber = 1, int pageSize = 10) where T : Account
@@ -33,24 +28,10 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 
             Expression<Func<Account, bool>> predicate = a => a is T;
 
-            // Ensure Currency navigation is included so mapping can populate CurrencyCode in DTOs
-            var results = await FindAllAsync(predicate, take: pageSize, skip: skip, orderBy: (Expression<Func<Account, object>>)(a => a.Id), orderByDirection: "ASC", Includes: new[] { "Currency" });
+            // Use GetPagedAsync and expression-based include for Currency
+            var (items, total) = await GetPagedAsync(predicate, pageSize, skip, (Expression<Func<Account, object>>)(a => a.Id), "ASC", new[] { (Expression<Func<Account, object>>)(a => a.Currency) });
 
-            return results.OfType<T>();
-        }
-
-        public async Task<IEnumerable<Account>> GetAccountsByUserIdAsync(string userId)
-        {
-            return await _accountDbSet.AsNoTracking().Where(a => a.UserId == userId).ToListAsync();
-        }
-        public async Task<Account> GetAccountByIdAsync(int id)
-        {
-            return await _accountDbSet.FindAsync(id);
-        }   
-
-        public async Task<Account> GetAccountByAccountNumberAsync(string accountNumber)
-        {
-            return await _accountDbSet.AsNoTracking().FirstOrDefaultAsync(a => a.AccountNumber == accountNumber);
+            return items.OfType<T>();
         }
     }
 }

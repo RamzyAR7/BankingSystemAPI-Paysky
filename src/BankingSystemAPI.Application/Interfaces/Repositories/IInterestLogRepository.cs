@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Interfaces.Repositories
 {
-    public interface IInterestLogRepository: IGenericRepository<InterestLog>
+    public interface IInterestLogRepository: IGenericRepository<InterestLog, int>
     {
     }
 }

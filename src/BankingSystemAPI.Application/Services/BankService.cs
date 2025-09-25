@@ -25,14 +25,15 @@ namespace BankingSystemAPI.Application.Services
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
-            var banks = await _uow.BankRepository.FindAllAsync(b => true, take: pageSize, skip: (pageNumber - 1) * pageSize, orderBy: b => b.Id, orderByDirection: "ASC");
+            var skip = (pageNumber - 1) * pageSize;
+
+            var (banks, total) = await _uow.BankRepository.GetPagedAsync(b => true, pageSize, skip, b => b.Id, "ASC");
             return _mapper.Map<List<BankSimpleResDto>>(banks);
         }
 
         public async Task<BankResDto> GetByIdAsync(int id)
         {
-            var banks = await _uow.BankRepository.FindAllAsync(b => b.Id == id, new[] { "ApplicationUsers.Accounts" });
-            var bank = banks.FirstOrDefault();
+            var bank = await _uow.BankRepository.FindAsync(b => b.Id == id, new[] { "ApplicationUsers.Accounts" });
             if (bank == null) return null;
             var dto = _mapper.Map<BankResDto>(bank);
             if (bank.ApplicationUsers != null)
@@ -42,8 +43,7 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<BankResDto> GetByNameAsync(string name)
         {
-            var banks = await _uow.BankRepository.FindAllAsync(b => b.Name == name, new[] { "ApplicationUsers.Accounts" });
-            var bank = banks.FirstOrDefault();
+            var bank = await _uow.BankRepository.FindAsync(b => b.Name == name, new[] { "ApplicationUsers.Accounts" });
             if (bank == null) return null;
             var dto = _mapper.Map<BankResDto>(bank);
             if (bank.ApplicationUsers != null)

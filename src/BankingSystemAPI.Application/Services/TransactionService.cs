@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using Microsoft.Extensions.Logging;
+using BankingSystemAPI.Application.Interfaces.Authorization;
+using System.Linq.Expressions;
 
 namespace BankingSystemAPI.Application.Services
 {
@@ -19,7 +21,8 @@ namespace BankingSystemAPI.Application.Services
         private readonly ITransactionHelperService _helper;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ICurrentUserService _currentUserService;
-        private readonly IBankAuthorizationHelper? _bankAuth;
+        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly ITransactionAuthorizationService? _transactionAuth;
         private readonly ILogger<TransactionService> _logger;
         private const int MaxRetryCount = 3;
 
@@ -27,14 +30,15 @@ namespace BankingSystemAPI.Application.Services
         private const decimal SameCurrencyFeeRate = 0.005m;
         private const decimal DifferentCurrencyFeeRate = 0.01m;
 
-        // Primary constructor with bankAuth then logger (used by some tests)
+        // Primary constructor with accountAuth then transactionAuth (used by most callers)
         public TransactionService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
             ITransactionHelperService helper,
             UserManager<ApplicationUser> userManager,
             ICurrentUserService currentUserService,
-            IBankAuthorizationHelper? bankAuth = null,
+            IAccountAuthorizationService? accountAuth,
+            ITransactionAuthorizationService? transactionAuth,
             ILogger<TransactionService>? logger = null)
         {
             _unitOfWork = unitOfWork;
@@ -42,11 +46,12 @@ namespace BankingSystemAPI.Application.Services
             _helper = helper;
             _userManager = userManager;
             _currentUserService = currentUserService;
-            _bankAuth = bankAuth;
+            _accountAuth = accountAuth;
+            _transactionAuth = transactionAuth;
             _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<TransactionService>.Instance;
         }
 
-        // Overload that accepts logger as the 6th parameter and bankAuth as 7th to match other tests
+        // Overload that accepts logger as the 6th parameter and transactionAuth as 7th to match other callers/tests
         public TransactionService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
@@ -54,8 +59,20 @@ namespace BankingSystemAPI.Application.Services
             UserManager<ApplicationUser> userManager,
             ICurrentUserService currentUserService,
             ILogger<TransactionService>? logger = null,
-            IBankAuthorizationHelper? bankAuth = null)
-            : this(unitOfWork, mapper, helper, userManager, currentUserService, bankAuth, logger)
+            ITransactionAuthorizationService? transactionAuth = null)
+            : this(unitOfWork, mapper, helper, userManager, currentUserService, null, transactionAuth, logger)
+        {
+        }
+
+        // Compatibility constructor used by tests: (unitOfWork, mapper, helper, userManager, currentUser, logger)
+        public TransactionService(
+            IUnitOfWork unitOfWork,
+            IMapper mapper,
+            ITransactionHelperService helper,
+            UserManager<ApplicationUser> userManager,
+            ICurrentUserService currentUserService,
+            ILogger<TransactionService>? logger = null)
+            : this(unitOfWork, mapper, helper, userManager, currentUserService, null, null, logger)
         {
         }
 
@@ -91,8 +108,8 @@ namespace BankingSystemAPI.Application.Services
             if (accountId <= 0)
                 throw new BadRequestException("Invalid account id.");
 
-            if (_bankAuth != null)
-                await _bankAuth.EnsureCanAccessAccountAsync(accountId);
+            if (_accountAuth != null)
+                await _accountAuth.CanViewAccountAsync(accountId);
 
             var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
             if (account == null)
@@ -111,8 +128,8 @@ namespace BankingSystemAPI.Application.Services
             await ExecuteWithRetryAsync(async () =>
             {
                 // Authorization: ensure acting user can access account (clients may only access own accounts)
-                if (_bankAuth != null)
-                    await _bankAuth.EnsureCanAccessAccountAsync(request.AccountId); // deposit uses access rules
+                if (_accountAuth != null)
+                    await _accountAuth.CanViewAccountAsync(request.AccountId); // deposit uses access rules
 
                 var account = await _unitOfWork.AccountRepository.GetByIdAsync(request.AccountId);
                 if (account == null)
@@ -172,8 +189,8 @@ namespace BankingSystemAPI.Application.Services
             await ExecuteWithRetryAsync(async () =>
             {
                 // Authorization: ensure acting user can access account (clients may only access own accounts)
-                if (_bankAuth != null)
-                    await _bankAuth.EnsureCanAccessAccountAsync(request.AccountId); // withdraw uses access rules
+                if (_accountAuth != null)
+                    await _accountAuth.CanViewAccountAsync(request.AccountId); // withdraw uses access rules
 
                 var account = await _unitOfWork.AccountRepository.GetByIdAsync(request.AccountId);
                 if (account == null)
@@ -232,8 +249,8 @@ namespace BankingSystemAPI.Application.Services
 
             await ExecuteWithRetryAsync(async () =>
             {
-                if (_bankAuth != null)
-                    await _bankAuth.EnsureCanInitiateTransferAsync(request.SourceAccountId, request.TargetAccountId);
+                if (_transactionAuth != null)
+                    await _transactionAuth.CanInitiateTransferAsync(request.SourceAccountId, request.TargetAccountId);
 
                 var source = await _unitOfWork.AccountRepository.GetByIdAsync(request.SourceAccountId);
                 var target = await _unitOfWork.AccountRepository.GetByIdAsync(request.TargetAccountId);
@@ -336,12 +353,11 @@ namespace BankingSystemAPI.Application.Services
         public async Task<IEnumerable<TransactionResDto>> GetAllAsync(int pageNumber, int pageSize)
         {
             var skip = (Math.Max(1, pageNumber) - 1) * Math.Max(1, pageSize);
-            var list = await _unitOfWork.TransactionRepository.FindAllAsync(
-                null, pageSize, skip, null, "DESC", new[] { "AccountTransactions" });
+            var (list, total) = await _unitOfWork.TransactionRepository.GetPagedAsync(null, Math.Max(1, pageSize), skip, (Expression<Func<Transaction, object>>)(t => t.Timestamp), "DESC", new[] { (Expression<Func<Transaction, object>>)(t => t.AccountTransactions) });
 
-            if (_bankAuth != null)
+            if (_transactionAuth != null)
             {
-                var filtered = await _bankAuth.FilterTransactionsAsync(list);
+                var filtered = await _transactionAuth.FilterTransactionsAsync(list);
                 list = filtered.ToList();
             }
 
@@ -356,13 +372,13 @@ namespace BankingSystemAPI.Application.Services
             var skip = (Math.Max(1, pageNumber) - 1) * take;
 
             // Query page of transactions that reference the account (repository will apply paging)
-            var list = await _unitOfWork.TransactionRepository.FindAllAsync(
+            var (list, total) = await _unitOfWork.TransactionRepository.GetPagedAsync(
                 t => t.AccountTransactions != null && t.AccountTransactions.Any(at => at.AccountId == accountId),
-                take, skip, null, "DESC", new[] { "AccountTransactions" });
+                take, skip, (Expression<Func<Transaction, object>>)(t => t.Timestamp), "DESC", new[] { (Expression<Func<Transaction, object>>)(t => t.AccountTransactions) });
 
-            if (_bankAuth != null)
+            if (_transactionAuth != null)
             {
-                var filtered = await _bankAuth.FilterTransactionsAsync(list);
+                var filtered = await _transactionAuth.FilterTransactionsAsync(list);
                 list = filtered.ToList();
             }
 
@@ -378,9 +394,9 @@ namespace BankingSystemAPI.Application.Services
                 throw new TransactionNotFoundException("Transaction not found.");
 
             // Authorization: ensure caller is allowed to view this transaction according to bank rules
-            if (_bankAuth != null)
+            if (_transactionAuth != null)
             {
-                var filtered = await _bankAuth.FilterTransactionsAsync(new[] { trx });
+                var filtered = await _transactionAuth.FilterTransactionsAsync(new[] { trx });
                 if (!filtered.Any())
                     throw new ForbiddenException("Access to requested transaction is forbidden.");
             }

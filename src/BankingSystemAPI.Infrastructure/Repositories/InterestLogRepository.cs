@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
-    public class InterestLogRepository : GenericRepository<InterestLog>, IInterestLogRepository
+    public class InterestLogRepository : GenericRepository<InterestLog, int>, IInterestLogRepository
     {
         public InterestLogRepository(ApplicationDbContext context) : base(context)
         {

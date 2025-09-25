@@ -17,6 +17,8 @@ using BankingSystemAPI.Application.DTOs.Account;
 using AutoMapper;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using System.Collections.Generic;
+using BankingSystemAPI.Application.Interfaces.Authorization;
+using BankingSystemAPI.Domain.Constant;
 
 namespace BankingSystemAPI.UnitTests
 {
@@ -29,6 +31,7 @@ namespace BankingSystemAPI.UnitTests
         private readonly Mock<ICurrentUserService> _currentUserMock;
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
+        private readonly Mock<IAccountAuthorizationService> _accountAuthMock;
 
         public CheckingAccountServiceTests()
         {
@@ -70,7 +73,13 @@ namespace BankingSystemAPI.UnitTests
 
             _mapper = mapperMock.Object;
 
-            _service = new CheckingAccountService(_uow, _mapper, _userManager, _currentUserMock.Object);
+            _accountAuthMock = new Mock<IAccountAuthorizationService>();
+            _accountAuthMock.Setup(a => a.CanViewAccountAsync(It.IsAny<int>())).Returns(Task.CompletedTask);
+            _accountAuthMock.Setup(a => a.CanModifyAccountAsync(It.IsAny<int>(), It.IsAny<AccountModificationOperation>())).Returns(Task.CompletedTask);
+            _accountAuthMock.Setup(a => a.FilterAccountsAsync(It.IsAny<IEnumerable<Account>>())).ReturnsAsync((IEnumerable<Account> accs) => accs);
+            _accountAuthMock.Setup(a => a.CanCreateAccountForUserAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
+
+            _service = new CheckingAccountService(_uow, _mapper, _accountAuthMock.Object);
         }
 
         [Fact]

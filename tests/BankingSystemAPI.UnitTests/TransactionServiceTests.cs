@@ -16,6 +16,7 @@ using BankingSystemAPI.Application.Interfaces.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.Exceptions;
+using BankingSystemAPI.Application.Interfaces.Authorization;
 
 namespace BankingSystemAPI.UnitTests
 {
@@ -26,6 +27,8 @@ namespace BankingSystemAPI.UnitTests
         private readonly TransactionService _service;
         private readonly Mock<ITransactionHelperService> _helperMock;
         private readonly IMapper _mapper;
+        private readonly Mock<IAccountAuthorizationService> _accountAuthMock;
+        private readonly Mock<ITransactionAuthorizationService> _transactionAuthMock;
 
         public TransactionServiceTests()
         {
@@ -86,21 +89,22 @@ namespace BankingSystemAPI.UnitTests
                     return amt;
                 });
 
+            _accountAuthMock = new Mock<IAccountAuthorizationService>();
+            _accountAuthMock.Setup(a => a.CanViewAccountAsync(It.IsAny<int>())).Returns(Task.CompletedTask);
+            _accountAuthMock.Setup(a => a.CanModifyAccountAsync(It.IsAny<int>(), It.IsAny<AccountModificationOperation>())).Returns(Task.CompletedTask);
+            _accountAuthMock.Setup(a => a.FilterAccountsAsync(It.IsAny<IEnumerable<Account>>())).ReturnsAsync((IEnumerable<Account> accs) => accs);
+            _accountAuthMock.Setup(a => a.CanCreateAccountForUserAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
+
+            _transactionAuthMock = new Mock<ITransactionAuthorizationService>();
+            _transactionAuthMock.Setup(t => t.CanInitiateTransferAsync(It.IsAny<int>(), It.IsAny<int>())).Returns(Task.CompletedTask);
+            _transactionAuthMock.Setup(t => t.FilterTransactionsAsync(It.IsAny<IEnumerable<Transaction>>())).ReturnsAsync((IEnumerable<Transaction> txs) => txs);
+
             // setup UserManager (not used for these tests but required by ctor)
             var userStore = new UserStore<ApplicationUser>(_context);
             var userManager = new UserManager<ApplicationUser>(userStore, null, new PasswordHasher<ApplicationUser>(), new IUserValidator<ApplicationUser>[0], new IPasswordValidator<ApplicationUser>[0], new UpperInvariantLookupNormalizer(), new IdentityErrorDescriber(), null, new NullLogger<UserManager<ApplicationUser>>());
-
             var currentUserMock = new Mock<ICurrentUserService>();
 
-            // setup bank auth mock to be permissive
-            var bankAuthMock = new Mock<IBankAuthorizationHelper>();
-            bankAuthMock.Setup(b => b.IsSuperAdminAsync()).ReturnsAsync(true);
-            bankAuthMock.Setup(b => b.IsClientAsync()).ReturnsAsync(false);
-            bankAuthMock.Setup(b => b.EnsureCanAccessAccountAsync(It.IsAny<int>())).Returns(Task.CompletedTask);
-            bankAuthMock.Setup(b => b.EnsureCanInitiateTransferAsync(It.IsAny<int>(), It.IsAny<int>())).Returns(Task.CompletedTask);
-            bankAuthMock.Setup(b => b.EnsureCanAccessUserAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
-
-            _service = new TransactionService(_uow, _mapper, _helperMock.Object, userManager, currentUserMock.Object, bankAuthMock.Object, new NullLogger<TransactionService>());
+            _service = new TransactionService(_uow, _mapper, _helperMock.Object, userManager, currentUserMock.Object, _accountAuthMock.Object, _transactionAuthMock.Object, new NullLogger<TransactionService>());
         }
 
         [Fact]

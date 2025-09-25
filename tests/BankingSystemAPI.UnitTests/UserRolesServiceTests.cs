@@ -12,6 +12,7 @@ using BankingSystemAPI.Infrastructure.Services;
 using Moq;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.DTOs.User;
+using BankingSystemAPI.Application.Interfaces.Authorization;
 
 namespace BankingSystemAPI.UnitTests
 {
