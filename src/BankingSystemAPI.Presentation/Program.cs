@@ -348,6 +348,9 @@ using (var scope = app.Services.CreateScope())
         // Seed currencies
         await CurrencySeeding.SeedAsync(db);
 
+        // Seed banks
+        await BankSeeding.SeedAsync(db);
+
         Console.ForegroundColor = ConsoleColor.Green;
         logger.LogInformation("Seeding data completed.");
         Console.ResetColor();

@@ -86,6 +86,15 @@ namespace BankingSystemAPI.Infrastructure.Services
                 return result;
             }
 
+            // Prevent deletion if any users are assigned to this role
+            var hasUsers = await _db.UserRoles.AnyAsync(ur => ur.RoleId == roleId);
+            if (hasUsers)
+            {
+                result.Errors.Add(new IdentityError { Description = "Cannot delete role because it is assigned to one or more users." });
+                result.Succeeded = false;
+                return result;
+            }
+
             var identityResult = await _roleManager.DeleteAsync(role);
             result.Succeeded = identityResult.Succeeded;
             result.Errors.AddRange(identityResult.Errors);

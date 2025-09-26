@@ -30,7 +30,7 @@ This section details the implementation of the optional enhancements, all of whi
 | **Unit Testing**            | The solution includes a dedicated unit test project (`BankingSystemAPI.UnitTests`) with extensive test coverage for services like `TransactionService`, `AccountService`, `RoleHierarchyService`, and more, ensuring the reliability of the core business logic. |
 | **Multiple Currencies**     | The system fully supports multiple currencies. It features a `Currency` entity, a `CurrencyService` for management, and the `TransactionService` handles cross-currency transfers, including the calculation of appropriate fees. |
 | **Multi-Account Users**     | The data model is designed so that a single `ApplicationUser` can own multiple `Account` entities, fulfilling the multi-account user requirement.                                                                              |
-| **Swagger Documentation**   | The API is fully documented using Swagger/OpenAPI. All controllers and endpoints have been decorated with XML comments and attributes (`[ApiExplorerSettings]`, `[ProducesResponseType]`) to generate a rich, interactive API definition. |
+| **Swagger Documentation**   | The API is fully documented using Swagger/OpenAPI. All controllers and endpoints have been decorated with XML comments and attributes (`[ApiExplorerSettings]`, `[ProducesResponseType]`) to generate a rich, interactive API definition. The Postman collection has also been updated with detailed descriptions and examples. |
 | **Input Validation & Logging** | DTOs use validation attributes to enforce data integrity at the model binding stage. Furthermore, structured logging (`ILogger`) is integrated throughout the application, from services to background jobs, providing a detailed trace of operations. |
 
 ---
@@ -100,7 +100,7 @@ To prevent data corruption from simultaneous update operations, the `Account` en
 The following is the updated database schema based on the current entity configurations and context setup.
 
 ```dbml
-Table AspNetUser {
+Table AspNetUsers {
   Id nvarchar(450) [pk]
   UserName nvarchar(256)
   NormalizedUserName nvarchar(256)
@@ -120,9 +120,10 @@ Table AspNetUser {
   DateOfBirth date [not null]
   FullName nvarchar(200)
   IsActive bit [not null, default: true]
+  BankId int
 }
 
-Table RefreshToken {
+Table RefreshTokens {
   Token nvarchar(200) [pk]
   UserId nvarchar(450)
   CreatedOn datetime [not null]
@@ -131,39 +132,39 @@ Table RefreshToken {
   RevokedOn datetime
 }
 
-Table AspNetRole {
+Table AspNetRoles {
   Id nvarchar(450) [pk]
   Name nvarchar(256)
   NormalizedName nvarchar(256)
   ConcurrencyStamp nvarchar(max)
 }
 
-Table AspNetUserRole {
+Table AspNetUserRoles {
   UserId nvarchar(450)
   RoleId nvarchar(450)
 }
 
-Table AspNetUserClaim {
+Table AspNetUserClaims {
   Id int [pk, increment]
   UserId nvarchar(450)
   ClaimType nvarchar(max)
   ClaimValue nvarchar(max)
 }
 
-Table AspNetRoleClaim {
+Table AspNetRoleClaims {
   Id int [pk, increment]
   RoleId nvarchar(450)
   ClaimType nvarchar(max)
   ClaimValue nvarchar(max)
 }
 
-Table RoleRelation {
+Table RoleRelations {
   Id int [pk, increment]
   ParentRoleId nvarchar(450) [not null]
   ChildRoleId nvarchar(450) [not null]
 }
 
-Table Currency {
+Table Currencies {
   Id int [pk, increment]
   Code varchar(10) [unique, not null]
   IsBase bit
@@ -171,7 +172,7 @@ Table Currency {
   IsActive bit [not null, default: true]
 }
 
-Table CheckingAccount {
+Table CheckingAccounts {
   Id int [pk, increment]
   AccountNumber varchar(50) [unique, not null]
   Balance decimal(18,2)
@@ -183,7 +184,7 @@ Table CheckingAccount {
   IsActive bit [not null, default: true]
 }
 
-Table SavingsAccount {
+Table SavingsAccounts {
   Id int [pk, increment]
   AccountNumber varchar(50) [unique, not null]
   Balance decimal(18,2)
@@ -196,7 +197,7 @@ Table SavingsAccount {
   IsActive bit [not null, default: true]
 }
 
-Table InterestLog {
+Table InterestLogs {
   Id int [pk, increment]
   SavingsAccountId int
   Amount decimal(18,2)
@@ -204,13 +205,13 @@ Table InterestLog {
   SavingsAccountNumber varchar(50)
 }
 
-Table Transaction {
+Table Transactions {
   Id int [pk, increment]
   Type varchar(20) [not null]
   Timestamp datetime [not null]
 }
 
-Table AccountTransaction {
+Table AccountTransactions {
   AccountId int
   TransactionId int
   TransactionCurrency varchar(10)
@@ -219,19 +220,27 @@ Table AccountTransaction {
   Fees decimal(18,2) [default: 0]
 }
 
-Ref: AspNetUser.Id < RefreshToken.UserId
-Ref: AspNetUser.Id < CheckingAccount.UserId
-Ref: AspNetUser.Id < SavingsAccount.UserId
-Ref: AspNetRole.Id < AspNetRoleClaim.RoleId
-Ref: AspNetUser.Id < AspNetUserClaim.UserId
-Ref: AspNetUser.Id < AspNetUserRole.UserId
-Ref: AspNetRole.Id < AspNetUserRole.RoleId
-Ref: Currency.Id < CheckingAccount.CurrencyId
-Ref: Currency.Id < SavingsAccount.CurrencyId
-Ref: SavingsAccount.Id < InterestLog.SavingsAccountId
-Ref: Transaction.Id < AccountTransaction.TransactionId
-Ref: AspNetRole.Id < RoleRelation.ParentRoleId
-Ref: AspNetRole.Id < RoleRelation.ChildRoleId
+Table Banks {
+    Id int [pk, increment]
+    Name nvarchar(200) [not null]
+    IsActive bit [not null, default: true]
+    CreatedAt datetime [not null, default: `getutcdate()`]
+}
+
+Ref: AspNetUsers.Id < RefreshTokens.UserId
+Ref: AspNetUsers.Id < CheckingAccounts.UserId
+Ref: AspNetUsers.Id < SavingsAccounts.UserId
+Ref: AspNetRoles.Id < AspNetRoleClaims.RoleId
+Ref: AspNetUsers.Id < AspNetUserClaims.UserId
+Ref: AspNetUsers.Id < AspNetUserRoles.UserId
+Ref: AspNetRoles.Id < AspNetUserRoles.RoleId
+Ref: Currencies.Id < CheckingAccounts.CurrencyId
+Ref: Currencies.Id < SavingsAccounts.CurrencyId
+Ref: SavingsAccounts.Id < InterestLogs.SavingsAccountId
+Ref: Transactions.Id < AccountTransactions.TransactionId
+Ref: AspNetRoles.Id < RoleRelations.ParentRoleId
+Ref: AspNetRoles.Id < RoleRelations.ChildRoleId
+Ref: Banks.Id < AspNetUsers.BankId
 
 // Note: AccountTransaction.AccountId can refer to either CheckingAccount.Id or SavingsAccount.Id (polymorphic relationship)
 // Note: RoleRelation has a unique index on (ParentRoleId, ChildRoleId)

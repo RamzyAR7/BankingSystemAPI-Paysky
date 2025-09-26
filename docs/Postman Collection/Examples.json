@@ -1,0 +1,300 @@
+{
+    "createUserExamples": [
+        {
+            "email": "john.doe@example.com",
+            "username": "johndoe",
+            "fullName": "John Doe",
+            "nationalId": "29001010100123",
+            "phoneNumber": "01012345678",
+            "dateOfBirth": "1990-01-01",
+            "role": "Client",
+            "bankId": 1,
+            "password": "Password123!",
+            "passwordConfirm": "Password123!"
+        },
+        {
+            "email": "sarah.green@example.com",
+            "username": "sarahgreen",
+            "fullName": "Sarah Green",
+            "nationalId": "29906060600678",
+            "phoneNumber": "01276543210",
+            "dateOfBirth": "1999-06-06",
+            "role": "Client",
+            "bankId": 1,
+            "password": "SarahGreen&Pass123",
+            "passwordConfirm": "SarahGreen&Pass123"
+        },
+        {
+            "email": "jane.smith@example.com",
+            "username": "janesmith",
+            "fullName": "Jane Smith",
+            "nationalId": "29202020200234",
+            "phoneNumber": "01123456789",
+            "dateOfBirth": "1992-02-02",
+            "role": "Client",
+            "bankId": 1,
+            "password": "SecurePass!2025",
+            "passwordConfirm": "SecurePass!2025"
+        },
+        {
+            "email": "alex.jones@example.com",
+            "username": "alexjones",
+            "fullName": "Alex Jones",
+            "nationalId": "28803030300345",
+            "phoneNumber": "01234567890",
+            "dateOfBirth": "1988-03-03",
+            "role": "Admin",
+            "bankId": 1,
+            "password": "AlexJonesPass#1",
+            "passwordConfirm": "AlexJonesPass#1"
+        },
+        {
+            "email": "laura.clark@example.com",
+            "username": "lauraclark",
+            "fullName": "Laura Clark",
+            "nationalId": "30108080800890",
+            "phoneNumber": "01154321098",
+            "dateOfBirth": "2001-08-08",
+            "role": "Admin",
+            "bankId": 1,
+            "password": "LauraClark$Pass123",
+            "passwordConfirm": "LauraClark$Pass123"
+        },
+        {
+            "email": "emily.white@example.com",
+            "username": "emilywhite",
+            "fullName": "Emily White",
+            "nationalId": "29504040400456",
+            "phoneNumber": "01098765432",
+            "dateOfBirth": "1995-04-04",
+            "role": "Client",
+            "bankId": 2,
+            "password": "EmilyW@_pass123",
+            "passwordConfirm": "EmilyW@_pass123"
+        },
+        {
+            "email": "michael.brown@example.com",
+            "username": "michaelbrown",
+            "fullName": "Michael Brown",
+            "nationalId": "28705050500567",
+            "phoneNumber": "01187654321",
+            "dateOfBirth": "1987-05-05",
+            "role": "Client",
+            "bankId": 2,
+            "password": "MikeB_2024!",
+            "passwordConfirm": "MikeB_2024!"
+        },
+        {
+            "email": "kevin.harris@example.com",
+            "username": "kevinharris",
+            "fullName": "Kevin Harris",
+            "nationalId": "28607070700789",
+            "phoneNumber": "01065432109",
+            "dateOfBirth": "1986-07-07",
+            "role": "Admin",
+            "bankId": 2,
+            "password": "KevinH_Pass123",
+            "passwordConfirm": "KevinH_Pass123"
+        },
+        {
+            "email": "brian.lewis@example.com",
+            "username": "brianlewis",
+            "fullName": "Brian Lewis",
+            "nationalId": "29409090900901",
+            "phoneNumber": "01243210987",
+            "dateOfBirth": "1994-09-09",
+            "role": "Client",
+            "bankId": 3,
+            "password": "BrianLewis#2023",
+            "passwordConfirm": "BrianLewis#2023"
+        },
+        {
+            "email": "nancy.walker@example.com",
+            "username": "nancywalker",
+            "fullName": "Nancy Walker",
+            "nationalId": "29310101001012",
+            "phoneNumber": "01032109876",
+            "dateOfBirth": "1993-10-10",
+            "role": "Admin",
+            "bankId": 3,
+            "password": "NancyW@Pass123",
+            "passwordConfirm": "NancyW@Pass123"
+        }
+    ],
+    "loginUserExamples": [
+        {
+            "email": "john.doe@example.com",
+            "password": "Password123!"
+        },
+        {
+            "email": "jane.smith@example.com",
+            "password": "SecurePass!2025"
+        },
+        {
+            "email": "alex.jones@example.com",
+            "password": "AlexJonesPass#1"
+        },
+        {
+            "email": "emily.white@example.com",
+            "password": "EmilyW@_pass123"
+        },
+        {
+            "email": "michael.brown@example.com",
+            "password": "MikeB_2024!"
+        },
+        {
+            "email": "sarah.green@example.com",
+            "password": "SarahGreen&Pass123"
+        },
+        {
+            "email": "kevin.harris@example.com",
+            "password": "KevinH_Pass123"
+        },
+        {
+            "email": "laura.clark@example.com",
+            "password": "LauraClark$Pass123"
+        },
+        {
+            "email": "brian.lewis@example.com",
+            "password": "BrianLewis#2023"
+        },
+        {
+            "email": "nancy.walker@example.com",
+            "password": "NancyW@Pass123"
+        }
+    ],
+    "editUserExamples": [
+        {
+            "email": "john.doe.new@example.com",
+            "username": "johndoe",
+            "fullName": "John A. Doe",
+            "nationalId": "29001010100123",
+            "phoneNumber": "01011112222",
+            "dateOfBirth": "1990-01-01"
+        },
+        {
+            "email": "jane.smith@example.com",
+            "username": "janesmith_updated",
+            "fullName": "Jane Smith",
+            "nationalId": "29202020200234",
+            "phoneNumber": "01123456789",
+            "dateOfBirth": "1992-02-02"
+        },
+        {
+            "email": "alex.jones@example.com",
+            "username": "alexjones",
+            "fullName": "Alexander G. Jones",
+            "nationalId": "28803030300345",
+            "phoneNumber": "01234567890",
+            "dateOfBirth": "1988-03-03"
+        },
+        {
+            "email": "emily.white@newdomain.com",
+            "username": "emilywhite",
+            "fullName": "Emily White",
+            "nationalId": "29504040400456",
+            "phoneNumber": "01098765433",
+            "dateOfBirth": "1995-04-04"
+        },
+        {
+            "email": "michael.brown@example.com",
+            "username": "michaelbrown",
+            "fullName": "Michael 'Mike' Brown",
+            "nationalId": "28705050500567",
+            "phoneNumber": "01187654321",
+            "dateOfBirth": "1987-05-05"
+        },
+        {
+            "email": "sarah.green.work@example.com",
+            "username": "sarahgreen",
+            "fullName": "Sarah Green",
+            "nationalId": "29906060600678",
+            "phoneNumber": "01276543211",
+            "dateOfBirth": "1999-06-06"
+        },
+        {
+            "email": "kevin.harris@example.com",
+            "username": "kevinharris_admin",
+            "fullName": "Kevin Harris",
+            "nationalId": "28607070700789",
+            "phoneNumber": "01065432109",
+            "dateOfBirth": "1986-07-07"
+        },
+        {
+            "email": "laura.clark@example.com",
+            "username": "lauraclark",
+            "fullName": "Laura Katherine Clark",
+            "nationalId": "30108080800890",
+            "phoneNumber": "01154321098",
+            "dateOfBirth": "2001-08-08"
+        },
+        {
+            "email": "brian.lewis@personal.com",
+            "username": "brianlewis",
+            "fullName": "Brian Lewis",
+            "nationalId": "29409090900901",
+            "phoneNumber": "01243210988",
+            "dateOfBirth": "1994-09-09"
+        },
+        {
+            "email": "nancy.walker@example.com",
+            "username": "nancy.w",
+            "fullName": "Nancy Walker",
+            "nationalId": "29310101001012",
+            "phoneNumber": "01032109876",
+            "dateOfBirth": "1993-10-10"
+        }
+    ],
+    "changePasswordExamples": [
+        {
+            "currentPassword": "Password123!",
+            "newPassword": "NewPassword456!",
+            "confirmNewPassword": "NewPassword456!"
+        },
+        {
+            "currentPassword": "SecurePass!2025",
+            "newPassword": "AnotherSecurePass$2026",
+            "confirmNewPassword": "AnotherSecurePass$2026"
+        },
+        {
+            "currentPassword": "AlexJonesPass#1",
+            "newPassword": "AdminPassUpdate#2",
+            "confirmNewPassword": "AdminPassUpdate#2"
+        },
+        {
+            "currentPassword": "EmilyW@_pass123",
+            "newPassword": "EmilyW_NewPass!",
+            "confirmNewPassword": "EmilyW_NewPass!"
+        },
+        {
+            "currentPassword": "MikeB_2024!",
+            "newPassword": "MikeB_2025!",
+            "confirmNewPassword": "MikeB_2025!"
+        },
+        {
+            "currentPassword": "SarahGreen&Pass123",
+            "newPassword": "SarahGreen&NewPass",
+            "confirmNewPassword": "SarahGreen&NewPass"
+        },
+        {
+            "currentPassword": null,
+            "newPassword": "AdminForcedReset1",
+            "confirmNewPassword": "AdminForcedReset1"
+        },
+        {
+            "currentPassword": null,
+            "newPassword": "AdminForcedReset2",
+            "confirmNewPassword": "AdminForcedReset2"
+        },
+        {
+            "currentPassword": "BrianLewis#2023",
+            "newPassword": "BrianLewis#2024",
+            "confirmNewPassword": "BrianLewis#2024"
+        },
+        {
+            "currentPassword": "NancyW@Pass123",
+            "newPassword": "NancyW@NewPass",
+            "confirmNewPassword": "NancyW@NewPass"
+        }
+    ]
+}

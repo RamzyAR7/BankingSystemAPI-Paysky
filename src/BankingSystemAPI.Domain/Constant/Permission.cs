@@ -19,22 +19,27 @@ namespace BankingSystemAPI.Domain.Constant
             public const string ChangePassword = "Permission.User.ChangePassword";
             public const string DeleteRange = "Permission.User.DeleteRange";
             public const string ReadSelf = "Permission.User.ReadSelf";
+            public const string UpdateActiveStatus = "Permission.User.UpdateActiveStatus";
         }
+
         public static class UserRoles
         {
             public const string Assign = "Permission.UserRoles.Assign";
         }
+
         public static class Role
         {
             public const string Create = "Permission.Role.Create";
             public const string Delete = "Permission.Role.Delete";
             public const string ReadAll = "Permission.Role.ReadAll";
         }
+
         public static class RoleClaims
         {
             public const string Assign = "Permission.RoleClaims.Assign";
             public const string ReadAll = "Permission.RoleClaims.ReadAll";
         }
+
         public static class Auth
         {
             public const string RevokeToken = "Permission.Auth.RevokeToken";
@@ -48,21 +53,27 @@ namespace BankingSystemAPI.Domain.Constant
             public const string ReadByNationalId = "Permission.Account.ReadByNationalId";
             public const string Delete = "Permission.Account.Delete";
             public const string DeleteMany = "Permission.Account.DeleteMany";
+            public const string UpdateActiveStatus = "Permission.Account.UpdateActiveStatus";
         }
+
         public static class CheckingAccount
         {
             public const string Create = "Permission.Checking.Create";
             public const string Update = "Permission.Checking.Update";
             public const string ReadAll = "Permission.Checking.ReadAll";
+            public const string UpdateActiveStatus = "Permission.Checking.UpdateActiveStatus";
         }
+
         public static class SavingsAccount
         {
             public const string Create = "Permission.Savings.Create";
             public const string Update = "Permission.Savings.Update";
             public const string ReadAll = "Permission.Savings.ReadAll";
+            public const string UpdateActiveStatus = "Permission.Savings.UpdateActiveStatus";
             public const string ReadAllInterestRate = "Permission.Savings.ReadAllInterestRate";
             public const string ReadInterestRateById = "Permission.Savings.ReadInterestRateById";
         }
+
         public static class Currency
         {
             public const string Create = "Permission.Currency.Create";
@@ -71,6 +82,7 @@ namespace BankingSystemAPI.Domain.Constant
             public const string ReadAll = "Permission.Currency.ReadAll";
             public const string ReadById = "Permission.Currency.ReadById";
         }
+
         public static class Transaction
         {
             public const string ReadBalance = "Permission.Transaction.ReadBalance";
@@ -89,8 +101,7 @@ namespace BankingSystemAPI.Domain.Constant
             public const string ReadAll = "Permission.Bank.ReadAll";
             public const string ReadById = "Permission.Bank.ReadById";
             public const string ReadByName = "Permission.Bank.ReadByName";
-            public const string SetActive = "Permission.Bank.SetActive";
+            public const string UpdateActiveStatus = "Permission.Bank.UpdateActiveStatus";
         }
-
     }
 }

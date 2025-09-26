@@ -36,8 +36,11 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<BankResDto> GetByIdAsync(int id)
         {
-            // load bank with users and their accounts using include expressions
-            var bank = await _uow.BankRepository.FindWithIncludesAsync(b => b.Id == id, new Expression<Func<Bank, object>>[] { x => x.ApplicationUsers, x => x.ApplicationUsers.Select(u => u.Accounts) });
+            // load bank with users and their accounts using include builder
+            var bank = await _uow.BankRepository.FindWithIncludeBuilderAsync(
+                b => b.Id == id,
+                q => q.Include(bk => bk.ApplicationUsers)
+            );
             if (bank == null) return null;
             var dto = _mapper.Map<BankResDto>(bank);
             if (bank.ApplicationUsers != null)
@@ -47,7 +50,10 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<BankResDto> GetByNameAsync(string name)
         {
-            var bank = await _uow.BankRepository.FindWithIncludesAsync(b => b.Name == name, new Expression<Func<Bank, object>>[] { x => x.ApplicationUsers, x => x.ApplicationUsers.Select(u => u.Accounts) });
+            var bank = await _uow.BankRepository.FindWithIncludeBuilderAsync(
+                b => b.Name == name,
+                q => q.Include(bk => bk.ApplicationUsers)
+            );
             if (bank == null) return null;
             var dto = _mapper.Map<BankResDto>(bank);
             if (bank.ApplicationUsers != null)
@@ -68,9 +74,9 @@ namespace BankingSystemAPI.Application.Services
             if (existingCount > 0)
                 throw new BadRequestException("A bank with the same name already exists.");
 
-            var entity = _mapper.Map<Domain.Entities.Bank>(dto);
+            var entity = _mapper.Map<Bank>(dto);
             entity.Name = normalized;
-            entity.CreatedAt = System.DateTime.UtcNow;
+            entity.CreatedAt = DateTime.UtcNow;
 
             try
             {

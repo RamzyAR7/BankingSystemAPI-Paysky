@@ -227,6 +227,14 @@ namespace BankingSystemAPI.Infrastructure.Services
                     result.Succeeded = false;
                     return result;
                 }
+
+                // Prevent assigning inactive bank to new users
+                if (!bank.IsActive)
+                {
+                    result.Errors.Add(new IdentityError { Description = "Cannot assign an inactive bank to a new user." });
+                    result.Succeeded = false;
+                    return result;
+                }
             }
 
             // Scoped duplicate checks within the target bank
@@ -505,12 +513,15 @@ namespace BankingSystemAPI.Infrastructure.Services
                 if (RoleHelper.IsClient(role.Name))
                     return new List<UserResDto>();
             }
+            if(bankId <= 0 || bankId == null)
+                throw new ArgumentException("Invalid bank ID.");
+
             var roleForSuper = await _currentUserService.GetRoleFromStoreAsync();
             var isSuper = RoleHelper.IsSuperAdmin(roleForSuper.Name);
             IQueryable<ApplicationUser> query;
             if (isSuper)
             {
-                query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank);
+                query = _userManager.Users.Where(u => u.BankId == bankId).Include(u => u.Accounts).Include(u => u.Bank);
             }
             else
             {

@@ -141,6 +141,14 @@ namespace BankingSystemAPI.Application.Services
                 if (account.User == null || !account.User.IsActive)
                     throw new InvalidAccountOperationException("Cannot perform transaction for inactive user.");
 
+                // Check if user's bank is active
+                if (account.User.BankId.HasValue)
+                {
+                    var bank = await _unitOfWork.BankRepository.GetByIdAsync(account.User.BankId.Value);
+                    if (bank != null && !bank.IsActive)
+                        throw new InvalidAccountOperationException("Cannot perform transaction: user's bank is inactive.");
+                }
+
                 account.Deposit(request.Amount);
                 await _unitOfWork.AccountRepository.UpdateAsync(account);
 
@@ -202,6 +210,14 @@ namespace BankingSystemAPI.Application.Services
                 // Check if user is active
                 if (account.User == null || !account.User.IsActive)
                     throw new InvalidAccountOperationException("Cannot perform transaction for inactive user.");
+
+                // Check if user's bank is active
+                if (account.User.BankId.HasValue)
+                {
+                    var bank = await _unitOfWork.BankRepository.GetByIdAsync(account.User.BankId.Value);
+                    if (bank != null && !bank.IsActive)
+                        throw new InvalidAccountOperationException("Cannot perform transaction: user's bank is inactive.");
+                }
 
                 account.Withdraw(request.Amount);
                 await _unitOfWork.AccountRepository.UpdateAsync(account);
@@ -280,6 +296,21 @@ namespace BankingSystemAPI.Application.Services
                 if (target.User == null || !target.User.IsActive)
                     throw new InvalidAccountOperationException("Cannot perform transaction for inactive target user.");
 
+                // Check banks for source and target users
+                if (source.User.BankId.HasValue)
+                {
+                    var sBank = await _unitOfWork.BankRepository.GetByIdAsync(source.User.BankId.Value);
+                    if (sBank != null && !sBank.IsActive)
+                        throw new InvalidAccountOperationException("Cannot perform transaction: source user's bank is inactive.");
+                }
+
+                if (target.User.BankId.HasValue)
+                {
+                    var tBank = await _unitOfWork.BankRepository.GetByIdAsync(target.User.BankId.Value);
+                    if (tBank != null && !tBank.IsActive)
+                        throw new InvalidAccountOperationException("Cannot perform transaction: target user's bank is inactive.");
+                }
+
                 var sourceCode = source.Currency?.Code ?? string.Empty;
                 var targetCode = target.Currency?.Code ?? string.Empty;
 
@@ -296,12 +327,15 @@ namespace BankingSystemAPI.Application.Services
                 // fee is charged on source account currency
                 var feeOnSource = Math.Round(request.Amount * feeRate, 2);
 
+                // Round target amount to 2 decimal places for storage/display
+                targetAmount = Math.Round(targetAmount, 2);
+
                 await _unitOfWork.BeginTransactionAsync();
                 try
                 {
                     // withdraw amount + fee from source
                     source.WithdrawForTransfer(request.Amount + feeOnSource);
-                    // deposit only the converted/target amount to target account
+                    // deposit only the converted/target amount to target account (rounded)
                     target.Deposit(targetAmount);
 
                     await _unitOfWork.AccountRepository.UpdateAsync(source);
@@ -312,7 +346,7 @@ namespace BankingSystemAPI.Application.Services
                     {
                         AccountId = source.Id,
                         TransactionCurrency = source.Currency?.Code ?? string.Empty,
-                        Amount = request.Amount,
+                        Amount = Math.Round(request.Amount, 2),
                         Role = TransactionRole.Source,
                         Fees = feeOnSource
                     };

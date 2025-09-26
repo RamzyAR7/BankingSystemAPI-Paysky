@@ -103,7 +103,7 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                     FullName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     DateOfBirth = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
-                    BankId = table.Column<int>(type: "int", nullable: false),
+                    BankId = table.Column<int>(type: "int", nullable: true),
                     UserName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
@@ -390,25 +390,29 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                 name: "IX_AspNetUsers_Email_BankId",
                 table: "AspNetUsers",
                 columns: new[] { "Email", "BankId" },
-                unique: true);
+                unique: true,
+                filter: "[BankId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetUsers_NationalId_BankId",
                 table: "AspNetUsers",
                 columns: new[] { "NationalId", "BankId" },
-                unique: true);
+                unique: true,
+                filter: "[BankId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetUsers_PhoneNumber_BankId",
                 table: "AspNetUsers",
                 columns: new[] { "PhoneNumber", "BankId" },
-                unique: true);
+                unique: true,
+                filter: "[BankId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetUsers_UserName_BankId",
                 table: "AspNetUsers",
                 columns: new[] { "UserName", "BankId" },
-                unique: true);
+                unique: true,
+                filter: "[BankId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "UserNameIndex",
@@ -416,6 +420,12 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                 column: "NormalizedUserName",
                 unique: true,
                 filter: "[NormalizedUserName] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Banks_Name",
+                table: "Banks",
+                column: "Name",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_CheckingAccounts_CurrencyId",

@@ -70,6 +70,7 @@ namespace BankingSystemAPI.Infrastructure.Seeding
                 Permission.User.ChangePassword,
                 Permission.User.DeleteRange,
                 Permission.User.ReadSelf,
+                Permission.User.UpdateActiveStatus,
 
                 Permission.Auth.RevokeToken,
 
@@ -79,13 +80,18 @@ namespace BankingSystemAPI.Infrastructure.Seeding
                 Permission.Account.ReadByNationalId,
                 Permission.Account.Delete,
                 Permission.Account.DeleteMany,
+                Permission.Account.UpdateActiveStatus,
 
                 Permission.CheckingAccount.Create,
                 Permission.CheckingAccount.Update,
                 Permission.CheckingAccount.ReadAll,
+                Permission.CheckingAccount.UpdateActiveStatus,
+
+
                 Permission.SavingsAccount.Create,
                 Permission.SavingsAccount.Update,
                 Permission.SavingsAccount.ReadAll,
+                Permission.SavingsAccount.UpdateActiveStatus,
                 Permission.SavingsAccount.ReadAllInterestRate,
                 Permission.SavingsAccount.ReadInterestRateById,
 
@@ -172,7 +178,8 @@ namespace BankingSystemAPI.Infrastructure.Seeding
                         Permission.User.ReadByUsername,
                         Permission.User.ChangePassword,
                         Permission.User.DeleteRange,
-                        Permission.User.ReadSelf
+                        Permission.User.ReadSelf,
+                        Permission.User.UpdateActiveStatus
                     },
                     nameof(ControllerType.UserRoles) => new[]
                     {
@@ -200,19 +207,22 @@ namespace BankingSystemAPI.Infrastructure.Seeding
                         Permission.Account.ReadByUserId,
                         Permission.Account.ReadByNationalId,
                         Permission.Account.Delete,
-                        Permission.Account.DeleteMany
+                        Permission.Account.DeleteMany,
+                        Permission.Account.UpdateActiveStatus
                     },
                     nameof(ControllerType.CheckingAccount) => new[]
                     {
                         Permission.CheckingAccount.Create,
                         Permission.CheckingAccount.Update,
-                        Permission.CheckingAccount.ReadAll
+                        Permission.CheckingAccount.ReadAll,
+                        Permission.CheckingAccount.UpdateActiveStatus
                     },
                     nameof(ControllerType.SavingsAccount) => new[]
                     {
                         Permission.SavingsAccount.Create,
                         Permission.SavingsAccount.Update,
                         Permission.SavingsAccount.ReadAll,
+                        Permission.SavingsAccount.UpdateActiveStatus,
                         Permission.SavingsAccount.ReadAllInterestRate,
                         Permission.SavingsAccount.ReadInterestRateById
                     },
@@ -241,7 +251,7 @@ namespace BankingSystemAPI.Infrastructure.Seeding
                         Permission.Bank.ReadAll,
                         Permission.Bank.ReadById,
                         Permission.Bank.ReadByName,
-                        Permission.Bank.SetActive
+                        Permission.Bank.UpdateActiveStatus
                     },
                     _ => Array.Empty<string>()
                 };

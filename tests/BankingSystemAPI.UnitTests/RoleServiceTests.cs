@@ -110,6 +110,30 @@ namespace BankingSystemAPI.UnitTests
             Assert.Null(exists);
         }
 
+        [Fact]
+        public async Task DeleteRole_Fails_WhenAssignedToUsers()
+        {
+            // create role and user, assign mapping directly in DB
+            await _roleManager.CreateAsync(new ApplicationRole { Name = "AssignedRole" });
+            var role = await _roleManager.FindByNameAsync("AssignedRole");
+
+            var user = new ApplicationUser { UserName = "user1", Email = "user1@example.com", PhoneNumber = "6000000001", FullName = "Test User", NationalId = Guid.NewGuid().ToString().Substring(0,10), DateOfBirth = DateTime.UtcNow.AddYears(-30) };
+            user.Id = Guid.NewGuid().ToString();
+            _context.Users.Add(user);
+            // add user-role link
+            _context.UserRoles.Add(new IdentityUserRole<string> { UserId = user.Id, RoleId = role.Id });
+            _context.SaveChanges();
+
+            var res = await _service.DeleteRoleAsync(role.Id);
+
+            Assert.False(res.Succeeded);
+            Assert.Contains(res.Errors, e => e.Description.Contains("assigned to one or more users"));
+
+            // role should still exist
+            var roleStill = await _roleManager.FindByIdAsync(role.Id);
+            Assert.NotNull(roleStill);
+        }
+
         public void Dispose()
         {
             _context?.Dispose();

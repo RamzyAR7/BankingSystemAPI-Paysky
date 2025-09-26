@@ -284,7 +284,7 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// Set user active/inactive.
         /// </summary>
         [HttpPut("{userId}/active")]
-        [PermissionFilterFactory(Permission.User.Update)]
+        [PermissionFilterFactory(Permission.User.UpdateActiveStatus)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

@@ -153,9 +153,21 @@ namespace BankingSystemAPI.Application.Services
                 accountQuery = await _accountAuth.FilterAccountsQueryAsync(accountQuery);
             }
 
-            // Compose interest log predicate using account subquery (DB-side)
-            var accountIdsQuery = accountQuery.Select(a => a.Id);
-            Expression<Func<InterestLog, bool>> predicate = l => accountIdsQuery.Contains(l.SavingsAccountId);
+            // If no accounts match, return empty result to avoid composing a contains-subquery that may fail
+            if (!await accountQuery.AnyAsync())
+            {
+                return (Enumerable.Empty<InterestLogDto>(), 0);
+            }
+
+            // Materialize account IDs to a simple list to avoid EF attempting to translate a complex subquery
+            var accountIds = await accountQuery.Select(a => a.Id).ToListAsync();
+            if (accountIds == null || accountIds.Count == 0)
+            {
+                return (Enumerable.Empty<InterestLogDto>(), 0);
+            }
+
+            // Compose interest log predicate using in-memory id list
+            Expression<Func<InterestLog, bool>> predicate = l => accountIds.Contains(l.SavingsAccountId);
 
             var (items, total) = await _unitOfWork.InterestLogRepository.GetPagedAsync(predicate, take, skip, orderBy, "DESC", new[] { (Expression<Func<InterestLog, object>>)(l => l.SavingsAccount) });
             var dtos = _mapper.Map<IEnumerable<InterestLogDto>>(items);

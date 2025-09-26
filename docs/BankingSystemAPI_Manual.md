@@ -1,7 +1,7 @@
 # BankingSystemAPI: Full Application Manual & Technical Book
 
 ---
-
+ 
 ## Table of Contents
 1. Introduction & Vision
 2. Solution Structure & Layered Architecture
@@ -96,9 +96,11 @@ This section provides a detailed, code-first overview of the database schema as 
   - `NationalId`: `string(20)`, required, and has a **unique index** to prevent duplicate entries.
   - `FullName`: `string(200)`.
   - `IsActive`: `bool`, required, with a default value of `true`.
+  - `BankId`: `int`, nullable. Foreign key to the `Banks` table.
 - **Relationships**:
   - **One-to-Many with `Account`**: A user can have many accounts. If a user is deleted, all their associated accounts are also deleted (`OnDelete(DeleteBehavior.Cascade)`).
   - **One-to-Many with `RefreshToken`**: A user can have many refresh tokens. Deleting a user also deletes their tokens (`OnDelete(DeleteBehavior.Cascade)`).
+  - **Many-to-One with `Bank`**: A user can be associated with a bank.
 
 ---
 
@@ -209,7 +211,7 @@ To prevent data corruption from simultaneous update operations, the `Account` en
 ---
 
 ### **Entity: `RefreshToken`**
-- **Table**: `RefreshToken`.
+- **Table**: `RefreshTokens`.
 - **Primary Key**: The `Token` string itself is the primary key.
 - **Properties**:
   - `Token`: `string(200)`, required.
@@ -221,6 +223,17 @@ To prevent data corruption from simultaneous update operations, the `Account` en
 - **Table**: `InterestLogs`.
 - **Properties**:
   - `Amount`: `decimal(18, 2)`.
+
+---
+
+### **Entity: `Bank`**
+- **Table**: `Banks`.
+- **Properties**:
+  - `Name`: `string(200)`, required.
+  - `IsActive`: `bool`, required, defaults to `true`.
+  - `CreatedAt`: `datetime`, required, defaults to `getutcdate()`.
+- **Relationships**:
+  - **One-to-Many with `ApplicationUser`**: A bank can have many users.
 
 ---
 
@@ -251,6 +264,10 @@ To prevent data corruption from simultaneous update operations, the `Account` en
 ### InterestLog
 - Properties: Rate, Period, AccruedAmount
 - Methods: Calculate, LogAccrual
+
+### Bank
+- Properties: Name, IsActive, CreatedAt
+- Methods: Activate, Deactivate
 
 ---
 
@@ -1049,9 +1066,9 @@ Manages the lifecycle of checking accounts. All endpoints are subject to the `Ro
 #### **Get All Checking Accounts**
 
 **Method**: `GET`
-**Route**: `/api/savings-accounts`
-**Description**: Retrieves a paginated list of all savings accounts.
-**Permissions**: `SavingsAccount.ReadAll`
+**Route**: `/api/checking-accounts`
+**Description**: Retrieves a paginated list of all checking accounts.
+**Permissions**: `CheckingAccount.ReadAll`
 **Request**:
   - **Query Parameters**:
     - `pageNumber` (integer, optional, default: 1): The page number to retrieve.
@@ -1060,36 +1077,13 @@ Manages the lifecycle of checking accounts. All endpoints are subject to the `Ro
   - **`200 OK`**: The request was successful.
     ```json
     {
-      "message": "Savings accounts retrieved successfully.",
-      "accounts": [ ... ] // Paginated list of SavingsAccountDto
+      "message": "Checking accounts retrieved successfully.",
+      "accounts": [ ... ] // Paginated list of CheckingAccountDto
     }
     ```
   - **`400 Bad Request`**: Invalid pagination parameters.
   - **`401 Unauthorized`**: User is not authenticated.
   - **`403 Forbidden`**: User lacks the required permission.
-
----
-
-#### **Get Interest Logs for Savings Account**
-- **Method**: `GET`
-- **Route**: `/api/savings-accounts/{id}/interest-logs`
-- **Description**: Retrieves all interest accrual logs for a specific savings account, showing the history of interest payments.
-- **Permissions**: `SavingsAccount.ReadInterestLogs`
-- **Request**:
-  - `id` (integer, required): The ID of the savings account.
-- **Responses**:
-  - **`200 OK`**: List of interest logs for the account.
-    ```json
-    [
-      {
-        "amount": 15.00,
-        "timestamp": "2025-09-01T00:00:00Z",
-        "savingsAccountId": 1
-      },
-      ...
-    ]
-    ```
-  - **`404 Not Found`**: The specified account does not exist.
 
 ---
 
@@ -1975,6 +1969,14 @@ Data Transfer Objects (DTOs) define the shape of the data that is sent to and fr
   - `IsBase` (bool): Whether this is the base currency for conversions.
   - `ExchangeRate` (decimal, positive): The rate relative to the base currency.
 
+### **Bank DTOs**
+
+- **`BankReqDto`** (Request)
+  - `Name` (string, required): The name of the bank.
+
+- **`BankEditDto`** (Request)
+  - `Name` (string, required): The new name of the bank.
+
 ---
 
 ## 8. Jobs & Background Processing
@@ -1998,257 +2000,3 @@ This job is responsible for automatically calculating and applying interest to a
      - It calculates the interest amount using: `balance * interestRate / 100`.
      - It adds the calculated amount to the account's balance.
      - It creates a new `InterestLog` record with the amount, timestamp, and account details.
-  6. **Concurrency Handling**: If a `DbUpdateConcurrencyException` occurs (due to simultaneous updates), it retries the operation up to 3 times with exponential backoff.
-  7. **Atomicity**: Changes are committed in batches to ensure consistency.
-  8. **Logging**: The job produces detailed console and structured logs, indicating which accounts were processed, how much interest was applied, and any errors encountered.
-
-- **Benefits**: Fully automated interest accrual ensures compliance with banking regulations and provides a seamless experience for savings account holders.
-
-### **RefreshTokenCleanupJob**: Security and Maintenance
-
-This job is a critical housekeeping task for maintaining application security and database health.
-
-- **Trigger**: Runs periodically every 24 hours.
-- **Logic**:
-  1. **Scope Creation**: Creates a new DI scope for proper service resolution and disposal.
-  2. **Query Expired Tokens**: Retrieves all `RefreshToken` entities that are no longer valid based on three conditions:
-     - `IsExpired`: The sliding expiration window has passed.
-     - `IsAbsoluteExpired`: The absolute (hard) expiration date has passed.
-     - `RevokedOn != null`: The token has been explicitly revoked (e.g., by logout or token rotation).
-  3. **Batch Processing**: Processes tokens in batches of 100 for optimal performance.
-  4. **Removal with Retry**: For each token, attempts to remove it from the database. If a `DbUpdateConcurrencyException` occurs (rare, but possible in high-concurrency scenarios), it retries up to 3 times with exponential backoff.
-  5. **Atomic Commits**: Changes are committed in batches to ensure consistency.
-  6. **Comprehensive Logging**: Logs the total number of tokens found, removed, and any errors encountered, with detailed batch-level metrics.
-
-- **Benefits**: 
-  - Prevents the `RefreshTokens` table from growing indefinitely.
-  - Removes potentially compromised or stale tokens, hardening the authentication system.
-  - Maintains database performance by keeping the tokens table lean.
-  - Provides audit trails for security monitoring.
-
----
-
-## 9. Middleware & Action Filters
-
-Middleware and Action Filters are the gatekeepers of the API. They intercept incoming requests and outgoing responses to handle cross-cutting concerns like logging, authentication, authorization, and error handling.
-
-### **ExceptionHandlingMiddleware**: Global Error Catcher
-
-This middleware sits at the top of the request pipeline and ensures that no unhandled exception ever crashes the application. It provides a consistent and secure way to report errors.
-
-- **Logic**:
-  1. It wraps the entire downstream request pipeline in a `try-catch` block.
-  2. **If no exception occurs**, the request flows through the application normally.
-  3. **If an exception is thrown**, the middleware catches it.
-  4. **Exception Mapping**: It inspects the type of the exception and maps it to a specific HTTP status code:
-     - `NotFoundException` -> `404 Not Found`
-     - `BadRequestException` -> `400 Bad Request`
-     - `UnauthorizedException` -> `401 Unauthorized`
-     - `ForbiddenException` -> `403 Forbidden`
-     - `DbUpdateConcurrencyException` -> `409 Conflict`
-     - Any other exception -> `500 Internal Server Error`
-  5. **Structured Response**: It generates a clean, standardized JSON error response containing the status code, the exception message, and a unique `RequestId`. It does **not** expose stack traces or other sensitive system details.
-  6. **Logging**: It logs the full exception details (including stack trace) to the configured logging provider for debugging purposes, but this information is never sent to the client.
-
-### **PermissionFilter**: Fine-Grained Permission-Based Authorization
-
-This is an `IAsyncAuthorizationFilter` that enforces permission-based security. It is applied as an attribute (`[PermissionFilterFactory(Permission.Account.Read)]`) to controller actions.
-
-- **Logic**:
-  1. It runs *before* the controller action is executed.
-  2. It checks if the user is authenticated. If not, it throws an `UnauthorizedException`.
-  3. **It inspects the user's claims (from the JWT) and looks for a specific permission claim** required by the action (e.g., a claim of type `"Permission"` with value `"Account.Read"`).
-  4. **If the claim is present**, the request is allowed to proceed to the controller action.
-  5. **If the claim is missing**, it throws a `ForbiddenException`, immediately stopping the request and resulting in a `403 Forbidden` response. This ensures that even an authenticated user cannot perform an action they do not have explicit permission for.
-
-### **RoleHierarchyFilter**: Advanced Hierarchical Authorization
-
-This is the most advanced security filter in the application, implementing resource-based authorization that respects the role hierarchy. It is applied as an attribute (`[RoleHierarchyFilter]`) to actions that involve one user acting upon another user or their resources.
-
-- **Logic**:
-  1. It runs *after* authorization but *before* the action executes.
-  2. **Argument Inspection**: It dynamically inspects the arguments being passed to the controller action. It looks for parameters that identify a "target user," such as `userId`, `accountId`, `accountNumber`, or DTOs containing these fields.
-  3. **Target User Identification**: It intelligently extracts the user ID(s) of the resource(s) being targeted. For example, if the action receives an `accountId`, the filter fetches the account to find its owner's `UserId`.
-  4. **Get Acting vs. Target Roles**: It identifies the role of the currently logged-in user (the "acting" user) and the role(s) of the user(s) being targeted.
-  5. **Exemptions**: It allows the action to proceed immediately if:
-     - The acting user is a `SuperAdmin`.
-     - The acting user is targeting themselves (e.g., changing their own password).
-  6. **The Core Check**: It calls `_roleHierarchyService.CanManageAsync(actingRole, targetRole)`. This method returns `true` only if the target user's role is a descendant of the acting user's role in the hierarchy.
-  7. **Enforcement**: If `CanManageAsync` returns `false`, the filter throws a `ForbiddenException`, blocking the operation. This prevents a "Teller" from modifying a "Manager's" account, but allows the reverse.
-
----
-
-## 10. Authentication, Refresh Token, & Security
-
-This application implements a robust, modern, and secure authentication system based on JSON Web Tokens (JWT) and a sophisticated refresh token strategy.
-
-### **JWT Access Tokens**
-- **Generation**: Upon successful login, the `AuthService` generates a short-lived JWT access token. 
-- **Claims**: This token is not just a proof of authentication; it's a rich source of authorization information. It contains essential claims like:
-  - User ID, Username, Email
-  - A unique JWT ID (`jti`)
-  - **All roles** the user belongs to, including roles inherited from the role hierarchy.
-  - **All permissions** granted by those roles.
-  - A **Security Stamp (`sst`)**, which is key to instant token invalidation.
-- **Usage**: The client sends this token in the `Authorization` header of every request to access protected resources.
-
-### **The Refresh Token Flow: Secure & Seamless Sessions**
-This is a cornerstone of the application's security model, designed to keep users logged in without storing the highly-privileged access token for long periods.
-
-1.  **Generation & Storage**: At login, a long-lived, cryptographically random refresh token is generated. It is stored in the database and sent to the client in a **secure, `HttpOnly` cookie**. This makes it inaccessible to client-side JavaScript, mitigating XSS attacks.
-2.  **Access Token Expiration**: The JWT access token expires quickly (e.g., 15 minutes).
-3.  **Silent Refresh**: When the access token expires, the client application automatically makes a request to the `/api/Auth/refresh-token` endpoint. This request includes the refresh token from the secure cookie.
-4.  **Validation & Rotation**: The `AuthService.RefreshTokenAsync` method performs several critical checks:
-    - It validates the token against the database.
-    - It ensures the token has not been revoked or expired.
-    - **Crucially, it implements token rotation**: the used refresh token is immediately revoked, and a *new* refresh token is generated and sent back in a new cookie. This ensures that each refresh token can only be used once, preventing replay attacks.
-5.  **New Tokens**: A new, short-lived access token is generated and sent back to the client, which can then continue making API calls seamlessly.
-
-### **Instant Token Invalidation: The Power of the Security Stamp**
-- When a user logs out or an administrator revokes their session, the `AuthService` calls `UserManager.UpdateSecurityStampAsync()`.
-- This changes a value on the user's record in the database.
-- The JWT access token contains a copy of the original security stamp.
-- The API validates this stamp on every request. If the stamp in the token does not match the current stamp in the database, the token is rejected, even if it hasn't expired.
-- **This provides a mechanism for instantly invalidating all of a user's sessions**, which is a critical security feature.
-
----
-
-## 11. Role Hierarchy, Permissions, & RBAC
-
-This application goes beyond simple Role-Based Access Control (RBAC) by implementing a full-featured, hierarchical system that combines roles, permissions, and management authority.
-
-### **Three Layers of Authorization**
-
-1.  **Authentication**: Is the user logged in? (Handled by the `[Authorize]` attribute).
-2.  **Permission-Based Authorization**: Does the user have the *right* to perform this action? (Handled by the `PermissionFilter`).
-    - Permissions are fine-grained strings (e.g., `Account.Create`, `Transaction.ReadBalance`).
-    - They are assigned to roles. A user gains permissions by being in a role.
-    - The `PermissionFilter` checks that the user's JWT contains the required permission claim for a specific API endpoint.
-
-3.  **Resource-Based / Hierarchical Authorization**: Is the user *allowed* to perform this action on this *specific resource*? (Handled by the `RoleHierarchyFilter`).
-    - This is the most powerful layer. It answers questions like, "Can this Manager delete an account owned by this Teller?"
-    - The `RoleHierarchyService` defines the relationships between roles (e.g., Manager > Teller > Customer).
-    - The `RoleHierarchyFilter` automatically intercepts API calls, identifies the user being acted upon (the "target"), and uses the `RoleHierarchyService` to check if the logged-in user (the "actor") has a higher rank in the hierarchy.
-    - If the actor does not have authority over the target, the request is denied with a `403 Forbidden`, even if they have the correct *permission*.
-
-### **How They Work Together: An Example**
-
-- An **Auditor** and a **Manager** both have the `Account.Read` permission.
-- The **Manager** role is a parent of the **Teller** role.
-- The **Auditor** role is separate and has no children.
-
-1.  An **Auditor** tries to view a **Teller's** account details.
-    - `PermissionFilter`: Passes, because the Auditor has the `Account.Read` permission.
-    - `RoleHierarchyFilter`: **Fails**, because the Teller role is not a descendant of the Auditor role. The Auditor cannot manage the Teller. The request is blocked.
-2.  A **Manager** tries to view a **Teller's** account details.
-    - `PermissionFilter`: Passes, because the Manager has the `Account.Read` permission.
-    - `RoleHierarchyFilter`: **Passes**, because the Teller role is a descendant of the Manager role. The request is allowed.
-
-This multi-layered system provides incredibly granular and secure control over the entire API.
-
----
-
-## 12. Business Logic: Fees, Currency Conversion, Interest
-
-This section details the core financial logic built into the application.
-
-### **Transaction Fees**
-- **Implementation**: The fee logic is centralized within the `TransactionService.TransferAsync` method.
-- **Rules**:
-  - **Same-Currency Transfer**: A fee of **0.5%** of the transaction amount is applied.
-  - **Cross-Currency Transfer**: A higher fee of **1.0%** of the transaction amount is applied to account for the additional complexity.
-- **Mechanics**: The calculated fee is added to the total amount withdrawn from the source account. The fee itself is recorded in the `AccountTransaction` record for the source account, providing a clear audit trail.
-
-### **Currency Conversion**
-- **Implementation**: Handled by the dedicated `TransactionHelperService.ConvertAsync` method, which is called by the `TransactionService` during a cross-currency transfer.
-- **Base Currency**: The system relies on a single designated `IsBase` currency (e.g., USD). All exchange rates are relative to this base currency.
-- **Logic**:
-  1.  **From Base**: To convert *from* the base currency, it multiplies by the target currency's exchange rate (`amount * toRate`).
-  2.  **To Base**: To convert *to* the base currency, it divides by the source currency's exchange rate (`amount / fromRate`).
-  3.  **Cross-Currency**: To convert between two non-base currencies, it performs a two-step conversion: first from the source currency to the base currency, and then from the base currency to the target currency. This ensures accuracy and simplifies rate management.
-
-### **Interest Calculation**
-
-### **Interest Calculation & Auditing for Savings Accounts**
-- **Implementation**: Managed by the `AddInterestJob`, a background service that runs independently of user requests.
-- **Eligibility**: The job only processes `SavingsAccount` types, using the `ShouldAddInterest` method to determine if an account is due for an interest payment based on its `InterestType` (Monthly, Quarterly, Annually) and the date of the last payment.
-- **Calculation**: The interest is calculated as `balance * interestRate / 100` and added to the account balance.
-- **Auditing**: Every time interest is applied, a corresponding `InterestLog` record is created, providing a complete, auditable history of all interest accruals for every savings account. These logs are accessible via the new controller endpoint (`GET /api/savings-accounts/{id}/interest-logs`).
-
----
-
-## 13. Extensibility, Patterns, & Best Practices
-- Clean architecture: separation of concerns
-- DTOs for API contracts
-- Dependency injection for services
-- Unit/integration tests for all logic
-- OpenAPI/Swagger for API docs
-- Rate limiting, logging, error handling
-- Easy to add new account types, roles, permissions
-- Follows SOLID, DRY, KISS principles
-
----
-
-## 14. Advanced Scenarios & Edge Cases
-- Bulk operations, concurrency, race conditions
-- Unicode, encoding, localization
-- SQL injection/XSS protection
-- Rate limiting, session expiration
-- Data consistency, audit logging
-- Multi-language, time zone handling
-
----
-
-## 15. Power Points: Why This App Stands Out
-- Advanced security: JWT, refresh tokens, role hierarchy, permission filters
-- Robust logging and diagnostics
-- Scalable jobs and background processing
-- Extensible architecture, easy to maintain and grow
-- Clean, well-documented codebase
-- Deep understanding of .NET, API design, and banking domain
-- Ready to contribute and innovate in your company!
-
----
-
-## 16. Appendix: Code Samples & Diagrams
-### Example: RefreshTokenCleanupJob
-```csharp
-public class RefreshTokenCleanupJob : IJob
-{
-    public async Task Execute(IJobExecutionContext context)
-    {
-        // Remove expired tokens from DB
-    }
-}
-```
-### Example: RequestResponseLoggingFilter
-```csharp
-public class RequestResponseLoggingFilter : IActionFilter
-{
-    public void OnActionExecuting(ActionExecutingContext context) { /* log request */ }
-    public void OnActionExecuted(ActionExecutedContext context) { /* log response */ }
-}
-```
-### Example: RoleHierarchyFilter
-```csharp
-public class RoleHierarchyFilter : IAsyncActionFilter
-{
-    public async Task OnActionExecutionAsync(...) { /* enforce role ancestry */ }
-}
-```
-### Example: PermissionFilterFactory
-```csharp
-[PermissionFilterFactory(Permission.Account.ReadByUserId)]
-```
-### Example: Currency Conversion
-```csharp
-public decimal Convert(decimal amount, string from, string to) { /* conversion logic */ }
-```
-### Example: Interest Calculation
-```csharp
-public decimal CalculateInterest(decimal principal, double rate, int period) { /* interest logic */ }
-```
-
----
-
-*Prepared by Ahmed Ramzy for PaySky Internship*

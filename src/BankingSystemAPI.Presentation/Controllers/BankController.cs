@@ -166,7 +166,7 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// 404 Not Found may be returned by the implementation if the bank does not exist.
         /// </returns>
         [HttpPut("{id:int}/active")]
-        [PermissionFilterFactory(Permission.Bank.SetActive)]
+        [PermissionFilterFactory(Permission.Bank.UpdateActiveStatus)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> SetActive(int id, [FromQuery] bool isActive)

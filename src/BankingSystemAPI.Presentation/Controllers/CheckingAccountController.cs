@@ -94,7 +94,7 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// Set account active/inactive.
         /// </summary>
         [HttpPut("{id:int}/active")]
-        [PermissionFilterFactory(Permission.CheckingAccount.Update)]
+        [PermissionFilterFactory(Permission.CheckingAccount.UpdateActiveStatus)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

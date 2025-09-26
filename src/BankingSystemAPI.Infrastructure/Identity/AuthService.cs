@@ -41,7 +41,12 @@ namespace BankingSystemAPI.Infrastructure.Identity
         public async Task<AuthResultDto> LoginAsync(LoginReqDto request)
         {
             var result = new AuthResultDto();
-            var user = await _userManager.FindByEmailAsync(request.Email);
+
+            // Load user including Bank so we can check bank active status during login
+            var user = await _userManager.Users
+                .Include(u => u.Bank)
+                .FirstOrDefaultAsync(u => u.Email == request.Email);
+
             if (user is null || !await _userManager.CheckPasswordAsync(user, request.Password))
             {
                 result.Errors.Add(new IdentityError { Description = "Email or Password is incorrect!" });
@@ -53,6 +58,14 @@ namespace BankingSystemAPI.Infrastructure.Identity
             if (!user.IsActive)
             {
                 result.Errors.Add(new IdentityError { Description = "User account is inactive. Contact administrator." });
+                result.Succeeded = false;
+                return result;
+            }
+
+            // Block login if user's bank is inactive
+            if (user.Bank != null && !user.Bank.IsActive)
+            {
+                result.Errors.Add(new IdentityError { Description = "Cannot login: user's bank is inactive." });
                 result.Succeeded = false;
                 return result;
             }
@@ -136,11 +149,20 @@ namespace BankingSystemAPI.Infrastructure.Identity
             // Ensure RefreshTokens collection is included when querying
             var user = await _userManager.Users
                 .Include(u => u.RefreshTokens)
+                .Include(u => u.Bank)
                 .SingleOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == token));
 
             if (user == null)
             {
                 result.Errors.Add(new IdentityError { Description = "Invalid refresh token" });
+                result.Succeeded = false;
+                return result;
+            }
+
+            // Prevent refresh token use if bank inactive
+            if (user.Bank != null && !user.Bank.IsActive)
+            {
+                result.Errors.Add(new IdentityError { Description = "Cannot refresh token: user's bank is inactive." });
                 result.Succeeded = false;
                 return result;
             }
@@ -281,14 +303,14 @@ namespace BankingSystemAPI.Infrastructure.Identity
                 }
             }
 
-            //// Add a combined "claims" claim that lists permission values for quick access (optional)
+            // Add a combined "claims" claim that lists permission values for quick access (optional)
             //if (permissionValues.Any())
             //{
             //    claimsList.Add(new Claim("claims", string.Join(",", permissionValues)));
             //}
 
-            // Add bank id
-            claimsList.Add(new Claim("bankid", user.BankId.ToString()));
+            // Add bank id (safe handling if null)
+            claimsList.Add(new Claim("bankid", user.BankId?.ToString() ?? string.Empty));
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.Key));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

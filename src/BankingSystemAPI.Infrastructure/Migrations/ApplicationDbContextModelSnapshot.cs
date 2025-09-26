@@ -265,6 +265,9 @@ namespace BankingSystemAPI.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Name")
+                        .IsUnique();
+
                     b.ToTable("Banks", (string)null);
                 });
 

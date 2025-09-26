@@ -108,7 +108,8 @@ namespace BankingSystemAPI.Infrastructure.Services
                         Permission.User.ReadByUsername,
                         Permission.User.ChangePassword,
                         Permission.User.DeleteRange,
-                        Permission.User.ReadSelf
+                        Permission.User.ReadSelf,
+                        Permission.User.UpdateActiveStatus
                     },
                     ControllerType.UserRoles => new[]
                     {
@@ -136,19 +137,22 @@ namespace BankingSystemAPI.Infrastructure.Services
                         Permission.Account.ReadByAccountNumber,
                         Permission.Account.ReadByUserId,
                         Permission.Account.Delete,
-                        Permission.Account.DeleteMany
+                        Permission.Account.DeleteMany,
+                        Permission.Account.UpdateActiveStatus
                     },
                     ControllerType.CheckingAccount => new[]
                     {
                         Permission.CheckingAccount.Create,
                         Permission.CheckingAccount.Update,
-                        Permission.CheckingAccount.ReadAll
+                        Permission.CheckingAccount.ReadAll,
+                        Permission.CheckingAccount.UpdateActiveStatus
                     },
                     ControllerType.SavingsAccount => new[]
                     {
                         Permission.SavingsAccount.Create,
                         Permission.SavingsAccount.Update,
                         Permission.SavingsAccount.ReadAll,
+                        Permission.SavingsAccount.UpdateActiveStatus,
                         Permission.SavingsAccount.ReadAllInterestRate,
                         Permission.SavingsAccount.ReadInterestRateById
                     },
@@ -157,7 +161,8 @@ namespace BankingSystemAPI.Infrastructure.Services
                         Permission.Currency.Create,
                         Permission.Currency.Update,
                         Permission.Currency.Delete,
-                        Permission.Currency.ReadAll
+                        Permission.Currency.ReadAll,
+                        Permission.Currency.ReadById
                     },
                     ControllerType.Transaction => new[]
                     {
@@ -176,7 +181,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                         Permission.Bank.ReadAll,
                         Permission.Bank.ReadById,
                         Permission.Bank.ReadByName,
-                        Permission.Bank.SetActive
+                        Permission.Bank.UpdateActiveStatus
                     },
                     _ => Array.Empty<string>()
                 };
