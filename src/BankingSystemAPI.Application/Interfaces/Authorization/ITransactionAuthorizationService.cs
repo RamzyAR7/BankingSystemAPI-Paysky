@@ -10,6 +10,6 @@ namespace BankingSystemAPI.Application.Interfaces.Authorization
     public interface ITransactionAuthorizationService
     {
         Task CanInitiateTransferAsync(int sourceAccountId, int targetAccountId);
-        Task<IEnumerable<Transaction>> FilterTransactionsAsync(IEnumerable<Transaction> transactions);
+        Task<(IEnumerable<Transaction> Transactions, int TotalCount)> FilterTransactionsAsync(IQueryable<Transaction> query, int pageNumber = 1, int pageSize = 10);
     }
 }

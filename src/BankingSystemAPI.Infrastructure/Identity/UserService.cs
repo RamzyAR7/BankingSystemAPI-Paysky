@@ -36,7 +36,6 @@ namespace BankingSystemAPI.Infrastructure.Services
             var dto = _mapper.Map<UserResDto>(user);
             var roles = await _userManager.GetRolesAsync(user);
             dto.Role = roles.FirstOrDefault();
-            // populate BankName if not present from navigation
             if (_uow != null && string.IsNullOrEmpty(dto.BankName) && user.BankId.HasValue)
             {
                 var bank = await _uow.BankRepository.GetByIdAsync(user.BankId.Value);
@@ -45,24 +44,62 @@ namespace BankingSystemAPI.Infrastructure.Services
             return dto;
         }
 
+        // Overload that uses pre-fetched role and bank name to avoid N+1 queries
+        private Task<UserResDto> MapUserDtoAsync(ApplicationUser user, string? roleName, string? bankName)
+        {
+            var dto = _mapper.Map<UserResDto>(user);
+            dto.Role = roleName;
+            if (!string.IsNullOrEmpty(bankName))
+                dto.BankName = bankName;
+            return Task.FromResult(dto);
+        }
+
         public async Task<IList<UserResDto>> GetAllUsersAsync(int pageNumber, int pageSize)
         {
-            var allUsers = await _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).ToListAsync();
-
+            var query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank);
+            List<ApplicationUser> pagedUsers;
+            int totalCount;
             if (_userAuth != null)
             {
-                var filtered = await _userAuth.FilterUsersAsync(allUsers);
-                allUsers = filtered.ToList();
+                var result = await _userAuth.FilterUsersAsync(query, pageNumber, pageSize);
+                pagedUsers = result.Users.ToList();
+                totalCount = result.TotalCount;
             }
-            
-            var paged = allUsers.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+            else
+            {
+                pagedUsers = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+                totalCount = await query.CountAsync();
+            }
 
             var userDtos = new List<UserResDto>();
-            foreach (var user in paged)
+
+            // Batch-fetch roles and banks when UnitOfWork is available
+            if (_uow != null && pagedUsers.Any())
             {
-                var dto = await MapUserDtoAsync(user);
-                userDtos.Add(dto);
+                var userIds = pagedUsers.Select(u => u.Id).ToList();
+                var rolesByUser = await _uow.RoleRepository.GetRolesByUserIdsAsync(userIds);
+                var bankIds = pagedUsers.Where(u => u.BankId.HasValue).Select(u => u.BankId!.Value).Distinct().ToList();
+                var banksById = await _uow.BankRepository.GetBankNamesByIdsAsync(bankIds);
+
+                foreach (var user in pagedUsers)
+                {
+                    rolesByUser.TryGetValue(user.Id, out var roleName);
+                    string? bankName = null;
+                    if (user.BankId.HasValue)
+                        banksById.TryGetValue(user.BankId.Value, out bankName);
+                    var dto = await MapUserDtoAsync(user, roleName, bankName);
+                    userDtos.Add(dto);
+                }
             }
+            else
+            {
+                foreach (var user in pagedUsers)
+                {
+                    var dto = await MapUserDtoAsync(user);
+                    userDtos.Add(dto);
+                }
+            }
+
             return userDtos;
         }
         public async Task<UserResDto?> GetUserByUsernameAsync(string username)
@@ -468,46 +505,57 @@ namespace BankingSystemAPI.Infrastructure.Services
                 if (RoleHelper.IsClient(role.Name))
                     return new List<UserResDto>();
             }
-
             var roleForSuper = await _currentUserService.GetRoleFromStoreAsync();
             var isSuper = RoleHelper.IsSuperAdmin(roleForSuper.Name);
-
-            List<ApplicationUser> users;
+            IQueryable<ApplicationUser> query;
             if (isSuper)
             {
-                // SuperAdmin should see all users regardless of bankId
-                users = await _userManager.Users
-                    .Include(u => u.Accounts)
-                    .Include(u => u.Bank)
-                    .ToListAsync();
+                query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank);
             }
             else
             {
-                // Only allow searching by the acting user's own bank
-                var actingUser =  await _userManager.FindByIdAsync(_currentUserService.UserId);
+                var actingUser = await _userManager.FindByIdAsync(_currentUserService.UserId);
                 if (actingUser == null)
                     return new List<UserResDto>();
                 bankId = actingUser.BankId ?? 0;
-
-                users = await _userManager.Users
-                    .Include(u => u.Accounts)
-                    .Include(u => u.Bank)
-                    .Where(u => u.BankId == bankId)
-                    .ToListAsync();
+                query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Where(u => u.BankId == bankId);
             }
-
-            // Apply filtering to the collection to ensure consistent rules
+            List<ApplicationUser> users;
             if (_userAuth != null)
             {
-                var filtered = await _userAuth.FilterUsersAsync(users);
-                users = filtered.ToList();
+                var result = await _userAuth.FilterUsersAsync(query);
+                users = result.Users.ToList();
+            }
+            else
+            {
+                users = await query.ToListAsync();
             }
 
             var userDtos = new List<UserResDto>();
-            foreach (var user in users)
+            if (_uow != null && users.Any())
             {
-                var dto = await MapUserDtoAsync(user);
-                userDtos.Add(dto);
+                var userIds = users.Select(u => u.Id).ToList();
+                var rolesByUser = await _uow.RoleRepository.GetRolesByUserIdsAsync(userIds);
+                var bankIds = users.Where(u => u.BankId.HasValue).Select(u => u.BankId!.Value).Distinct().ToList();
+                var banksById = await _uow.BankRepository.GetBankNamesByIdsAsync(bankIds);
+
+                foreach (var user in users)
+                {
+                    rolesByUser.TryGetValue(user.Id, out var roleName);
+                    string? bankName = null;
+                    if (user.BankId.HasValue)
+                        banksById.TryGetValue(user.BankId.Value, out bankName);
+                    var dto = await MapUserDtoAsync(user, roleName, bankName);
+                    userDtos.Add(dto);
+                }
+            }
+            else
+            {
+                foreach (var user in users)
+                {
+                    var dto = await MapUserDtoAsync(user);
+                    userDtos.Add(dto);
+                }
             }
             return userDtos;
         }
@@ -520,27 +568,18 @@ namespace BankingSystemAPI.Infrastructure.Services
                 if (RoleHelper.IsClient(role.Name))
                     return new List<UserResDto>();
             }
-
             var roleForSuper2 = await _currentUserService.GetRoleFromStoreAsync();
             var isSuper2 = RoleHelper.IsSuperAdmin(roleForSuper2.Name);
-
-            List<ApplicationUser> users;
+            IQueryable<ApplicationUser> query;
             if (isSuper2)
             {
                 if (string.IsNullOrWhiteSpace(bankName))
                 {
-                    users = await _userManager.Users
-                        .Include(u => u.Accounts)
-                        .Include(u => u.Bank)
-                        .ToListAsync();
+                    query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank);
                 }
                 else
                 {
-                    users = await _userManager.Users
-                        .Include(u => u.Accounts)
-                        .Include(u => u.Bank)
-                        .Where(u => u.Bank != null && u.Bank.Name == bankName)
-                        .ToListAsync();
+                    query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Where(u => u.Bank != null && u.Bank.Name == bankName);
                 }
             }
             else
@@ -549,26 +588,43 @@ namespace BankingSystemAPI.Infrastructure.Services
                 if (actingUser == null || actingUser.Bank == null)
                     return new List<UserResDto>();
                 bankName = actingUser.Bank.Name;
-
-                users = await _userManager.Users
-                    .Include(u => u.Accounts)
-                    .Include(u => u.Bank)
-                    .Where(u => u.Bank != null && u.Bank.Name == bankName)
-                    .ToListAsync();
+                query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Where(u => u.Bank != null && u.Bank.Name == bankName);
             }
-
-            // Apply filtering to the collection
+            List<ApplicationUser> users;
             if (_userAuth != null)
             {
-                var filtered = await _userAuth.FilterUsersAsync(users);
-                users = filtered.ToList();
+                var result = await _userAuth.FilterUsersAsync(query);
+                users = result.Users.ToList();
             }
-
-            var userDtos = new List<UserResDto>();
-            foreach (var user in users)
+            else
             {
-                var dto = await MapUserDtoAsync(user);
-                userDtos.Add(dto);
+                users = await query.ToListAsync();
+            }
+            var userDtos = new List<UserResDto>();
+            if (_uow != null && users.Any())
+            {
+                var userIds = users.Select(u => u.Id).ToList();
+                var rolesByUser = await _uow.RoleRepository.GetRolesByUserIdsAsync(userIds);
+                var bankIds = users.Where(u => u.BankId.HasValue).Select(u => u.BankId!.Value).Distinct().ToList();
+                var banksById = await _uow.BankRepository.GetBankNamesByIdsAsync(bankIds);
+
+                foreach (var user in users)
+                {
+                    rolesByUser.TryGetValue(user.Id, out var roleName);
+                    string? bName = null;
+                    if (user.BankId.HasValue)
+                        banksById.TryGetValue(user.BankId.Value, out bName);
+                    var dto = await MapUserDtoAsync(user, roleName, bName);
+                    userDtos.Add(dto);
+                }
+            }
+            else
+            {
+                foreach (var user in users)
+                {
+                    var dto = await MapUserDtoAsync(user);
+                    userDtos.Add(dto);
+                }
             }
             return userDtos;
          }

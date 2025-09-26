@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 using System.Linq;
 using BankingSystemAPI.Application.Exceptions;
 using Microsoft.EntityFrameworkCore;
+using BankingSystemAPI.Domain.Entities;
+using System;
+using System.Linq.Expressions;
 
 namespace BankingSystemAPI.Application.Services
 {
@@ -33,7 +36,8 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<BankResDto> GetByIdAsync(int id)
         {
-            var bank = await _uow.BankRepository.FindAsync(b => b.Id == id, new[] { "ApplicationUsers.Accounts" });
+            // load bank with users and their accounts using include expressions
+            var bank = await _uow.BankRepository.FindWithIncludesAsync(b => b.Id == id, new Expression<Func<Bank, object>>[] { x => x.ApplicationUsers, x => x.ApplicationUsers.Select(u => u.Accounts) });
             if (bank == null) return null;
             var dto = _mapper.Map<BankResDto>(bank);
             if (bank.ApplicationUsers != null)
@@ -43,7 +47,7 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<BankResDto> GetByNameAsync(string name)
         {
-            var bank = await _uow.BankRepository.FindAsync(b => b.Name == name, new[] { "ApplicationUsers.Accounts" });
+            var bank = await _uow.BankRepository.FindWithIncludesAsync(b => b.Name == name, new Expression<Func<Bank, object>>[] { x => x.ApplicationUsers, x => x.ApplicationUsers.Select(u => u.Accounts) });
             if (bank == null) return null;
             var dto = _mapper.Map<BankResDto>(bank);
             if (bank.ApplicationUsers != null)
@@ -98,7 +102,7 @@ namespace BankingSystemAPI.Application.Services
             if (bank == null) return false;
 
             // Prevent deleting a bank that still has users
-            var hasUsers = await _uow.BankRepository.HasUsersAsync(id);
+            var hasUsers = await _uow.UserRepository.AnyAsync(u => u.BankId == id);
             if (hasUsers)
                 throw new BadRequestException("Cannot delete bank that has existing users.");
 

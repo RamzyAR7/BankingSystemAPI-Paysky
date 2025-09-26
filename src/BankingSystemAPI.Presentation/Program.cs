@@ -31,6 +31,7 @@ using BankingSystemAPI.Application.Authorization;
 using BankingSystemAPI.Presentation.Middlewares;
 using BankingSystemAPI.Presentation.Filters;
 using BankingSystemAPI.Application.Authorization.Helpers;
+using BankingSystemAPI.Application.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -199,6 +200,12 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(option =>
   .AddDefaultTokenProviders();
 
 #endregion
+
+// Register memory cache for repositories and services that need it
+builder.Services.AddMemoryCache();
+
+// Register ICacheService wrapper around IMemoryCache
+builder.Services.AddSingleton<ICacheService, MemoryCacheService>();
 
 #region Register Repositories and Unit of Work
 // Register Unit of Work
@@ -376,4 +383,5 @@ app.UseRateLimiter();
 
 app.MapControllers();
 
-app.Run();app.Run();
+// After building services, expose ServiceProvider for legacy constructors
+app.Run();

@@ -51,13 +51,20 @@ namespace BankingSystemAPI.UnitTests
 
             _currentUserMock = new Mock<ICurrentUserService>();
 
-            var currencyRepo = new CurrencyRepository(_context);
+            // create cache service and repositories with explicit DI
+            var memoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+            var cacheService = new BankingSystemAPI.Infrastructure.Services.MemoryCacheService(memoryCache);
+
+            var userRepo = new UserRepository(_context);
+            var roleRepo = new RoleRepository(_context, cacheService);
+            var currencyRepo = new CurrencyRepository(_context, cacheService);
             var accountRepo = new AccountRepository(_context);
             var transactionRepo = new TransactionRepository(_context);
             var accountTxRepo = new AccountTransactionRepository(_context);
             var interestLogRepo = new InterestLogRepository(_context);
             var bankRepo = new BankRepository(_context);
-            _uow = new UnitOfWork(accountRepo, transactionRepo, accountTxRepo, interestLogRepo, currencyRepo, bankRepo, _context);
+
+            _uow = new UnitOfWork(userRepo, roleRepo, accountRepo, transactionRepo, accountTxRepo, interestLogRepo, currencyRepo, bankRepo, _context);
 
             var mapperMock = new Mock<IMapper>();
             mapperMock.Setup(m => m.Map<SavingsAccountDto>(It.IsAny<SavingsAccount>()))
@@ -72,7 +79,7 @@ namespace BankingSystemAPI.UnitTests
             _accountAuthMock = new Mock<IAccountAuthorizationService>();
             _accountAuthMock.Setup(a => a.CanViewAccountAsync(It.IsAny<int>())).Returns(Task.CompletedTask);
             _accountAuthMock.Setup(a => a.CanModifyAccountAsync(It.IsAny<int>(), It.IsAny<AccountModificationOperation>())).Returns(Task.CompletedTask);
-            _accountAuthMock.Setup(a => a.FilterAccountsAsync(It.IsAny<IEnumerable<Account>>())).ReturnsAsync((IEnumerable<Account> accs) => accs);
+            _accountAuthMock.Setup(a => a.FilterAccountsQueryAsync(It.IsAny<IQueryable<Account>>())).ReturnsAsync((IQueryable<Account> q) => q);
             _accountAuthMock.Setup(a => a.CanCreateAccountForUserAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
 
             _service = new SavingsAccountService(_uow, _mapper, _accountAuthMock.Object);
@@ -112,7 +119,7 @@ namespace BankingSystemAPI.UnitTests
             var userStore = new UserStore<ApplicationUser>(_context);
             var userManager = new UserManager<ApplicationUser>(userStore, null, new PasswordHasher<ApplicationUser>(), new IUserValidator<ApplicationUser>[0], new IPasswordValidator<ApplicationUser>[0], new UpperInvariantLookupNormalizer(), new IdentityErrorDescriber(), null, new NullLogger<UserManager<ApplicationUser>>());
             var currentUserMock = new Mock<ICurrentUserService>();
-            var txService = new TransactionService(_uow, txMapper, helperMock.Object, userManager, currentUserMock.Object, new NullLogger<BankingSystemAPI.Application.Services.TransactionService>());
+            var txService = new TransactionService(_uow, txMapper, helperMock.Object, userManager, currentUserMock.Object, null, null, new NullLogger<BankingSystemAPI.Application.Services.TransactionService>());
 
             var req = new WithdrawReqDto { AccountId = sv.Id, Amount = 20m };
             await Assert.ThrowsAsync<InvalidOperationException>(() => txService.WithdrawAsync(req));

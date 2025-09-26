@@ -13,10 +13,23 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class AccountRepository : GenericRepository<Account, int>, IAccountRepository
     {
-        private readonly DbSet<Account> _accountDbSet;
         public AccountRepository(ApplicationDbContext context) : base(context)
         {
-            _accountDbSet = context.Set<Account>();
+        }
+
+        public IQueryable<Account> QueryByUserId(string userId)
+        {
+            return Table.Where(a => a.UserId == userId)
+                .Include(a => a.Currency)
+                .AsQueryable();
+        }
+
+        public IQueryable<Account> QueryByNationalId(string nationalId)
+        {
+            return Table.Where(a => a.User.NationalId == nationalId)
+                .Include(a => a.User)
+                .Include(a => a.Currency)
+                .AsQueryable();
         }
 
         public async Task<IEnumerable<T>> GetAccountsByTypeAsync<T>(int pageNumber = 1, int pageSize = 10) where T : Account
@@ -24,14 +37,18 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
-            var skip = (pageNumber - 1) * pageSize;
-
             Expression<Func<Account, bool>> predicate = a => a is T;
 
-            // Use GetPagedAsync and expression-based include for Currency
-            var (items, total) = await GetPagedAsync(predicate, pageSize, skip, (Expression<Func<Account, object>>)(a => a.Id), "ASC", new[] { (Expression<Func<Account, object>>)(a => a.Currency) });
+            // Use GetPagedAsync(IQueryable,...) for paging
+            var baseQuery = Table.Where(predicate).Include(a => a.Currency).AsQueryable();
+            var (items, total) = await GetPagedAsync(baseQuery, pageNumber, pageSize);
 
             return items.OfType<T>();
+        }
+
+        public async Task<(IEnumerable<Account> Accounts, int TotalCount)> GetFilteredAccountsAsync(IQueryable<Account> query, int pageNumber, int pageSize)
+        {
+            return await GetPagedAsync(query, pageNumber, pageSize);
         }
     }
 }

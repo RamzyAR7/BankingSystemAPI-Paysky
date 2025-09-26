@@ -4,8 +4,10 @@ using BankingSystemAPI.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
@@ -13,6 +15,25 @@ namespace BankingSystemAPI.Infrastructure.Repositories
     {
         public TransactionRepository(ApplicationDbContext context) : base(context)
         {
+        }
+
+        public IQueryable<Transaction> QueryWithAccountTransactions()
+        {
+            return Table
+                .Include(t => t.AccountTransactions)
+                    .ThenInclude(at => at.Account).ThenInclude(a => a.User)
+                .Include(t => t.AccountTransactions)
+                    .ThenInclude(at => at.Account).ThenInclude(a => a.Currency)
+                .AsQueryable();
+        }
+
+        public IQueryable<Transaction> QueryByAccountId(int accountId)
+        {
+            return Table
+                .Where(t => t.AccountTransactions.Any(at => at.AccountId == accountId))
+                .Include(t => t.AccountTransactions).ThenInclude(at => at.Account).ThenInclude(a => a.User)
+                .Include(t => t.AccountTransactions).ThenInclude(at => at.Account).ThenInclude(a => a.Currency)
+                .AsQueryable();
         }
     }
 }

@@ -2,6 +2,9 @@
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
@@ -13,9 +16,14 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<bool> HasUsersAsync(int bankId)
+        public async Task<Dictionary<int, string>> GetBankNamesByIdsAsync(IEnumerable<int> ids)
         {
-            return await _context.Users.AnyAsync(u => u.BankId == bankId);
+            var idList = ids?.Where(i => i > 0).Distinct().ToList();
+            if (idList == null || !idList.Any()) return new Dictionary<int, string>();
+
+            return await _context.Banks
+                .Where(b => idList.Contains(b.Id))
+                .ToDictionaryAsync(b => b.Id, b => b.Name);
         }
     }
 }

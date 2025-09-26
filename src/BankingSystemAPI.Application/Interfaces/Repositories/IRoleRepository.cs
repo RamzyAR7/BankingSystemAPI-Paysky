@@ -11,5 +11,6 @@ namespace BankingSystemAPI.Application.Interfaces.Repositories
     {
         Task<ApplicationRole> GetRoleByUserIdAsync(string userId);
         Task<Dictionary<string, string>> GetRolesByUserIdsAsync(IEnumerable<string> userIds);
+        IQueryable<string> UsersWithRoleQuery(string roleName);
     }
 }

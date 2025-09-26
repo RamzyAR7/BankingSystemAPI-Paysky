@@ -7,6 +7,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Cache\**" />
+    <EmbeddedResource Remove="Cache\**" />
+    <None Remove="Cache\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Cache\MemoryCacheService.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\BankingSystemAPI.Application\BankingSystemAPI.Application.csproj" />
     <ProjectReference Include="..\BankingSystemAPI.Domain\BankingSystemAPI.Domain.csproj" />
   </ItemGroup>

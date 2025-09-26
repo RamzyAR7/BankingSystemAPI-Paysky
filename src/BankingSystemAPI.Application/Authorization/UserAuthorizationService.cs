@@ -7,6 +7,8 @@ using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
 
 namespace BankingSystemAPI.Application.AuthorizationServices
 {
@@ -96,58 +98,43 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             }
         }
 
-        public async Task<IEnumerable<ApplicationUser>> FilterUsersAsync(IEnumerable<ApplicationUser> users)
+        public async Task<(IEnumerable<ApplicationUser> Users, int TotalCount)> FilterUsersAsync(
+            IQueryable<ApplicationUser> query,
+            int pageNumber = 1,
+            int pageSize = 10)
         {
-            if (users == null) return Enumerable.Empty<ApplicationUser>();
-
             var scope = await _scopeResolver.GetScopeAsync();
 
             switch (scope)
             {
                 case AccessScope.Global:
-                    return users;
+                    // Paging and filtering in DB
+                    query = query.OrderBy(u => u.Id);
+                    {
+                        var res = await _uow.UserRepository.GetPagedAsync(query, pageNumber, pageSize);
+                        return (res.Items, res.TotalCount);
+                    }
 
                 case AccessScope.Self:
-                    return users.Where(u => u.Id == _currentUser.UserId);
+                    query = query.Where(u => u.Id == _currentUser.UserId).OrderBy(u => u.Id);
+                    {
+                        var res = await _uow.UserRepository.GetPagedAsync(query, pageNumber, pageSize);
+                        return (res.Items, res.TotalCount);
+                    }
 
                 case AccessScope.BankLevel:
-                    var actingUser = await _uow.UserRepository.FindWithIncludesAsync(
-                        u => u.Id == _currentUser.UserId,
-                        new Expression<Func<ApplicationUser, object>>[] { u => u.Bank });
-
-                    if (actingUser == null) return Enumerable.Empty<ApplicationUser>();
-
-                    var userList = users.ToList();
-                    var missingBankUserIds = userList
-                        .Where(u => u.Bank == null)
-                        .Select(u => u.Id)
-                        .ToList();
-
-                    // batch fetch users with Bank for those missing
-                    var fetchedUsers = await _uow.UserRepository.FindAllWithIncludesAsync(
-                        u => missingBankUserIds.Contains(u.Id),
-                        new Expression<Func<ApplicationUser, object>>[] { u => u.Bank });
-
-                    var resolvedUsers = userList
-                        .Select(u => u.Bank == null
-                            ? fetchedUsers.FirstOrDefault(x => x.Id == u.Id) ?? u
-                            : u)
-                        .Where(u => u != null)
-                        .ToList();
-
-                    // batch load roles
-                    var userIds = resolvedUsers.Select(u => u.Id).ToList();
-                    var rolesByUser = await _uow.RoleRepository.GetRolesByUserIdsAsync(userIds);
-
-                    return resolvedUsers
-                        .Where(u =>
-                            u.BankId == actingUser.BankId &&
-                            rolesByUser.TryGetValue(u.Id, out var roleName) &&
-                            RoleHelper.IsClient(roleName))
-                        .ToList();
+                    // Filter by BankId and role Client in DB
+                    var bankId = _currentUser.BankId;
+                    // Subquery for Client users
+                    var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery("Client"); // IQueryable<string> of userIds
+                    query = query.Where(u => u.BankId == bankId && clientUserIds.Contains(u.Id)).OrderBy(u => u.Id);
+                    {
+                        var res = await _uow.UserRepository.GetPagedAsync(query, pageNumber, pageSize);
+                        return (res.Items, res.TotalCount);
+                    }
 
                 default:
-                    return Enumerable.Empty<ApplicationUser>();
+                    return (Enumerable.Empty<ApplicationUser>(), 0);
             }
         }
 
@@ -161,8 +148,6 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
             if (scope == AccessScope.Self)
                 throw new ForbiddenException("Clients cannot create users.");
-
-            // BankLevel roles can create users (Clients)
         }
     }
 }

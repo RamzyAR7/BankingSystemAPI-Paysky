@@ -50,15 +50,21 @@ namespace BankingSystemAPI.UnitTests
 
             _mapper = mapperMock.Object;
 
+            // create cache service for repositories that require caching
+            var memoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+            var cacheService = new BankingSystemAPI.Infrastructure.Services.MemoryCacheService(memoryCache);
+
             // create repositories directly
-            var currencyRepo = new CurrencyRepository(_context);
+            var userRepo = new UserRepository(_context);
+            var roleRepo = new RoleRepository(_context, cacheService);
+            var currencyRepo = new CurrencyRepository(_context, cacheService);
             var accountRepo = new AccountRepository(_context);
             var transactionRepo = new TransactionRepository(_context);
             var accountTxRepo = new AccountTransactionRepository(_context);
             var interestLogRepo = new InterestLogRepository(_context);
             var bankRepo = new BankRepository(_context);
 
-            _unitOfWork = new UnitOfWork(accountRepo, transactionRepo, accountTxRepo, interestLogRepo, currencyRepo, bankRepo, _context);
+            _unitOfWork = new UnitOfWork(userRepo, roleRepo, accountRepo, transactionRepo, accountTxRepo, interestLogRepo, currencyRepo, bankRepo, _context);
 
             _service = new CurrencyService(_unitOfWork, _mapper);
         }

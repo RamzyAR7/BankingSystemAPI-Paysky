@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.Exceptions;
 using BankingSystemAPI.Application.Interfaces.Authorization;
+using System.Linq;
 
 namespace BankingSystemAPI.UnitTests
 {
@@ -46,10 +47,10 @@ namespace BankingSystemAPI.UnitTests
             _context.SaveChanges();
 
             // seed users
-            var user1 = new ApplicationUser { UserName = "suser", Email = "s@example.com", PhoneNumber = "1000000001", FullName = "S User", NationalId = Guid.NewGuid().ToString().Substring(0,10), DateOfBirth = DateTime.UtcNow.AddYears(-30) };
-            user1.Id = Guid.NewGuid().ToString();
-            var user2 = new ApplicationUser { UserName = "tuser", Email = "t@example.com", PhoneNumber = "1000000002", FullName = "T User", NationalId = Guid.NewGuid().ToString().Substring(0,10), DateOfBirth = DateTime.UtcNow.AddYears(-30) };
-            user2.Id = Guid.NewGuid().ToString();
+            var user1 = new ApplicationUser { UserName = "suser", Email = "s@example.com", PhoneNumber = "1000000001", FullName = "S User", NationalId = System.Guid.NewGuid().ToString().Substring(0,10), DateOfBirth = System.DateTime.UtcNow.AddYears(-30) };
+            user1.Id = System.Guid.NewGuid().ToString();
+            var user2 = new ApplicationUser { UserName = "tuser", Email = "t@example.com", PhoneNumber = "1000000002", FullName = "T User", NationalId = System.Guid.NewGuid().ToString().Substring(0,10), DateOfBirth = System.DateTime.UtcNow.AddYears(-30) };
+            user2.Id = System.Guid.NewGuid().ToString();
             _context.Users.AddRange(user1, user2);
             _context.SaveChanges();
 
@@ -60,15 +61,20 @@ namespace BankingSystemAPI.UnitTests
             _context.CheckingAccounts.AddRange(src, tgtUsd, tgtEur);
             _context.SaveChanges();
 
-            var currencyRepo = new CurrencyRepository(_context);
+            // create cache service and repositories with explicit DI (avoid legacy UnitOfWork ctor)
+            var memoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+            var cacheService = new BankingSystemAPI.Infrastructure.Services.MemoryCacheService(memoryCache);
+
+            var userRepo = new UserRepository(_context);
+            var roleRepo = new RoleRepository(_context, cacheService);
+            var currencyRepo = new CurrencyRepository(_context, cacheService);
             var accountRepo = new AccountRepository(_context);
             var transactionRepo = new TransactionRepository(_context);
             var accountTxRepo = new AccountTransactionRepository(_context);
             var interestLogRepo = new InterestLogRepository(_context);
             var bankRepo = new BankRepository(_context);
 
-            // Remove roleRelationRepo from UnitOfWork constructor
-            _uow = new UnitOfWork(accountRepo, transactionRepo, accountTxRepo, interestLogRepo, currencyRepo, bankRepo, _context);
+            _uow = new UnitOfWork(userRepo, roleRepo, accountRepo, transactionRepo, accountTxRepo, interestLogRepo, currencyRepo, bankRepo, _context);
 
             // mapper mock
             var mapperMock = new Mock<IMapper>();
@@ -82,22 +88,23 @@ namespace BankingSystemAPI.UnitTests
                 .ReturnsAsync((string from, string to, decimal amt) =>
                 {
                     // simple fake conversion: if USD->EUR multiply by 0.8, EUR->USD divide by 0.8
-                    if (string.Equals(from, "USD", StringComparison.OrdinalIgnoreCase) && string.Equals(to, "EUR", StringComparison.OrdinalIgnoreCase))
-                        return Math.Round(amt * 0.8m, 2);
-                    if (string.Equals(from, "EUR", StringComparison.OrdinalIgnoreCase) && string.Equals(to, "USD", StringComparison.OrdinalIgnoreCase))
-                        return Math.Round(amt / 0.8m, 2);
+                    if (string.Equals(from, "USD", System.StringComparison.OrdinalIgnoreCase) && string.Equals(to, "EUR", System.StringComparison.OrdinalIgnoreCase))
+                        return System.Math.Round(amt * 0.8m, 2);
+                    if (string.Equals(from, "EUR", System.StringComparison.OrdinalIgnoreCase) && string.Equals(to, "USD", System.StringComparison.OrdinalIgnoreCase))
+                        return System.Math.Round(amt / 0.8m, 2);
                     return amt;
                 });
 
             _accountAuthMock = new Mock<IAccountAuthorizationService>();
             _accountAuthMock.Setup(a => a.CanViewAccountAsync(It.IsAny<int>())).Returns(Task.CompletedTask);
             _accountAuthMock.Setup(a => a.CanModifyAccountAsync(It.IsAny<int>(), It.IsAny<AccountModificationOperation>())).Returns(Task.CompletedTask);
-            _accountAuthMock.Setup(a => a.FilterAccountsAsync(It.IsAny<IEnumerable<Account>>())).ReturnsAsync((IEnumerable<Account> accs) => accs);
+            _accountAuthMock.Setup(a => a.FilterAccountsQueryAsync(It.IsAny<IQueryable<Account>>())).ReturnsAsync((IQueryable<Account> q) => q);
             _accountAuthMock.Setup(a => a.CanCreateAccountForUserAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
 
             _transactionAuthMock = new Mock<ITransactionAuthorizationService>();
             _transactionAuthMock.Setup(t => t.CanInitiateTransferAsync(It.IsAny<int>(), It.IsAny<int>())).Returns(Task.CompletedTask);
-            _transactionAuthMock.Setup(t => t.FilterTransactionsAsync(It.IsAny<IEnumerable<Transaction>>())).ReturnsAsync((IEnumerable<Transaction> txs) => txs);
+            _transactionAuthMock.Setup(t => t.FilterTransactionsAsync(It.IsAny<IQueryable<Transaction>>(), It.IsAny<int>(), It.IsAny<int>()))
+                .ReturnsAsync((IQueryable<Transaction> txs, int page, int size) => (txs.ToList(), txs.Count()));
 
             // setup UserManager (not used for these tests but required by ctor)
             var userStore = new UserStore<ApplicationUser>(_context);

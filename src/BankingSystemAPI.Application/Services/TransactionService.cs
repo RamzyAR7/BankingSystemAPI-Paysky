@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using BankingSystemAPI.Application.DTOs.Transactions;
 using BankingSystemAPI.Application.Exceptions;
 using BankingSystemAPI.Application.Interfaces.Services;
@@ -19,7 +20,7 @@ namespace BankingSystemAPI.Application.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly ITransactionHelperService _helper;
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly UserManager<ApplicationUser>? _userManager; 
         private readonly ICurrentUserService _currentUserService;
         private readonly IAccountAuthorizationService? _accountAuth;
         private readonly ITransactionAuthorizationService? _transactionAuth;
@@ -30,50 +31,39 @@ namespace BankingSystemAPI.Application.Services
         private const decimal SameCurrencyFeeRate = 0.005m;
         private const decimal DifferentCurrencyFeeRate = 0.01m;
 
-        // Primary constructor with accountAuth then transactionAuth (used by most callers)
+        // Primary constructor used going forward (no UserManager)
         public TransactionService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
             ITransactionHelperService helper,
-            UserManager<ApplicationUser> userManager,
             ICurrentUserService currentUserService,
-            IAccountAuthorizationService? accountAuth,
-            ITransactionAuthorizationService? transactionAuth,
+            IAccountAuthorizationService? accountAuth = null,
+            ITransactionAuthorizationService? transactionAuth = null,
             ILogger<TransactionService>? logger = null)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _helper = helper;
-            _userManager = userManager;
+            _userManager = null;
             _currentUserService = currentUserService;
             _accountAuth = accountAuth;
             _transactionAuth = transactionAuth;
             _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<TransactionService>.Instance;
         }
 
-        // Overload that accepts logger as the 6th parameter and transactionAuth as 7th to match other callers/tests
+        // Backwards-compatible constructor used by tests and older callers (accepts UserManager)
         public TransactionService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
             ITransactionHelperService helper,
             UserManager<ApplicationUser> userManager,
             ICurrentUserService currentUserService,
-            ILogger<TransactionService>? logger = null,
-            ITransactionAuthorizationService? transactionAuth = null)
-            : this(unitOfWork, mapper, helper, userManager, currentUserService, null, transactionAuth, logger)
-        {
-        }
-
-        // Compatibility constructor used by tests: (unitOfWork, mapper, helper, userManager, currentUser, logger)
-        public TransactionService(
-            IUnitOfWork unitOfWork,
-            IMapper mapper,
-            ITransactionHelperService helper,
-            UserManager<ApplicationUser> userManager,
-            ICurrentUserService currentUserService,
+            IAccountAuthorizationService? accountAuth = null,
+            ITransactionAuthorizationService? transactionAuth = null,
             ILogger<TransactionService>? logger = null)
-            : this(unitOfWork, mapper, helper, userManager, currentUserService, null, null, logger)
+            : this(unitOfWork, mapper, helper, currentUserService, accountAuth, transactionAuth, logger)
         {
+            _userManager = userManager;
         }
 
         // Execute operation with retry on concurrency conflict
@@ -129,24 +119,27 @@ namespace BankingSystemAPI.Application.Services
             {
                 // Authorization: ensure acting user can access account (clients may only access own accounts)
                 if (_accountAuth != null)
-                    await _accountAuth.CanViewAccountAsync(request.AccountId); // deposit uses access rules
+                    await _accountAuth.CanModifyAccountAsync(request.AccountId, AccountModificationOperation.Deposit); // deposit uses access rules
 
-                var account = await _unitOfWork.AccountRepository.GetByIdAsync(request.AccountId);
+                // Load account including User and Currency in a single query and request tracking so we can update
+                var account = await _unitOfWork.AccountRepository.FindWithIncludesAsync(
+                    a => a.Id == request.AccountId,
+                    new Expression<Func<Account, object>>[] { a => a.User, a => a.Currency },
+                    asNoTracking: false);
+
+                if (account == null)
+                {
+                    account = await _unitOfWork.AccountRepository.GetByIdAsync(request.AccountId);
+                }
+
                 if (account == null)
                     throw new AccountNotFoundException($"Account with id {request.AccountId} not found.");
                 if (!account.IsActive)
                     throw new InvalidAccountOperationException("Cannot perform transaction on inactive account.");
 
-                // Check if user is active
-                var user = await _userManager.FindByIdAsync(account.UserId);
-                if (user == null || !user.IsActive)
+                // Check if user is active (use included navigation instead of additional DB call)
+                if (account.User == null || !account.User.IsActive)
                     throw new InvalidAccountOperationException("Cannot perform transaction for inactive user.");
-
-                // ensure currency navigation is loaded so TransactionCurrency is set
-                if (account.Currency == null)
-                {
-                    account.Currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(account.CurrencyId);
-                }
 
                 account.Deposit(request.Amount);
                 await _unitOfWork.AccountRepository.UpdateAsync(account);
@@ -164,8 +157,7 @@ namespace BankingSystemAPI.Application.Services
                     TransactionId = trx.Id,
                     TransactionCurrency = account.Currency?.Code ?? string.Empty,
                     Amount = request.Amount,
-                    // For deposit treat the account as the source of the transaction record (consistent with withdraw)
-                    Role = TransactionRole.Source,
+                    Role = TransactionRole.Target,
                     Fees = 0m
                 };
 
@@ -190,24 +182,26 @@ namespace BankingSystemAPI.Application.Services
             {
                 // Authorization: ensure acting user can access account (clients may only access own accounts)
                 if (_accountAuth != null)
-                    await _accountAuth.CanViewAccountAsync(request.AccountId); // withdraw uses access rules
+                    await _accountAuth.CanModifyAccountAsync(request.AccountId, AccountModificationOperation.Withdraw); // withdraw uses access rules
 
-                var account = await _unitOfWork.AccountRepository.GetByIdAsync(request.AccountId);
+                var account = await _unitOfWork.AccountRepository.FindWithIncludesAsync(
+                    a => a.Id == request.AccountId,
+                    new Expression<Func<Account, object>>[] { a => a.User, a => a.Currency },
+                    asNoTracking: false);
+
+                if (account == null)
+                {
+                    account = await _unitOfWork.AccountRepository.GetByIdAsync(request.AccountId);
+                }
+
                 if (account == null)
                     throw new AccountNotFoundException($"Account with id {request.AccountId} not found.");
                 if (!account.IsActive)
                     throw new InvalidAccountOperationException("Cannot perform transaction on inactive account.");
 
                 // Check if user is active
-                var user = await _userManager.FindByIdAsync(account.UserId);
-                if (user == null || !user.IsActive)
+                if (account.User == null || !account.User.IsActive)
                     throw new InvalidAccountOperationException("Cannot perform transaction for inactive user.");
-
-                // ensure currency navigation is loaded so TransactionCurrency is set
-                if (account.Currency == null)
-                {
-                    account.Currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(account.CurrencyId);
-                }
 
                 account.Withdraw(request.Amount);
                 await _unitOfWork.AccountRepository.UpdateAsync(account);
@@ -252,8 +246,25 @@ namespace BankingSystemAPI.Application.Services
                 if (_transactionAuth != null)
                     await _transactionAuth.CanInitiateTransferAsync(request.SourceAccountId, request.TargetAccountId);
 
-                var source = await _unitOfWork.AccountRepository.GetByIdAsync(request.SourceAccountId);
-                var target = await _unitOfWork.AccountRepository.GetByIdAsync(request.TargetAccountId);
+                // Load both accounts including User and Currency in tracked state to avoid extra round-trips
+                var source = await _unitOfWork.AccountRepository.FindWithIncludesAsync(
+                    a => a.Id == request.SourceAccountId,
+                    new Expression<Func<Account, object>>[] { a => a.User, a => a.Currency },
+                    asNoTracking: false);
+
+                var target = await _unitOfWork.AccountRepository.FindWithIncludesAsync(
+                    a => a.Id == request.TargetAccountId,
+                    new Expression<Func<Account, object>>[] { a => a.User, a => a.Currency },
+                    asNoTracking: false);
+
+                if (source == null)
+                {
+                    source = await _unitOfWork.AccountRepository.GetByIdAsync(request.SourceAccountId);
+                }
+                if (target == null)
+                {
+                    target = await _unitOfWork.AccountRepository.GetByIdAsync(request.TargetAccountId);
+                }
 
                 if (source == null)
                     throw new AccountNotFoundException($"Source account {request.SourceAccountId} not found.");
@@ -263,23 +274,11 @@ namespace BankingSystemAPI.Application.Services
                     throw new InvalidAccountOperationException("Cannot perform transaction on inactive account.");
 
                 // Check if source user is active
-                var sourceUser = await _userManager.FindByIdAsync(source.UserId);
-                if (sourceUser == null || !sourceUser.IsActive)
+                if (source.User == null || !source.User.IsActive)
                     throw new InvalidAccountOperationException("Cannot perform transaction for inactive source user.");
                 // Check if target user is active
-                var targetUser = await _userManager.FindByIdAsync(target.UserId);
-                if (targetUser == null || !targetUser.IsActive)
+                if (target.User == null || !target.User.IsActive)
                     throw new InvalidAccountOperationException("Cannot perform transaction for inactive target user.");
-
-                // Ensure currency navigation is loaded so we can use Currency.Code
-                if (source.Currency == null)
-                {
-                    source.Currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(source.CurrencyId);
-                }
-                if (target.Currency == null)
-                {
-                    target.Currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(target.CurrencyId);
-                }
 
                 var sourceCode = source.Currency?.Code ?? string.Empty;
                 var targetCode = target.Currency?.Code ?? string.Empty;
@@ -352,56 +351,75 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<IEnumerable<TransactionResDto>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var skip = (Math.Max(1, pageNumber) - 1) * Math.Max(1, pageSize);
-            var (list, total) = await _unitOfWork.TransactionRepository.GetPagedAsync(null, Math.Max(1, pageSize), skip, (Expression<Func<Transaction, object>>)(t => t.Timestamp), "DESC", new[] { (Expression<Func<Transaction, object>>)(t => t.AccountTransactions) });
+            var query = _unitOfWork.TransactionRepository.QueryWithAccountTransactions().OrderBy(t => t.Id);
 
             if (_transactionAuth != null)
             {
-                var filtered = await _transactionAuth.FilterTransactionsAsync(list);
-                list = filtered.ToList();
+                var result = await _transactionAuth.FilterTransactionsAsync(query, pageNumber, pageSize);
+                var list = result.Transactions;
+                return _mapper.Map<IEnumerable<TransactionResDto>>(list);
             }
 
-            return _mapper.Map<IEnumerable<TransactionResDto>>(list);
+            // No authorization logic required, project to DTOs at DB level to avoid materializing entities
+            var total = await query.CountAsync();
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 10;
+            var skip = (pageNumber - 1) * pageSize;
+
+            var dtos = await query
+                .ProjectTo<TransactionResDto>(_mapper.ConfigurationProvider)
+                .Skip(skip)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return dtos;
         }
 
         public async Task<IEnumerable<TransactionResDto>> GetByAccountIdAsync(int accountId, int pageNumber, int pageSize)
         {
             if (accountId <= 0) throw new BadRequestException("Invalid account id.");
-
-            var take = Math.Max(1, pageSize);
-            var skip = (Math.Max(1, pageNumber) - 1) * take;
-
-            // Query page of transactions that reference the account (repository will apply paging)
-            var (list, total) = await _unitOfWork.TransactionRepository.GetPagedAsync(
-                t => t.AccountTransactions != null && t.AccountTransactions.Any(at => at.AccountId == accountId),
-                take, skip, (Expression<Func<Transaction, object>>)(t => t.Timestamp), "DESC", new[] { (Expression<Func<Transaction, object>>)(t => t.AccountTransactions) });
+            var query = _unitOfWork.TransactionRepository.QueryByAccountId(accountId).OrderBy(t => t.Id);
 
             if (_transactionAuth != null)
             {
-                var filtered = await _transactionAuth.FilterTransactionsAsync(list);
-                list = filtered.ToList();
+                var result = await _transactionAuth.FilterTransactionsAsync(query, pageNumber, pageSize);
+                var list = result.Transactions;
+                return _mapper.Map<IEnumerable<TransactionResDto>>(list);
             }
 
-            return _mapper.Map<IEnumerable<TransactionResDto>>(list);
+            var total = await query.CountAsync();
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 10;
+            var skip = (pageNumber - 1) * pageSize;
+
+            var dtos = await query
+                .ProjectTo<TransactionResDto>(_mapper.ConfigurationProvider)
+                .Skip(skip)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return dtos;
         }
 
         public async Task<TransactionResDto> GetByIdAsync(int transactionId)
         {
-            var trx = await _unitOfWork.TransactionRepository.FindAsync(
-                t => t.Id == transactionId, new[] { "AccountTransactions" });
+            var query = _unitOfWork.TransactionRepository.QueryWithAccountTransactions().Where(t => t.Id == transactionId);
 
-            if (trx == null)
-                throw new TransactionNotFoundException("Transaction not found.");
-
-            // Authorization: ensure caller is allowed to view this transaction according to bank rules
             if (_transactionAuth != null)
             {
-                var filtered = await _transactionAuth.FilterTransactionsAsync(new[] { trx });
-                if (!filtered.Any())
+                var result = await _transactionAuth.FilterTransactionsAsync(query, 1, 1);
+                var trx = result.Transactions.FirstOrDefault();
+                if (trx == null)
                     throw new ForbiddenException("Access to requested transaction is forbidden.");
+                return _mapper.Map<TransactionResDto>(trx);
             }
 
-            return _mapper.Map<TransactionResDto>(trx);
+            var dto = await query
+                .ProjectTo<TransactionResDto>(_mapper.ConfigurationProvider)
+                .FirstOrDefaultAsync();
+
+            if (dto == null) throw new TransactionNotFoundException("Transaction not found.");
+            return dto;
         }
     }
 }

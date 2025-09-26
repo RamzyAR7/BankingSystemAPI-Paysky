@@ -13,6 +13,7 @@ using System.Linq.Expressions;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Identity;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace BankingSystemAPI.Application.Services
@@ -32,34 +33,33 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<IEnumerable<CheckingAccountDto>> GetAccountsAsync(int pageNumber, int pageSize)
         {
-            // Do manual projection to DTO to avoid AutoMapper mapping entity navigation graphs (and potential cycles)
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
-            var take = Math.Max(1, pageSize);
-            var skip = (Math.Max(1, pageNumber) - 1) * take;
+            // Build base query and include currency
+            var query = _unitOfWork.AccountRepository.Table
+                .Where(a => a is CheckingAccount)
+                .Include(a => a.Currency)
+                .AsQueryable();
 
-            Expression<Func<Account, bool>> predicate = a => a is CheckingAccount;
-
-            // Use GetPagedAsync with expression-based include for Currency
-            var (results, total) = await _unitOfWork.AccountRepository.GetPagedAsync(
-                predicate,
-                take,
-                skip,
-                (Expression<Func<Account, object>>)(a => a.Id),
-                "ASC",
-                new[] { (Expression<Func<Account, object>>)(a => a.Currency) });
-
-            var accounts = results;
-
-            // Apply bank-level filtering if available so callers get only allowed accounts
+            // Let authorization filter and paginate at DB level when available
+            IEnumerable<Account> accountsPage;
+            int total;
             if (_accountAuth != null)
             {
-                var filtered = await _accountAuth.FilterAccountsAsync(accounts);
-                accounts = filtered.ToList();
+                var filteredQuery = await _accountAuth.FilterAccountsQueryAsync(query);
+                var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(filteredQuery, pageNumber, pageSize);
+                accountsPage = result.Accounts;
+                total = result.TotalCount;
+            }
+            else
+            {
+                var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(query, pageNumber, pageSize);
+                accountsPage = result.Accounts;
+                total = result.TotalCount;
             }
 
-            var dtosAll = _mapper.Map<IEnumerable<CheckingAccountDto>>(accounts.OfType<CheckingAccount>());
+            var dtosAll = _mapper.Map<IEnumerable<CheckingAccountDto>>(accountsPage.OfType<CheckingAccount>());
             return dtosAll;
         }
 

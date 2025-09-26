@@ -10,6 +10,5 @@ namespace BankingSystemAPI.Application.Interfaces.Repositories
 {
     public interface IUserRepository: IGenericRepository<ApplicationUser, string>
     {
-        Task<IEnumerable<ApplicationUser>> GetUsersByIdsAsync(IEnumerable<string> ids, Expression<Func<ApplicationUser, object>>[] includeExpressions = null, bool asNoTracking = true);
     }
 }

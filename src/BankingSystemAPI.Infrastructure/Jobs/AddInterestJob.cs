@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Linq.Expressions;
+using System.Linq;
 
 namespace BankingSystemAPI.Infrastructure.Jobs
 {
@@ -44,18 +46,37 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                 int batchNumber = 0;
                 try
                 {
-                    // Load all savings accounts with their interest logs
-                    var accounts = await uow.AccountRepository.FindAllAsync(a => a is SavingsAccount, new[] { "InterestLogs" });
-                    totalAccounts = accounts.Count();
-                    var savingsAccounts = accounts.OfType<SavingsAccount>().ToList();
+                    // Build base query for savings accounts including InterestLogs and Currency
+                    var baseQuery = uow.AccountRepository.Table
+                        .OfType<SavingsAccount>()
+                        .Include(s => s.InterestLogs)
+                        .Include(s => s.Currency)
+                        .AsQueryable();
 
-                    for (int i = 0; i < savingsAccounts.Count; i += batchSize)
+                    int pageNumber = 1;
+                    bool more = true;
+
+                    while (more && !stoppingToken.IsCancellationRequested)
                     {
-                        var batch = savingsAccounts.Skip(i).Take(batchSize).ToList();
+                        var (accountsPage, total) = await uow.AccountRepository.GetFilteredAccountsAsync(baseQuery, pageNumber, batchSize);
+
+                        if (pageNumber == 1)
+                        {
+                            totalAccounts = total;
+                        }
+
+                        var savingsAccounts = accountsPage.OfType<SavingsAccount>().ToList();
+                        if (!savingsAccounts.Any())
+                        {
+                            more = false;
+                            break;
+                        }
+
                         batchNumber++;
                         var batchStart = DateTime.UtcNow;
                         int batchApplied = 0;
-                        foreach (var accountBase in batch)
+
+                        foreach (var accountBase in savingsAccounts)
                         {
                             try
                             {
@@ -128,22 +149,39 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                                 Console.ForegroundColor = originalColor;
                             }
                         }
-                        // Commit after each batch
+
+                        // Commit after each page/batch
                         await uow.SaveAsync();
                         appliedCount += batchApplied;
                         var batchEnd = DateTime.UtcNow;
-                        _logger.LogInformation("Batch {BatchNumber} processed {BatchCount} accounts, applied {BatchApplied} interest, duration {Duration}s", batchNumber, batch.Count, batchApplied, (batchEnd-batchStart).TotalSeconds);
+                        _logger.LogInformation("Batch {BatchNumber} processed {BatchCount} accounts, applied {BatchApplied} interest, duration {Duration}s", batchNumber, savingsAccounts.Count, batchApplied, (batchEnd - batchStart).TotalSeconds);
+
+                        // Move to next page
+                        pageNumber++;
+
+                        // If we've processed all known records, stop
+                        if ((pageNumber - 1) * batchSize >= total)
+                        {
+                            more = false;
+                        }
                     }
+
                     var jobEnd = DateTime.UtcNow;
-                    _logger.LogInformation("AddInterestJob run completed. TotalAccounts={Total}, Applied={Applied}, Duration={Duration}s", totalAccounts, appliedCount, (jobEnd-jobStart).TotalSeconds);
+                    _logger.LogInformation("AddInterestJob run completed. TotalAccounts={Total}, Applied={Applied}, Duration={Duration}s", totalAccounts, appliedCount, (jobEnd - jobStart).TotalSeconds);
                     Console.ForegroundColor = ConsoleColor.Cyan;
-                    Console.WriteLine($"[AddInterestJob] run completed. TotalAccounts={totalAccounts}, Applied={appliedCount} at {DateTime.UtcNow:u}, Duration={(jobEnd-jobStart).TotalSeconds}s");
+                    Console.WriteLine($"[AddInterestJob] run completed. TotalAccounts={totalAccounts}, Applied={appliedCount} at {DateTime.UtcNow:u}, Duration={(jobEnd - jobStart).TotalSeconds}s");
                     Console.ForegroundColor = originalColor;
 
                     // Run every 5 minutes for testing if any account uses every5minutes
-                    bool hasFiveMinAccount = savingsAccounts.Any(a => a.InterestType == InterestType.every5minutes);
-                    var delay = hasFiveMinAccount ? TimeSpan.FromMinutes(5) : TimeSpan.FromDays(1);
+                    // Note: we looked at the snapshot of accounts in this run; to decide delay accurately check DB again next run
+                    var delay = TimeSpan.FromDays(1);
                     await Task.Delay(delay, stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    // graceful shutdown
+                    _logger.LogInformation("AddInterestJob stopping due to cancellation.");
+                    break;
                 }
                 catch (Exception exRun)
                 {
@@ -151,6 +189,9 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.WriteLine($"[AddInterestJob] run failed: {exRun.Message}");
                     Console.ForegroundColor = originalColor;
+
+                    // Backoff a bit on error to avoid tight error loops
+                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
                 }
             }
         }

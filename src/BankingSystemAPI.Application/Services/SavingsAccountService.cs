@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.DTOs.InterestLog;
 using BankingSystemAPI.Application.Exceptions;
@@ -35,24 +36,37 @@ namespace BankingSystemAPI.Application.Services
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
-            var take = Math.Max(1, pageSize);
-            var skip = (Math.Max(1, pageNumber) - 1) * take;
-
-            // Use generic repository GetPagedAsync to get accounts of type SavingsAccount
-            Expression<Func<Account, bool>> predicate = a => a is SavingsAccount;
-
-            var (results, total) = await _unitOfWork.AccountRepository.GetPagedAsync(predicate, take, skip, (Expression<Func<Account, object>>)(a => a.Id), "ASC", new[] { (Expression<Func<Account, object>>)(a => a.Currency) });
-
-            var accounts = results.OfType<SavingsAccount>().ToList();
-
-            if (_accountAuth != null)
+            // If no authorization filtering is needed, project at DB level to avoid materializing full entities
+            if (_accountAuth == null)
             {
-                var filtered = await _accountAuth.FilterAccountsAsync(accounts.Cast<Account>());
-                var filteredSavings = filtered.OfType<SavingsAccount>().ToList();
-                accounts = filteredSavings;
+                var skip = (pageNumber - 1) * pageSize;
+
+                var query = _unitOfWork.AccountRepository.Table
+                    .OfType<SavingsAccount>()
+                    .AsQueryable();
+
+                var dtos = await query
+                    .ProjectTo<SavingsAccountDto>(_mapper.ConfigurationProvider)
+                    .OrderBy(a => a.Id)
+                    .Skip(skip)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                return dtos;
             }
 
-            return _mapper.Map<IEnumerable<SavingsAccountDto>>(accounts);
+            // Build base query and include currency when authorization filtering is required
+            var baseQuery = _unitOfWork.AccountRepository.Table
+                .Where(a => a is SavingsAccount)
+                .Include(a => a.Currency)
+                .AsQueryable();
+
+            var filteredQuery = await _accountAuth.FilterAccountsQueryAsync(baseQuery);
+            var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(filteredQuery, pageNumber, pageSize);
+            var accountsPage = result.Accounts;
+
+            var dtosMapped = _mapper.Map<IEnumerable<SavingsAccountDto>>(accountsPage.OfType<SavingsAccount>());
+            return dtosMapped;
         }
 
         public async Task<SavingsAccountDto> CreateAccountAsync(SavingsAccountReqDto reqDto)
@@ -67,8 +81,8 @@ namespace BankingSystemAPI.Application.Services
             if (!currency.IsActive)
                 throw new BadRequestException("Cannot create account with inactive currency.");
 
-            // Ensure target user exists via repository
-            var user = await _unitOfWork.UserRepository.FindAsync(u => u.Id == reqDto.UserId, new string[] { "Accounts", "Bank" });
+            // Ensure target user exists via repository using expression includes
+            var user = await _unitOfWork.UserRepository.FindWithIncludesAsync(u => u.Id == reqDto.UserId, new Expression<Func<ApplicationUser, object>>[] { u => u.Accounts, u => u.Bank });
             if (user == null)
                 throw new NotFoundException($"User with ID '{reqDto.UserId}' not found.");
             if (!user.IsActive)
@@ -123,56 +137,53 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<(IEnumerable<InterestLogDto> logs, int totalCount)> GetAllInterestLogsAsync(int pageNumber, int pageSize)
         {
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 10;
+
             var take = Math.Max(1, pageSize);
             var skip = (Math.Max(1, pageNumber) - 1) * take;
+            var orderBy = (Expression<Func<InterestLog, object>>)(l => l.Timestamp);
 
-            // Load all logs with SavingsAccount navigation so filtering can decide which to include
-            var allLogs = (await _unitOfWork.InterestLogRepository.FindAllAsync(null, int.MaxValue, 0, null, "DESC", new[] { "SavingsAccount" }))
-                .ToList();
+            // Build account query for savings accounts
+            var accountQuery = _unitOfWork.AccountRepository.Table.Where(a => a is SavingsAccount).Include(a => a.User).AsQueryable();
 
-
-            var accounts = allLogs.Select(l => l.SavingsAccount).Where(a => a != null).GroupBy(a => a.Id).Select(g => g.First()).ToList();
             if (_accountAuth != null)
             {
-                var filteredAccounts = (await _accountAuth.FilterAccountsAsync(accounts)).ToList();
-                var allowedIds = new HashSet<int>(filteredAccounts.Select(a => a.Id));
-                allLogs = allLogs.Where(l => l.SavingsAccountId != 0 && allowedIds.Contains(l.SavingsAccountId)).ToList();
+                // Let auth filter the account query in DB and return composable query
+                accountQuery = await _accountAuth.FilterAccountsQueryAsync(accountQuery);
             }
-            else
-            {
-                var allowedIds = new HashSet<int>(accounts.Select(a => a.Id));
-                allLogs = allLogs.Where(l => l.SavingsAccountId != 0 && allowedIds.Contains(l.SavingsAccountId)).ToList();
-            }
-            
-            var total = allLogs.Count;
-            var page = allLogs.Skip(skip).Take(take).ToList();
-            var dtos = _mapper.Map<IEnumerable<InterestLogDto>>(page);
+
+            // Compose interest log predicate using account subquery (DB-side)
+            var accountIdsQuery = accountQuery.Select(a => a.Id);
+            Expression<Func<InterestLog, bool>> predicate = l => accountIdsQuery.Contains(l.SavingsAccountId);
+
+            var (items, total) = await _unitOfWork.InterestLogRepository.GetPagedAsync(predicate, take, skip, orderBy, "DESC", new[] { (Expression<Func<InterestLog, object>>)(l => l.SavingsAccount) });
+            var dtos = _mapper.Map<IEnumerable<InterestLogDto>>(items);
             return (dtos, total);
         }
 
         public async Task<(IEnumerable<InterestLogDto> logs, int totalCount)> GetInterestLogsByAccountIdAsync(int accountId, int pageNumber, int pageSize)
         {
             if (accountId <= 0) throw new BadRequestException("Invalid account id.");
+            if (_accountAuth != null)
+            {
+                try
+                {
+                    await _accountAuth.CanViewAccountAsync(accountId);
+                }
+                catch (ForbiddenException)
+                {
+                    throw new ForbiddenException($"Not authorized to view interest logs for account {accountId}.");
+                }
+            }
 
+            Expression<Func<InterestLog, bool>> predicate = l => l.SavingsAccountId == accountId;
             var take = Math.Max(1, pageSize);
             var skip = (Math.Max(1, pageNumber) - 1) * take;
+            var orderBy = (Expression<Func<InterestLog, object>>)(l => l.Timestamp);
 
-            // Load logs for the specific account with navigation
-            var logs = (await _unitOfWork.InterestLogRepository.FindAllAsync(l => l.SavingsAccountId == accountId, int.MaxValue, 0, null, "DESC", new[] { "SavingsAccount" })).ToList();
-
-            var account = await _unitOfWork.AccountRepository.FindAsync(a => a.Id == accountId, new[] { "User" });
-            if (account == null) return (Enumerable.Empty<InterestLogDto>(), 0);
-            bool allowed;
-            if (_accountAuth != null)
-                allowed = (await _accountAuth.FilterAccountsAsync(new[] { account })).Any();
-            else
-                allowed = true;
-
-            if (!allowed) return (Enumerable.Empty<InterestLogDto>(), 0);
-            
-            var total = logs.Count;
-            var page = logs.Skip(skip).Take(take).ToList();
-            var dtos = _mapper.Map<IEnumerable<InterestLogDto>>(page);
+            var (items, total) = await _unitOfWork.InterestLogRepository.GetPagedAsync(predicate, take, skip, orderBy, "DESC", new[] { (Expression<Func<InterestLog, object>>)(l => l.SavingsAccount) });
+            var dtos = _mapper.Map<IEnumerable<InterestLogDto>>(items);
             return (dtos, total);
         }
     }

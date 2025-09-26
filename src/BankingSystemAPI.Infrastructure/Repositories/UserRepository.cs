@@ -16,26 +16,5 @@ namespace BankingSystemAPI.Infrastructure.Repositories
         public UserRepository(ApplicationDbContext context) : base(context)
         {
         }
-
-        public async Task<IEnumerable<ApplicationUser>> GetUsersByIdsAsync(IEnumerable<string> ids, Expression<Func<ApplicationUser, object>>[] includeExpressions = null, bool asNoTracking = true)
-        {
-            if (ids == null) return Enumerable.Empty<ApplicationUser>();
-            var idList = ids.Where(i => !string.IsNullOrWhiteSpace(i)).Distinct().ToList();
-            if (!idList.Any()) return Enumerable.Empty<ApplicationUser>();
-
-            IQueryable<ApplicationUser> query = _dbSet;
-            if (asNoTracking) query = query.AsNoTracking();
-
-            if (includeExpressions != null)
-            {
-                foreach (var include in includeExpressions)
-                {
-                    query = query.Include(include);
-                }
-            }
-
-            query = query.Where(u => idList.Contains(u.Id));
-            return await query.ToListAsync();
-        }
     }
 }

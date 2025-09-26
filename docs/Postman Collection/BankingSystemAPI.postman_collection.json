@@ -10,7 +10,8 @@
             "description": "Authentication endpoints (login, refresh, logout, revoke tokens).",
             "item": [
                 {
-                    "name": "Login as SuperAdmin",
+                    "name": "Login",
+                    "description": "## POST /api/auth/login\n\nAuthenticates a user and returns a JWT token.\n\n### Request Body: `LoginReqDto`\n\n*   `email` (string, required): The user\'s email address.\n*   `password` (string, required): The user\'s password.\n\n### Responses\n\n*   `200 OK`: Login successful. Returns `AuthResDto`.\n*   `400 Bad Request`: Invalid login request.\n*   `401 Unauthorized`: Invalid credentials.",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -38,63 +39,8 @@
                     "response": []
                 },
                 {
-                    "name": "Login as Admin",
-                    "request": {
-                        "method": "POST",
-                        "header": [],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"email\": \"admin.ahmed@example.com\",\n  \"password\": \"AdminStrong123!\"\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/auth/login",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "api",
-                                "auth",
-                                "login"
-                            ]
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Login as Client",
-                    "request": {
-                        "method": "POST",
-                        "header": [],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"email\": \"youssef.client@example.com\",\n  \"password\": \"Youssef@2025\"\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/auth/login",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "api",
-                                "auth",
-                                "login"
-                            ]
-                        }
-                    },
-                    "response": []
-                },
-                {
                     "name": "Refresh Token",
+                    "description": "## POST /api/auth/refresh-token\n\nRefreshes an authentication token using a refresh token provided in an HTTP-only cookie.\n\n### Responses\n\n*   `200 OK`: Token refreshed successfully. Returns `AuthResDto`.\n*   `401 Unauthorized`: Invalid or expired refresh token.",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -114,6 +60,7 @@
                 },
                 {
                     "name": "Logout",
+                    "description": "## POST /api/auth/logout\n\nLogs out the current user and revokes their refresh token.\n\n### Responses\n\n*   `200 OK`: Logout successful.\n*   `400 Bad Request`: Logout failed.\n*   `401 Unauthorized`: User not authenticated.",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -133,6 +80,7 @@
                 },
                 {
                     "name": "Revoke Token",
+                    "description": "## POST /api/auth/revoke-token/{userId}\n\nRevokes the refresh token for a specific user.\n\n### Path Parameters\n\n*   `userId` (string, required): The ID of the user whose token should be revoked.\n\n### Responses\n\n*   `200 OK`: Token revoked successfully.\n*   `400 Bad Request`: Invalid user ID supplied.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: User not found.",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -159,6 +107,7 @@
             "item": [
                 {
                     "name": "Get Account By Id",
+                    "description": "## GET /api/accounts/{id}\n\nRetrieves an account by its ID.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the account to retrieve.\n\n### Responses\n\n*   `200 OK`: Returns the account details. (`AccountDto`)\n*   `400 Bad Request`: Invalid account ID supplied.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: Account not found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -178,6 +127,7 @@
                 },
                 {
                     "name": "Get Account By Account Number",
+                    "description": "## GET /api/accounts/by-number/{accountNumber}\n\nRetrieves an account by its account number.\n\n### Path Parameters\n\n*   `accountNumber` (string, required): The account number to search for.\n\n### Responses\n\n*   `200 OK`: Returns the account details. (`AccountDto`)\n*   `400 Bad Request`: Invalid or missing account number.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: Account not found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -198,6 +148,7 @@
                 },
                 {
                     "name": "Get Accounts By User Id",
+                    "description": "## GET /api/accounts/by-user/{userId}\n\nRetrieves all accounts for a specific user.\n\n### Path Parameters\n\n*   `userId` (string, required): The ID of the user to retrieve accounts for.\n\n### Responses\n\n*   `200 OK`: Returns a list of accounts. (`IEnumerable<AccountDto>`)\n*   `400 Bad Request`: Invalid user ID supplied.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -218,6 +169,7 @@
                 },
                 {
                     "name": "Get Accounts By National Id",
+                    "description": "## GET /api/accounts/by-national-id/{nationalId}\n\nRetrieves accounts associated with a given national ID.\n\n### Path Parameters\n\n*   `nationalId` (string, required): The national ID to search for.\n\n### Responses\n\n*   `200 OK`: Returns a list of accounts. (`IEnumerable<AccountDto>`)\n*   `400 Bad Request`: Invalid national ID supplied.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -238,6 +190,7 @@
                 },
                 {
                     "name": "Delete Account",
+                    "description": "## DELETE /api/accounts/{id}\n\nDeletes an account by its ID.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the account to delete.\n\n### Responses\n\n*   `204 No Content`: Account deleted successfully.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: Account not found.",
                     "request": {
                         "method": "DELETE",
                         "header": [],
@@ -257,6 +210,7 @@
                 },
                 {
                     "name": "Delete Many Accounts",
+                    "description": "## DELETE /api/accounts/bulk\n\nDeletes multiple accounts.\n\n### Request Body: `IEnumerable<int>`\n\nA JSON array of account IDs to delete.\n\n### Responses\n\n*   `204 No Content`: Accounts deleted successfully.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "DELETE",
                         "header": [],
@@ -285,6 +239,7 @@
                 },
                 {
                     "name": "Set Account Active Status",
+                    "description": "## PUT /api/accounts/{id}/active\n\nSets the active status of an account.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the account to update.\n\n### Query Parameters\n\n*   `isActive` (boolean, required): The new active status.\n\n### Responses\n\n*   `200 OK`: Account active status changed.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "PUT",
                         "header": [],
@@ -317,6 +272,7 @@
             "item": [
                 {
                     "name": "Deposit",
+                    "description": "## POST /api/accounts/deposit\n\nDeposits money into an account.\n\n### Request Body: `DepositReqDto`\n\n*   `accountId` (integer, required): The ID of the account to deposit into.\n*   `amount` (number, required): The amount to deposit.\n\n### Responses\n\n*   `200 OK`: Deposit completed successfully. Returns `TransactionResDto`.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.\n*   `404 Not Found`: Account not found.",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -345,6 +301,7 @@
                 },
                 {
                     "name": "Withdraw",
+                    "description": "## POST /api/accounts/withdraw\n\nWithdraws money from an account.\n\n### Request Body: `WithdrawReqDto`\n\n*   `accountId` (integer, required): The ID of the account to withdraw from.\n*   `amount` (number, required): The amount to withdraw.\n\n### Responses\n\n*   `200 OK`: Withdrawal completed successfully. Returns `TransactionResDto`.\n*   `400 Bad Request`: Invalid request or insufficient funds.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.\n*   `404 Not Found`: Account not found.",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -373,6 +330,7 @@
                 },
                 {
                     "name": "Transfer",
+                    "description": "## POST /api/accounts/transfer\n\nTransfers money between accounts.\n\n### Request Body: `TransferReqDto`\n\n*   `sourceAccountId` (integer, required): The ID of the source account.\n*   `targetAccountId` (integer, required): The ID of the target account.\n*   `amount` (number, required): The amount to transfer.\n\n### Responses\n\n*   `200 OK`: Transfer completed successfully. Returns `TransactionResDto`.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.\n*   `404 Not Found`: Source or target account not found.\n*   `409 Conflict`: Conflict (e.g., insufficient funds).",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -401,6 +359,7 @@
                 },
                 {
                     "name": "Get Balance",
+                    "description": "## GET /api/accounts/{id}/balance\n\nGets the current balance of an account.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the account.\n\n### Responses\n\n*   `200 OK`: Returns the current balance.\n*   `400 Bad Request`: Invalid account ID.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.\n*   `404 Not Found`: Account not found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -427,6 +386,7 @@
             "item": [
                 {
                     "name": "Get All Banks",
+                    "description": "## GET /api/banks\n\nRetrieves a paginated list of banks.\n\n### Query Parameters\n\n*   `pageNumber` (integer, optional, default: 1): The page number to retrieve.\n*   `pageSize` (integer, optional, default: 10): The number of items per page.\n\n### Responses\n\n*   `200 OK`: Returns a list of banks.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -445,6 +405,7 @@
                 },
                 {
                     "name": "Get Bank By Id",
+                    "description": "## GET /api/banks/{id}\n\nRetrieves a bank by its ID.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the bank to retrieve.\n\n### Responses\n\n*   `200 OK`: Returns the bank details.\n*   `404 Not Found`: Bank not found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -464,6 +425,7 @@
                 },
                 {
                     "name": "Get Bank By Name",
+                    "description": "## GET /api/banks/by-name/{name}\n\nRetrieves a bank by its name.\n\n### Path Parameters\n\n*   `name` (string, required): The name of the bank to retrieve.\n\n### Responses\n\n*   `200 OK`: Returns the bank details.\n*   `404 Not Found`: Bank not found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -484,6 +446,7 @@
                 },
                 {
                     "name": "Create Bank",
+                    "description": "## POST /api/banks\n\nCreates a new bank.\n\n### Request Body: `BankReqDto`\n\n*   `name` (string, required): The name of the bank.\n\n### Responses\n\n*   `201 Created`: Bank created successfully.\n*   `400 Bad Request`: Invalid request.",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -511,6 +474,7 @@
                 },
                 {
                     "name": "Update Bank",
+                    "description": "## PUT /api/banks/{id}\n\nUpdates an existing bank.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the bank to update.\n\n### Request Body: `BankEditDto`\n\n*   `name` (string, required): The new name of the bank.\n\n### Responses\n\n*   `200 OK`: Bank updated successfully.\n*   `400 Bad Request`: Invalid request.\n*   `404 Not Found`: Bank not found.",
                     "request": {
                         "method": "PUT",
                         "header": [],
@@ -539,6 +503,7 @@
                 },
                 {
                     "name": "Delete Bank",
+                    "description": "## DELETE /api/banks/{id}\n\nDeletes a bank by its ID.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the bank to delete.\n\n### Responses\n\n*   `200 OK`: Bank deleted successfully.\n*   `404 Not Found`: Bank not found.",
                     "request": {
                         "method": "DELETE",
                         "header": [],
@@ -558,6 +523,7 @@
                 },
                 {
                     "name": "Set Bank Active Status",
+                    "description": "## PUT /api/banks/{id}/active\n\nSets the active status of a bank.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the bank to update.\n\n### Query Parameters\n\n*   `isActive` (boolean, required): The new active status.\n\n### Responses\n\n*   `200 OK`: Bank active status changed.\n*   `404 Not Found`: Bank not found.",
                     "request": {
                         "method": "PUT",
                         "header": [],
@@ -590,6 +556,7 @@
             "item": [
                 {
                     "name": "Get All Checking Accounts",
+                    "description": "## GET /api/checking-accounts\n\nRetrieves a paginated list of checking accounts.\n\n### Query Parameters\n\n*   `pageNumber` (integer, optional, default: 1): The page number to retrieve.\n*   `pageSize` (integer, optional, default: 10): The number of items per page.\n\n### Responses\n\n*   `200 OK`: Returns a page of checking accounts.\n*   `400 Bad Request`: Invalid paging parameters.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -608,6 +575,7 @@
                 },
                 {
                     "name": "Create Checking Account",
+                    "description": "## POST /api/checking-accounts\n\nCreates a new checking account.\n\n### Request Body: `CheckingAccountReqDto`\n\n*   `userId` (string, required): The ID of the user who will own the account.\n*   `currencyId` (integer, required): The currency ID for the account.\n*   `initialBalance` (number, optional): The initial balance of the account.\n*   `overdraftLimit` (number, optional): The overdraft limit for the account.\n\n### Responses\n\n*   `201 Created`: Account created.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.\n*   `409 Conflict`: Conflict.",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -635,6 +603,7 @@
                 },
                 {
                     "name": "Update Checking Account",
+                    "description": "## PUT /api/checking-accounts/{id}\n\nUpdates an existing checking account.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the checking account to update.\n\n### Request Body: `CheckingAccountEditDto`\n\n*   `userId` (string, required): The ID of the user who owns the account.\n*   `currencyId` (integer, required): The currency ID for the account.\n*   `overdraftLimit` (number, optional): The new overdraft limit.\n\n### Responses\n\n*   `200 OK`: Account updated.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.\n*   `404 Not Found`: Account not found.",
                     "request": {
                         "method": "PUT",
                         "header": [],
@@ -663,6 +632,7 @@
                 },
                 {
                     "name": "Set Checking Account Active Status",
+                    "description": "## PUT /api/checking-accounts/{id}/active\n\nSets the active status of a checking account.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the account to update.\n\n### Query Parameters\n\n*   `isActive` (boolean, required): The new active status.\n\n### Responses\n\n*   `200 OK`: Account active status changed.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "PUT",
                         "header": [],
@@ -695,6 +665,7 @@
             "item": [
                 {
                     "name": "Get All Currencies",
+                    "description": "## GET /api/currency\n\nRetrieves all currencies.\n\n### Responses\n\n*   `200 OK`: Returns a list of currencies.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: No currencies found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -713,6 +684,7 @@
                 },
                 {
                     "name": "Get Currency By Id",
+                    "description": "## GET /api/currency/{id}\n\nRetrieves a currency by its ID.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the currency to retrieve.\n\n### Responses\n\n*   `200 OK`: Returns the currency details.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: Currency not found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -732,6 +704,7 @@
                 },
                 {
                     "name": "Create Currency",
+                    "description": "## POST /api/currency\n\nCreates a new currency.\n\n### Request Body: `CurrencyReqDto`\n\n*   `code` (string, required): The currency code (e.g., USD).\n*   `isBase` (boolean, optional): Whether this is the base currency.\n*   `exchangeRate` (number, optional): The exchange rate relative to the base currency.\n\n### Responses\n\n*   `201 Created`: Currency created successfully.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -759,6 +732,7 @@
                 },
                 {
                     "name": "Update Currency",
+                    "description": "## PUT /api/currency/{id}\n\nUpdates an existing currency.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the currency to update.\n\n### Request Body: `CurrencyReqDto`\n\n*   `code` (string, required): The currency code (e.g., USD).\n*   `isBase` (boolean, optional): Whether this is the base currency.\n*   `exchangeRate` (number, optional): The exchange rate relative to the base currency.\n\n### Responses\n\n*   `200 OK`: Currency updated successfully.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "PUT",
                         "header": [],
@@ -787,6 +761,7 @@
                 },
                 {
                     "name": "Delete Currency",
+                    "description": "## DELETE /api/currency/{id}\n\nDeletes a currency by its ID.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the currency to delete.\n\n### Responses\n\n*   `204 No Content`: Currency deleted successfully.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "DELETE",
                         "header": [],
@@ -806,6 +781,7 @@
                 },
                 {
                     "name": "Set Currency Active Status",
+                    "description": "## PUT /api/currency/{id}/active\n\nSets the active status of a currency.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the currency to update.\n\n### Query Parameters\n\n*   `isActive` (boolean, required): The new active status.\n\n### Responses\n\n*   `200 OK`: Currency active status changed.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "PUT",
                         "header": [],
@@ -838,6 +814,7 @@
             "item": [
                 {
                     "name": "Assign Claims to Role",
+                    "description": "## POST /api/roleclaims/Assign\n\nUpdates the claims for a role.\n\n### Request Body: `UpdateRoleClaimsDto`\n\n*   `roleName` (string, required): The name of the role to update.\n*   `claims` (array of strings, required): The list of claims to assign to the role.\n\n### Responses\n\n*   `200 OK`: Role claims updated successfully.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -866,6 +843,7 @@
                 },
                 {
                     "name": "Get All Claims",
+                    "description": "## GET /api/roleclaims/GetAllClaims\n\nRetrieves all available claims, grouped by category.\n\n### Responses\n\n*   `200 OK`: Returns a list of all claims.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -891,6 +869,7 @@
             "item": [
                 {
                     "name": "Get All Roles",
+                    "description": "## GET /api/roles/GetAllRoles\n\nRetrieves all roles.\n\n### Responses\n\n*   `200 OK`: Returns a list of roles.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.\n*   `404 Not Found`: No roles found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -910,6 +889,7 @@
                 },
                 {
                     "name": "Create Role",
+                    "description": "## POST /api/roles/CreateRole\n\nCreates a new role.\n\n### Request Body: `RoleReqDto`\n\n*   `name` (string, required): The name of the role.\n*   `parentRoleNames` (array of strings, optional): A list of parent role names.\n\n### Responses\n\n*   `200 OK`: Role created successfully.\n*   `400 Bad Request`: Invalid role data.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -938,6 +918,7 @@
                 },
                 {
                     "name": "Delete Role",
+                    "description": "## DELETE /api/roles/DeleteRole/{roleId}\n\nDeletes a role by its ID.\n\n### Path Parameters\n\n*   `roleId` (string, required): The ID of the role to delete.\n\n### Responses\n\n*   `200 OK`: Role deleted successfully.\n*   `400 Bad Request`: Invalid role ID.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.\n*   `404 Not Found`: Role not found.",
                     "request": {
                         "method": "DELETE",
                         "header": [],
@@ -964,6 +945,7 @@
             "item": [
                 {
                     "name": "Get All Savings Accounts",
+                    "description": "## GET /api/savings-accounts\n\nRetrieves a paginated list of savings accounts.\n\n### Query Parameters\n\n*   `pageNumber` (integer, optional, default: 1): The page number to retrieve.\n*   `pageSize` (integer, optional, default: 10): The number of items per page.\n\n### Responses\n\n*   `200 OK`: Returns a page of savings accounts.\n*   `400 Bad Request`: Invalid paging parameters.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -982,6 +964,7 @@
                 },
                 {
                     "name": "Create Savings Account",
+                    "description": "## POST /api/savings-accounts\n\nCreates a new savings account.\n\n### Request Body: `SavingsAccountReqDto`\n\n*   `userId` (string, required): The ID of the user who will own the account.\n*   `currencyId` (integer, required): The currency ID for the account.\n*   `initialBalance` (number, optional): The initial balance of the account.\n*   `interestRate` (number, optional): The interest rate for the account.\n*   `interestType` (InterestType, optional): The type of interest calculation.\n\n### Responses\n\n*   `201 Created`: Account created.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.\n*   `409 Conflict`: Conflict.",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -1009,6 +992,7 @@
                 },
                 {
                     "name": "Update Savings Account",
+                    "description": "## PUT /api/savings-accounts/{id}\n\nUpdates an existing savings account.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the savings account to update.\n\n### Request Body: `SavingsAccountEditDto`\n\n*   `userId` (string, required): The ID of the user who owns the account.\n*   `currencyId` (integer, required): The currency ID for the account.\n*   `interestRate` (number, optional): The new interest rate.\n*   `interestType` (InterestType, optional): The new type of interest calculation.\n\n### Responses\n\n*   `200 OK`: Account updated.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.\n*   `404 Not Found`: Account not found.",
                     "request": {
                         "method": "PUT",
                         "header": [],
@@ -1037,6 +1021,7 @@
                 },
                 {
                     "name": "Set Savings Account Active Status",
+                    "description": "## PUT /api/savings-accounts/{id}/active\n\nSets the active status of a savings account.\n\n### Path Parameters\n\n*   `id` (integer, required): The ID of the account to update.\n\n### Query Parameters\n\n*   `isActive` (boolean, required): The new active status.\n\n### Responses\n\n*   `200 OK`: Account active status changed.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "PUT",
                         "header": [],
@@ -1063,6 +1048,7 @@
                 },
                 {
                     "name": "Get All Interest Logs",
+                    "description": "## GET /api/savings-accounts/interest-logs\n\nRetrieves all interest logs with pagination.\n\n### Query Parameters\n\n*   `pageNumber` (integer, optional, default: 1): The page number to retrieve.\n*   `pageSize` (integer, optional, default: 10): The number of items per page.\n\n### Responses\n\n*   `200 OK`: Returns a list of interest logs.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -1082,6 +1068,7 @@
                 },
                 {
                     "name": "Get Interest Logs By Account Id",
+                    "description": "## GET /api/savings-accounts/{accountId}/interest-logs\n\nRetrieves all interest logs for a specific account with pagination.\n\n### Path Parameters\n\n*   `accountId` (integer, required): The ID of the account.\n\n### Query Parameters\n\n*   `pageNumber` (integer, optional, default: 1): The page number to retrieve.\n*   `pageSize` (integer, optional, default: 10): The number of items per page.\n\n### Responses\n\n*   `200 OK`: Returns a list of interest logs for the account.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -1108,6 +1095,7 @@
             "item": [
                 {
                     "name": "Get Transaction History",
+                    "description": "## GET /api/transactions/{accountId}/history\n\nRetrieves the transaction history for an account.\n\n### Path Parameters\n\n*   `accountId` (integer, required): The ID of the account.\n\n### Query Parameters\n\n*   `pageNumber` (integer, optional, default: 1): The page number to retrieve.\n*   `pageSize` (integer, optional, default: 20): The number of items per page.\n\n### Responses\n\n*   `200 OK`: Returns the transaction history.\n*   `400 Bad Request`: Invalid account ID.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: Account not found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -1128,6 +1116,7 @@
                 },
                 {
                     "name": "Get Transaction By Id",
+                    "description": "## GET /api/transactions/{transactionId}\n\nRetrieves a transaction by its ID.\n\n### Path Parameters\n\n*   `transactionId` (integer, required): The ID of the transaction to retrieve.\n\n### Responses\n\n*   `200 OK`: Returns the transaction details.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: Transaction not found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -1147,6 +1136,7 @@
                 },
                 {
                     "name": "Get All Transactions",
+                    "description": "## GET /api/transactions\n\nRetrieves a paginated list of all transactions.\n\n### Query Parameters\n\n*   `pageNumber` (integer, optional, default: 1): The page number to retrieve.\n*   `pageSize` (integer, optional, default: 10): The number of items per page.\n\n### Responses\n\n*   `200 OK`: Returns a list of all transactions.\n*   `400 Bad Request`: Invalid paging parameters.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -1171,6 +1161,7 @@
             "item": [
                 {
                     "name": "Get All Users",
+                    "description": "## GET /api/users\n\nRetrieves a paginated list of users.\n\n### Query Parameters\n\n*   `pageNumber` (integer, optional, default: 1): The page number to retrieve.\n*   `pageSize` (integer, optional, default: 10): The number of items per page.\n\n### Responses\n\n*   `200 OK`: Returns a list of users.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: No users found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -1189,6 +1180,7 @@
                 },
                 {
                     "name": "Get Users By Bank Id",
+                    "description": "## GET /api/users/by-bank/{bankId}\n\nRetrieves users associated with a specific bank.\n\n### Path Parameters\n\n*   `bankId` (integer, required): The ID of the bank.\n\n### Responses\n\n*   `200 OK`: Returns a list of users.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: No users found for the specified bank.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -1209,6 +1201,7 @@
                 },
                 {
                     "name": "Get Users By Bank Name",
+                    "description": "## GET /api/users/by-bank-name/{bankName}\n\nRetrieves users associated with a specific bank by name.\n\n### Path Parameters\n\n*   `bankName` (string, required): The name of the bank.\n\n### Responses\n\n*   `200 OK`: Returns a list of users.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: No users found for the specified bank name.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -1229,6 +1222,7 @@
                 },
                 {
                     "name": "Get User By Username",
+                    "description": "## GET /api/users/by-username/{username}\n\nRetrieves a user by their username.\n\n### Path Parameters\n\n*   `username` (string, required): The username of the user to retrieve.\n\n### Responses\n\n*   `200 OK`: Returns the user details.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: User not found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -1249,6 +1243,7 @@
                 },
                 {
                     "name": "Get User By Id",
+                    "description": "## GET /api/users/{userId}\n\nRetrieves a user by their ID.\n\n### Path Parameters\n\n*   `userId` (string, required): The ID of the user to retrieve.\n\n### Responses\n\n*   `200 OK`: Returns the user details.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: User not found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -1268,7 +1263,7 @@
                 },
                 {
                     "name": "Create User",
-                    "description": "This endpoint creates a new user. The `role` and `bankId` fields are optional. If a role is not provided, the user will be assigned the default 'Client' role. If a bankId is not provided, the user will not be associated with any bank.",
+                    "description": "## POST /api/users\n\nCreates a new user.\n\n### Request Body: `UserReqDto`\n\n*   `email` (string, required): The user\'s email address.\n*   `username` (string, required): The user\'s username.\n*   `fullName` (string, required): The user\'s full name.\n*   `nationalId` (string, required): The user\'s national ID.\n*   `phoneNumber` (string, required): The user\'s phone number.\n*   `dateOfBirth` (string, required): The user\'s date of birth.\n*   `role` (string, optional): The user\'s role.\n*   `bankId` (integer, optional): The ID of the bank to associate the user with.\n*   `password` (string, required): The user\'s password.\n*   `passwordConfirm` (string, required): The password confirmation.\n\n### Responses\n\n*   `201 Created`: User created successfully.\n*   `400 Bad Request`: Invalid user data.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "POST",
                         "header": [],
@@ -1296,6 +1291,7 @@
                 },
                 {
                     "name": "Update User",
+                    "description": "## PUT /api/users/{userId}\n\nUpdates an existing user.\n\n### Path Parameters\n\n*   `userId` (string, required): The ID of the user to update.\n\n### Request Body: `UserEditDto`\n\n*   `email` (string, required): The user\'s email address.\n*   `username` (string, required): The user\'s username.\n*   `fullName` (string, required): The user\'s full name.\n*   `nationalId` (string, required): The user\'s national ID.\n*   `phoneNumber` (string, required): The user\'s phone number.\n*   `dateOfBirth` (string, required): The user\'s date of birth.\n\n### Responses\n\n*   `200 OK`: User updated successfully.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "PUT",
                         "header": [],
@@ -1324,6 +1320,7 @@
                 },
                 {
                     "name": "Change User Password",
+                    "description": "## PUT /api/users/{userId}/password\n\nChanges a user\'s password.\n\n### Path Parameters\n\n*   `userId` (string, required): The ID of the user.\n\n### Request Body: `ChangePasswordReqDto`\n\n*   `currentPassword` (string, optional): The user\'s current password.\n*   `newPassword` (string, required): The new password.\n*   `confirmNewPassword` (string, required): The new password confirmation.\n\n### Responses\n\n*   `200 OK`: Password changed successfully.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "PUT",
                         "header": [],
@@ -1353,6 +1350,7 @@
                 },
                 {
                     "name": "Delete User",
+                    "description": "## DELETE /api/users/{userId}\n\nDeletes a user by their ID.\n\n### Path Parameters\n\n*   `userId` (string, required): The ID of the user to delete.\n\n### Responses\n\n*   `200 OK`: User deleted successfully.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "DELETE",
                         "header": [],
@@ -1372,6 +1370,7 @@
                 },
                 {
                     "name": "Delete Range Of Users",
+                    "description": "## DELETE /api/users/bulk\n\nDeletes a range of users.\n\n### Request Body: `IEnumerable<string>`\n\nA JSON array of user IDs to delete.\n\n### Responses\n\n*   `200 OK`: Users deleted successfully.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "DELETE",
                         "header": [],
@@ -1400,6 +1399,7 @@
                 },
                 {
                     "name": "Get My Info",
+                    "description": "## GET /api/users/me\n\nRetrieves the information of the currently authenticated user.\n\n### Responses\n\n*   `200 OK`: Returns the current user\'s info.\n*   `401 Unauthorized`: Unauthorized.\n*   `404 Not Found`: User not found.",
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -1419,6 +1419,7 @@
                 },
                 {
                     "name": "Set User Active Status",
+                    "description": "## PUT /api/users/{userId}/active\n\nSets the active status of a user.\n\n### Path Parameters\n\n*   `userId` (string, required): The ID of the user to update.\n\n### Query Parameters\n\n*   `isActive` (boolean, required): The new active status.\n\n### Responses\n\n*   `200 OK`: User active status changed.\n*   `400 Bad Request`: Invalid request.\n*   `401 Unauthorized`: Unauthorized.",
                     "request": {
                         "method": "PUT",
                         "header": [],
@@ -1451,6 +1452,7 @@
             "item": [
                 {
                     "name": "Assign Roles to User",
+                    "description": "## POST /api/userroles/Assign\n\nAssigns roles to a user.\n\n### Request Body: `UpdateUserRolesDto`\n\n*   `userId` (string, required): The ID of the user.\n*   `role` (string, required): The role to assign.\n\n### Responses\n\n*   `200 OK`: Roles assigned successfully.\n*   `400 Bad Request`: Invalid request data.\n*   `401 Unauthorized`: Unauthorized.\n*   `403 Forbidden`: Forbidden.",
                     "request": {
                         "method": "POST",
                         "header": [],

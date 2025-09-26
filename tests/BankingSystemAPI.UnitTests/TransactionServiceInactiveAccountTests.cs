@@ -44,14 +44,19 @@ namespace BankingSystemAPI.UnitTests
 
             _currentUserMock = new Mock<ICurrentUserService>();
 
-            var currencyRepo = new CurrencyRepository(_context);
+            var memoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+            var cacheService = new BankingSystemAPI.Infrastructure.Services.MemoryCacheService(memoryCache);
+
+            var userRepo = new UserRepository(_context);
+            var roleRepo = new RoleRepository(_context, cacheService);
+            var currencyRepo = new CurrencyRepository(_context, cacheService);
             var accountRepo = new AccountRepository(_context);
             var transactionRepo = new TransactionRepository(_context);
             var accountTxRepo = new AccountTransactionRepository(_context);
             var interestLogRepo = new InterestLogRepository(_context);
             var bankRepo = new BankRepository(_context);
 
-            _uow = new UnitOfWork(accountRepo, transactionRepo, accountTxRepo, interestLogRepo, currencyRepo, bankRepo, _context);
+            _uow = new UnitOfWork(userRepo, roleRepo, accountRepo, transactionRepo, accountTxRepo, interestLogRepo, currencyRepo, bankRepo, _context);
 
             var mapperMock = new Mock<IMapper>();
             mapperMock.Setup(m => m.Map<TransactionResDto>(It.IsAny<Transaction>())).Returns(new TransactionResDto { TransactionId = 1 });
@@ -59,7 +64,7 @@ namespace BankingSystemAPI.UnitTests
 
             _helperMock = new Mock<ITransactionHelperService>();
 
-            _service = new TransactionService(_uow, _mapper, _helperMock.Object, _userManager, _currentUserMock.Object, new NullLogger<TransactionService>());
+            _service = new TransactionService(_uow, _mapper, _helperMock.Object, _userManager, _currentUserMock.Object, null, null, new NullLogger<TransactionService>());
         }
 
         [Fact]

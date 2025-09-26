@@ -30,27 +30,5 @@ namespace BankingSystemAPI.Application.DTOs.Transactions
         /// </summary>
         [Range(0.01, double.MaxValue)]
         public decimal Amount { get; set; }
-
-        /*
-         * Compatibility proxy properties:
-         * Some clients may send JSON using `fromAccountId` / `toAccountId` keys.
-         * Add properties decorated with `JsonPropertyName` that delegate to the
-         * canonical `SourceAccountId` / `TargetAccountId` so both naming styles
-         * are accepted by model binding.
-         */
-
-        [JsonPropertyName("fromAccountId")]
-        public int FromAccountId
-        {
-            get => SourceAccountId;
-            set => SourceAccountId = value;
-        }
-
-        [JsonPropertyName("toAccountId")]
-        public int ToAccountId
-        {
-            get => TargetAccountId;
-            set => TargetAccountId = value;
-        }
     }
 }

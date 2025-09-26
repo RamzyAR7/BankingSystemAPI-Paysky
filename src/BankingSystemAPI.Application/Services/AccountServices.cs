@@ -13,6 +13,7 @@ using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
 
 namespace BankingSystemAPI.Application.Services
 {
@@ -37,8 +38,8 @@ namespace BankingSystemAPI.Application.Services
             if (id <= 0)
                 throw new BadRequestException("Invalid account id.");
 
-            // include InterestLogs so Savings will have its logs loaded
-            var account = await _unitOfWork.AccountRepository.FindAsync(a => a.Id == id, new[] { "InterestLogs", "User", "Currency" });
+            // include InterestLogs (for savings), User and Currency using include builder to avoid expression-on-derived-type issues
+            var account = await _unitOfWork.AccountRepository.FindWithIncludeBuilderAsync(a => a.Id == id, q => q.Include("InterestLogs").Include(a => a.User).Include(a => a.Currency));
             if (account == null)
                 throw new NotFoundException($"Account with ID '{id}' not found.");
 
@@ -53,7 +54,7 @@ namespace BankingSystemAPI.Application.Services
             if (string.IsNullOrWhiteSpace(accountNumber))
                 throw new BadRequestException("Account number is required.");
 
-            var account = await _unitOfWork.AccountRepository.FindAsync(a => a.AccountNumber == accountNumber, new[] { "InterestLogs", "User", "Currency" });
+            var account = await _unitOfWork.AccountRepository.FindWithIncludeBuilderAsync(a => a.AccountNumber == accountNumber, q => q.Include("InterestLogs").Include(a => a.User).Include(a => a.Currency));
             if (account == null)
                 throw new NotFoundException($"Account with number '{accountNumber}' not found.");
 
@@ -68,13 +69,20 @@ namespace BankingSystemAPI.Application.Services
             if (string.IsNullOrWhiteSpace(userId))
                 throw new BadRequestException("User id is required.");
 
-            // include InterestLogs for savings accounts
-            var accounts = await _unitOfWork.AccountRepository.FindAllAsync(a => a.UserId == userId, new[] { "InterestLogs", "Currency" });
+            // Get repository-level query (includes handled in infra)
+            var query = _unitOfWork.AccountRepository.QueryByUserId(userId);
 
+            IEnumerable<Account> accounts;
             if (_accountAuth != null)
             {
-                var filtered = await _accountAuth.FilterAccountsAsync(accounts);
-                accounts = filtered.ToList();
+                var filteredQuery = await _accountAuth.FilterAccountsQueryAsync(query);
+                var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(filteredQuery, 1, int.MaxValue);
+                accounts = result.Accounts;
+            }
+            else
+            {
+                var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(query, 1, int.MaxValue);
+                accounts = result.Accounts;
             }
 
             return _mapper.Map<IEnumerable<AccountDto>>(accounts);
@@ -85,14 +93,21 @@ namespace BankingSystemAPI.Application.Services
             if (string.IsNullOrWhiteSpace(nationalId))
                 throw new BadRequestException("National id is required.");
 
-            var accounts = await _unitOfWork.AccountRepository.FindAllAsync(a => a.User.NationalId == nationalId, new[] { "User", "InterestLogs", "Currency" });
+            var query = _unitOfWork.AccountRepository.QueryByNationalId(nationalId);
 
+            IEnumerable<Account> accounts;
             if (_accountAuth != null)
             {
-                var filtered = await _accountAuth.FilterAccountsAsync(accounts);
-                accounts = filtered.ToList();
+                var filteredQuery = await _accountAuth.FilterAccountsQueryAsync(query);
+                var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(filteredQuery, 1, int.MaxValue);
+                accounts = result.Accounts;
             }
-            
+            else
+            {
+                var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(query, 1, int.MaxValue);
+                accounts = result.Accounts;
+            }
+
             return _mapper.Map<IEnumerable<AccountDto>>(accounts);
         }
 
@@ -120,7 +135,7 @@ namespace BankingSystemAPI.Application.Services
                 throw new BadRequestException("At least one account id must be provided.");
 
             var distinctIds = ids.Distinct().ToList();
-            var accountsToDelete = await _unitOfWork.AccountRepository.FindAllAsync(a => distinctIds.Contains(a.Id), (string[])null);
+            var accountsToDelete = await _unitOfWork.AccountRepository.FindAllWithIncludesAsync(a => distinctIds.Contains(a.Id), (Expression<Func<Account, object>>[])null);
             if (accountsToDelete.Count() != distinctIds.Count())
                 throw new NotFoundException("One or more specified accounts could not be found.");
             if (accountsToDelete.Any(a => a.Balance > 0))
@@ -131,10 +146,11 @@ namespace BankingSystemAPI.Application.Services
                 if (_accountAuth != null)
                     await _accountAuth.CanModifyAccountAsync(acc.Id, AccountModificationOperation.Delete);
             }
-            
+
             await _unitOfWork.AccountRepository.DeleteRangeAsync(accountsToDelete);
             await _unitOfWork.SaveAsync();
         }
+
 
         public async Task SetAccountActiveStatusAsync(int accountId, bool isActive)
         {

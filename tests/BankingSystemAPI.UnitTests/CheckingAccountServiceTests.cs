@@ -55,18 +55,25 @@ namespace BankingSystemAPI.UnitTests
 
             _currentUserMock = new Mock<ICurrentUserService>();
 
-            var currencyRepo = new CurrencyRepository(_context);
+            // create cache service and repositories with explicit DI
+            var memoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+            var cacheService = new BankingSystemAPI.Infrastructure.Services.MemoryCacheService(memoryCache);
+
+            var userRepo = new UserRepository(_context);
+            var roleRepo = new RoleRepository(_context, cacheService);
+            var currencyRepo = new CurrencyRepository(_context, cacheService);
             var accountRepo = new AccountRepository(_context);
             var transactionRepo = new TransactionRepository(_context);
             var accountTxRepo = new AccountTransactionRepository(_context);
             var interestLogRepo = new InterestLogRepository(_context);
             var bankRepo = new BankRepository(_context);
-            _uow = new UnitOfWork(accountRepo, transactionRepo, accountTxRepo, interestLogRepo, currencyRepo, bankRepo, _context);
+
+            _uow = new UnitOfWork(userRepo, roleRepo, accountRepo, transactionRepo, accountTxRepo, interestLogRepo, currencyRepo, bankRepo, _context);
 
             var mapperMock = new Mock<IMapper>();
             mapperMock.Setup(m => m.Map<CheckingAccountDto>(It.IsAny<CheckingAccount>()))
                 .Returns((CheckingAccount a) => new CheckingAccountDto { Id = a.Id, AccountNumber = a.AccountNumber, Balance = a.Balance, UserId = a.UserId, CurrencyCode = a.Currency?.Code ?? string.Empty });
-            mapperMock.Setup(m => m.Map<IEnumerable<CheckingAccountDto>>(It.IsAny<IEnumerable<CheckingAccount>>()))
+            mapperMock.Setup(m => m.Map<IEnumerable<CheckingAccountDto>>(It.IsAny<IEnumerable<CheckingAccount>>() ))
                 .Returns((IEnumerable<CheckingAccount> list) => list.Select(a => new CheckingAccountDto { Id = a.Id, AccountNumber = a.AccountNumber, Balance = a.Balance, UserId = a.UserId, CurrencyCode = a.Currency?.Code ?? string.Empty }));
             mapperMock.Setup(m => m.Map<CheckingAccount>(It.IsAny<CheckingAccountReqDto>()))
                 .Returns((CheckingAccountReqDto req) => new CheckingAccount { UserId = req.UserId, CurrencyId = req.CurrencyId, Balance = req.InitialBalance, RowVersion = new byte[8] });
@@ -76,7 +83,7 @@ namespace BankingSystemAPI.UnitTests
             _accountAuthMock = new Mock<IAccountAuthorizationService>();
             _accountAuthMock.Setup(a => a.CanViewAccountAsync(It.IsAny<int>())).Returns(Task.CompletedTask);
             _accountAuthMock.Setup(a => a.CanModifyAccountAsync(It.IsAny<int>(), It.IsAny<AccountModificationOperation>())).Returns(Task.CompletedTask);
-            _accountAuthMock.Setup(a => a.FilterAccountsAsync(It.IsAny<IEnumerable<Account>>())).ReturnsAsync((IEnumerable<Account> accs) => accs);
+            _accountAuthMock.Setup(a => a.FilterAccountsQueryAsync(It.IsAny<IQueryable<Account>>())).ReturnsAsync((IQueryable<Account> q) => q);
             _accountAuthMock.Setup(a => a.CanCreateAccountForUserAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
 
             _service = new CheckingAccountService(_uow, _mapper, _accountAuthMock.Object);

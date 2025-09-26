@@ -1,11 +1,11 @@
 ﻿using BankingSystemAPI.Application.Authorization.Helpers;
-using System.Linq.Expressions;
 using BankingSystemAPI.Application.Exceptions;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
+using System.Linq.Expressions;
 
 namespace BankingSystemAPI.Application.AuthorizationServices
 {
@@ -29,15 +29,21 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         {
             var scope = await _scopeResolver.GetScopeAsync();
 
-            var source = await _uow.AccountRepository.FindAsync(
-                a => a.Id == sourceAccountId,
-                new[] { "User" })
-                ?? throw new NotFoundException("Source account not found.");
+            // SuperAdmin / Global scope should be allowed without validating account existence
+            if (scope == AccessScope.Global)
+                return;
 
-            var target = await _uow.AccountRepository.FindAsync(
+            var source = await _uow.AccountRepository.FindWithIncludesAsync(
+                a => a.Id == sourceAccountId,
+                new Expression<Func<Account, object>>[] { a => a.User });
+
+            if (source == null) throw new NotFoundException("Source account not found.");
+
+            var target = await _uow.AccountRepository.FindWithIncludesAsync(
                 a => a.Id == targetAccountId,
-                new[] { "User" })
-                ?? throw new NotFoundException("Target account not found.");
+                new Expression<Func<Account, object>>[] { a => a.User });
+
+            if (target == null) throw new NotFoundException("Target account not found.");
 
             switch (scope)
             {
@@ -50,10 +56,12 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                     return;
 
                 case AccessScope.BankLevel:
-                    var actingUser = await _uow.UserRepository.FindAsync(
+                    var actingUser = await _uow.UserRepository.FindWithIncludesAsync(
                         u => u.Id == _currentUser.UserId,
-                        new[] { "Bank" })
-                        ?? throw new ForbiddenException("Acting user not found.");
+                        new Expression<Func<ApplicationUser, object>>[] { u => u.Bank });
+
+                    if (actingUser == null)
+                        throw new ForbiddenException("Acting user not found.");
 
                     var sourceOwnerRole = await _uow.RoleRepository.GetRoleByUserIdAsync(source.UserId);
                     if (!RoleHelper.IsClient(sourceOwnerRole?.Name))
@@ -64,81 +72,39 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             }
         }
 
-        public async Task<IEnumerable<Transaction>> FilterTransactionsAsync(IEnumerable<Transaction> transactions)
+        public async Task<(IEnumerable<Transaction> Transactions, int TotalCount)> FilterTransactionsAsync(IQueryable<Transaction> query, int pageNumber = 1, int pageSize = 10)
         {
-            if (transactions == null) return Enumerable.Empty<Transaction>();
-
             var scope = await _scopeResolver.GetScopeAsync();
-            if (scope == AccessScope.Global) return transactions;
-
-            var trxList = transactions.ToList();
-
-            // collect account ids
-            var accountIds = trxList
-                .Where(t => t?.AccountTransactions != null)
-                .SelectMany(t => t.AccountTransactions)
-                .Select(at => at.AccountId)
-                .Distinct()
-                .ToList();
-
-            // batch load accounts + user
-            var accounts = await _uow.AccountRepository.FindAllWithIncludesAsync(
-                a => accountIds.Contains(a.Id),
-                new Expression<Func<Account, object>>[] { a => a.User });
-
-            var accountsById = accounts.ToDictionary(a => a.Id, a => a);
-
-            // batch load roles
-            var userIds = accountsById.Values
-                .Select(a => a.UserId)
-                .Where(id => !string.IsNullOrWhiteSpace(id))
-                .Distinct()
-                .ToList();
-
-            var rolesByUser = await _uow.RoleRepository.GetRolesByUserIdsAsync(userIds);
-
-            if (scope == AccessScope.Self)
+            switch (scope)
             {
-                return trxList.Where(trx =>
-                    trx?.AccountTransactions?.Any(at =>
-                        accountsById.TryGetValue(at.AccountId, out var acc) &&
-                        acc.UserId == _currentUser.UserId) ?? false);
-            }
-
-            if (scope == AccessScope.BankLevel)
-            {
-                var actingUser = await _uow.UserRepository.FindWithIncludesAsync(
-                    u => u.Id == _currentUser.UserId,
-                    new Expression<Func<ApplicationUser, object>>[] { u => u.Bank });
-
-                if (actingUser == null) return Enumerable.Empty<Transaction>();
-
-                var result = new List<Transaction>();
-
-                foreach (var trx in trxList)
-                {
-                    if (trx?.AccountTransactions == null) continue;
-
-                    foreach (var at in trx.AccountTransactions)
+                case AccessScope.Global:
+                    query = query.OrderBy(t => t.Id);
                     {
-                        if (!accountsById.TryGetValue(at.AccountId, out var acc)) continue;
-                        if (acc?.User == null) continue;
-
-                        if (rolesByUser.TryGetValue(acc.UserId, out var ownerRoleName))
-                        {
-                            if (RoleHelper.IsClient(ownerRoleName) && acc.User.BankId == actingUser.BankId)
-                            {
-                                result.Add(trx);
-                                break;
-                            }
-                        }
+                        var res = await _uow.TransactionRepository.GetPagedAsync(query, pageNumber, pageSize);
+                        return (res.Items, res.TotalCount);
                     }
-                }
-
-                return result;
+                case AccessScope.Self:
+                    var userId = _currentUser.UserId;
+                    query = query.Where(t => t.AccountTransactions.Any(at => at.Account.UserId == userId)).OrderBy(t => t.Id);
+                    {
+                        var res = await _uow.TransactionRepository.GetPagedAsync(query, pageNumber, pageSize);
+                        return (res.Items, res.TotalCount);
+                    }
+                case AccessScope.BankLevel:
+                    var actingUser = await _uow.UserRepository.FindWithIncludesAsync(
+                        u => u.Id == _currentUser.UserId,
+                        new Expression<Func<ApplicationUser, object>>[] { u => u.Bank });
+                    if (actingUser == null)
+                        return (Enumerable.Empty<Transaction>(), 0);
+                    var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery(UserRole.Client.ToString());
+                    query = query.Where(t => t.AccountTransactions.Any(at => clientUserIds.Contains(at.Account.UserId) && at.Account.User.BankId == actingUser.BankId)).OrderBy(t => t.Id);
+                    {
+                        var res = await _uow.TransactionRepository.GetPagedAsync(query, pageNumber, pageSize);
+                        return (res.Items, res.TotalCount);
+                    }
+                default:
+                    return (Enumerable.Empty<Transaction>(), 0);
             }
-
-            return Enumerable.Empty<Transaction>();
         }
     }
 }

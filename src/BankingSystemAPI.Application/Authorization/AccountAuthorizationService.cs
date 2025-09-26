@@ -66,12 +66,25 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 new Expression<Func<Account, object>>[] { a => a.User })
                 ?? throw new NotFoundException("Account not found.");
 
-            // Prevent self modification (even admins)
+            // Self-modification rules
             if (actingUser.Id == account.UserId)
             {
-                if (operation == AccountModificationOperation.Edit || operation == AccountModificationOperation.Delete)
-                    throw new ForbiddenException("Users cannot edit or delete their own accounts.");
-                return;
+                switch (operation)
+                {
+                    case AccountModificationOperation.Edit:
+                        throw new ForbiddenException("Users cannot edit their own accounts.");
+                    case AccountModificationOperation.Delete:
+                        throw new ForbiddenException("Users cannot delete their own accounts.");
+                    case AccountModificationOperation.Freeze:
+                    case AccountModificationOperation.Unfreeze:
+                        throw new ForbiddenException("Users cannot freeze or unfreeze their own accounts.");
+                    case AccountModificationOperation.Deposit:
+                    case AccountModificationOperation.Withdraw:
+                        // Allow deposit/withdraw on own account
+                        return;
+                    default:
+                        throw new ForbiddenException("Operation not permitted on own account.");
+                }
             }
 
             switch (scope)
@@ -92,58 +105,35 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             }
         }
 
-        public async Task<IEnumerable<Account>> FilterAccountsAsync(IEnumerable<Account> accounts)
+        public async Task<(IEnumerable<Account> Accounts, int TotalCount)> FilterAccountsAsync(
+            IQueryable<Account> query,
+            int pageNumber = 1,
+            int pageSize = 10)
         {
-            if (accounts == null) return Enumerable.Empty<Account>();
-
             var role = await _currentUser.GetRoleFromStoreAsync();
-            if (RoleHelper.IsSuperAdmin(role.Name)) return accounts;
+            if (RoleHelper.IsSuperAdmin(role.Name))
+            {
+                query = query.OrderBy(a => a.Id);
+                return await _uow.AccountRepository.GetFilteredAccountsAsync(query, pageNumber, pageSize);
+            }
 
             if (RoleHelper.IsClient(role.Name))
-                return accounts.Where(a => a.UserId == _currentUser.UserId);
+            {
+                query = query.Where(a => a.UserId == _currentUser.UserId).OrderBy(a => a.Id);
+                return await _uow.AccountRepository.GetFilteredAccountsAsync(query, pageNumber, pageSize);
+            }
 
             var actingUser = await _uow.UserRepository.FindWithIncludesAsync(
                 u => u.Id == _currentUser.UserId,
-                new Expression<Func<ApplicationUser, object>>[] { u => u.Accounts, u => u.Bank }
-            );
-            if (actingUser == null) return Enumerable.Empty<Account>();
-
-            var acctList = accounts.ToList();
-
-            // 1- Collect userIds
-            var allUserIds = acctList
-                .Select(a => a.UserId)
-                .Where(id => !string.IsNullOrWhiteSpace(id))
-                .Distinct()
-                .ToList();
-
-            // 2️- Fetch users + banks
-            var fetchedUsers = await _uow.UserRepository.GetUsersByIdsAsync(
-                allUserIds,
                 new Expression<Func<ApplicationUser, object>>[] { u => u.Bank }
             );
-            var usersById = fetchedUsers.ToDictionary(u => u.Id, u => u);
+            if (actingUser == null)
+                return (Enumerable.Empty<Account>(), 0);
 
-            // 3️- Fetch all roles in batch
-            var rolesByUser = await _uow.RoleRepository.GetRolesByUserIdsAsync(allUserIds);
-
-            // 4️- Filter
-            var result = new List<Account>();
-            foreach (var a in acctList)
-            {
-                if (!usersById.TryGetValue(a.UserId, out var user))
-                    continue;
-
-                if (user.BankId != actingUser.BankId)
-                    continue;
-
-                if (rolesByUser.TryGetValue(user.Id, out var roleName) && RoleHelper.IsClient(roleName))
-                    result.Add(a);
-            }
-
-            return result;
+            var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery("Client"); // IQueryable<string> of userIds
+            query = query.Where(a => clientUserIds.Contains(a.UserId) && a.User.BankId == actingUser.BankId).OrderBy(a => a.Id);
+            return await _uow.AccountRepository.GetFilteredAccountsAsync(query, pageNumber, pageSize);
         }
-
 
         public async Task CanCreateAccountForUserAsync(string targetUserId)
         {
@@ -171,6 +161,27 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 throw new ForbiddenException("Can only create accounts for Client users.");
 
             BankGuard.EnsureSameBank(actingUser.BankId, targetUser.BankId);
+        }
+
+        public async Task<IQueryable<Account>> FilterAccountsQueryAsync(IQueryable<Account> query)
+        {
+            var role = await _currentUser.GetRoleFromStoreAsync();
+            if (RoleHelper.IsSuperAdmin(role.Name))
+                return query.OrderBy(a => a.Id);
+
+            if (RoleHelper.IsClient(role.Name))
+                return query.Where(a => a.UserId == _currentUser.UserId).OrderBy(a => a.Id);
+
+            var actingUser = await _uow.UserRepository.FindWithIncludesAsync(
+                u => u.Id == _currentUser.UserId,
+                new Expression<Func<ApplicationUser, object>>[] { u => u.Bank }
+            );
+            if (actingUser == null)
+                return Enumerable.Empty<Account>().AsQueryable();
+
+            var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery("Client"); // IQueryable<string> of userIds
+            query = query.Where(a => clientUserIds.Contains(a.UserId) && a.User.BankId == actingUser.BankId).OrderBy(a => a.Id);
+            return query;
         }
     }
 }

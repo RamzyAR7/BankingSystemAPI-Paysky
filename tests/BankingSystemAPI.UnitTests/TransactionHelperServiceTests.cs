@@ -9,6 +9,8 @@ using BankingSystemAPI.Infrastructure.UnitOfWork;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.DTOs.Currency;
 using BankingSystemAPI.Application.Exceptions;
+using Moq;
+using BankingSystemAPI.Domain.Entities;
 
 namespace BankingSystemAPI.UnitTests
 {
@@ -27,13 +29,19 @@ namespace BankingSystemAPI.UnitTests
             _context = new ApplicationDbContext(options);
             _context.Database.EnsureCreated();
 
-            var currencyRepo = new CurrencyRepository(_context);
+            var memoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+            var cacheService = new BankingSystemAPI.Infrastructure.Services.MemoryCacheService(memoryCache);
+
+            var userRepo = new UserRepository(_context);
+            var roleRepo = new RoleRepository(_context, cacheService);
             var accountRepo = new AccountRepository(_context);
             var transactionRepo = new TransactionRepository(_context);
             var accountTxRepo = new AccountTransactionRepository(_context);
             var interestLogRepo = new InterestLogRepository(_context);
+            var currencyRepo = new CurrencyRepository(_context, cacheService);
             var bankRepo = new BankRepository(_context);
-            _uow = new UnitOfWork(accountRepo, transactionRepo, accountTxRepo, interestLogRepo, currencyRepo, bankRepo, _context);
+
+            _uow = new UnitOfWork(userRepo, roleRepo, accountRepo, transactionRepo, accountTxRepo, interestLogRepo, currencyRepo, bankRepo, _context);
             _service = new TransactionHelperService(_uow);
 
             // seed currencies

@@ -221,7 +221,8 @@ namespace BankingSystemAPI.Infrastructure.Seeding
                         Permission.Currency.Create,
                         Permission.Currency.Update,
                         Permission.Currency.Delete,
-                        Permission.Currency.ReadAll
+                        Permission.Currency.ReadAll,
+                        Permission.Currency.ReadById
                     },
                     nameof(ControllerType.Transaction) => new[]
                     {

@@ -27,8 +27,8 @@ namespace BankingSystemAPI.UnitTests
             // Use concrete CheckingAccount for test
             var sourceAccount = new CheckingAccount { Id = 1, UserId = "user1", User = new ApplicationUser { Id = "user1" } };
             var targetAccount = new CheckingAccount { Id = 2, UserId = "user2", User = new ApplicationUser { Id = "user2" } };
-            accountRepoMock.Setup(r => r.FindAsync(It.IsAny<Expression<System.Func<Account, bool>>>(), It.IsAny<string[]>(), It.IsAny<bool>()))
-                .ReturnsAsync((Expression<System.Func<Account, bool>> predicate, string[] includes, bool asNoTracking) =>
+            accountRepoMock.Setup(r => r.FindAsync(It.IsAny<Expression<System.Func<Account, bool>>>(), It.IsAny<Expression<System.Func<Account, object>>[]>(), It.IsAny<bool>()))
+                .ReturnsAsync((Expression<System.Func<Account, bool>> predicate, Expression<System.Func<Account, object>>[] includes, bool asNoTracking) =>
                 {
                     if (predicate.Compile().Invoke(sourceAccount)) return sourceAccount;
                     if (predicate.Compile().Invoke(targetAccount)) return targetAccount;

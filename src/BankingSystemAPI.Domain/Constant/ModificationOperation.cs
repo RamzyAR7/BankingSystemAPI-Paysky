@@ -14,8 +14,11 @@ namespace BankingSystemAPI.Domain.Constant
     }
     public enum AccountModificationOperation
     {
+        Deposit,
+        Withdraw,
         Edit,
-        Delete
+        Delete,
+        Freeze,
+        Unfreeze
     }
-
 }
