@@ -35,16 +35,19 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             var curr = _compiledGetById(_context, id);
             if (curr != null)
             {
+                // lazy cache: only cache when read via GetByIdAsync
                 _cache.Set($"currency_id_{id}", curr, TimeSpan.FromHours(1));
             }
             return curr;
         }
+
         public override async Task<Currency> UpdateAsync(Currency Entity)
         {
             var result = await base.UpdateAsync(Entity);
 
-            if(result != null)
+            if (result != null)
             {
+                // evict id cache so next GetByIdAsync will refresh (lazy reload)
                 _cache.Remove($"currency_id_{result.Id}");
             }
             return result;

@@ -175,7 +175,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             return query;
         }
 
-        public async Task<T> GetAsync(ISpecification<T> spec)
+        public virtual async Task<T> GetAsync(ISpecification<T> spec)
         {
             var query = ApplySpecification(spec);
             return await query.FirstOrDefaultAsync();
