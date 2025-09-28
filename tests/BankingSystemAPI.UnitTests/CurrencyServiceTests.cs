@@ -81,6 +81,34 @@ namespace BankingSystemAPI.UnitTests
         }
 
         [Fact]
+        public async Task Create_MultipleBaseCurrencies_ThrowsBadRequest()
+        {
+            // create first base currency
+            var req1 = new CurrencyReqDto { Code = "USD", ExchangeRate = 1m, IsBase = true };
+            var created1 = await _service.CreateAsync(req1);
+
+            // attempt to create a second base currency
+            var req2 = new CurrencyReqDto { Code = "EUR", ExchangeRate = 0.9m, IsBase = true };
+            await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateAsync(req2));
+        }
+
+        [Fact]
+        public async Task Update_SetBase_WhenAnotherBaseExists_ThrowsBadRequest()
+        {
+            // create initial base currency
+            var baseReq = new CurrencyReqDto { Code = "USD", ExchangeRate = 1m, IsBase = true };
+            var baseCurr = await _service.CreateAsync(baseReq);
+
+            // create another non-base currency
+            var otherReq = new CurrencyReqDto { Code = "EUR", ExchangeRate = 0.9m, IsBase = false };
+            var other = await _service.CreateAsync(otherReq);
+
+            // attempt to set the other currency to base
+            var updateReq = new CurrencyReqDto { Code = "EUR", ExchangeRate = 0.9m, IsBase = true };
+            await Assert.ThrowsAsync<BadRequestException>(() => _service.UpdateAsync(other.Id, updateReq));
+        }
+
+        [Fact]
         public async Task GetAll_ReturnsCurrencies()
         {
             var req = new CurrencyReqDto { Code = "USD", ExchangeRate = 1m, IsBase = true };

@@ -12,6 +12,7 @@ using BankingSystemAPI.Application.Interfaces.Identity;
 using Microsoft.Extensions.Logging;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using System.Linq.Expressions;
+using BankingSystemAPI.Application.Specifications;
 
 namespace BankingSystemAPI.Application.Services
 {
@@ -386,75 +387,32 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<IEnumerable<TransactionResDto>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var query = _unitOfWork.TransactionRepository.QueryWithAccountTransactions().OrderBy(t => t.Id);
-
-            if (_transactionAuth != null)
-            {
-                var result = await _transactionAuth.FilterTransactionsAsync(query, pageNumber, pageSize);
-                var list = result.Transactions;
-                return _mapper.Map<IEnumerable<TransactionResDto>>(list);
-            }
-
-            // No authorization logic required, project to DTOs at DB level to avoid materializing entities
-            var total = await query.CountAsync();
-            if (pageNumber < 1) pageNumber = 1;
-            if (pageSize < 1) pageSize = 10;
             var skip = (pageNumber - 1) * pageSize;
-
-            var dtos = await query
-                .ProjectTo<TransactionResDto>(_mapper.ConfigurationProvider)
-                .Skip(skip)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return dtos;
+            var spec = new Specification<Transaction>(t => true)
+                .ApplyPaging(skip, pageSize)
+                .AddInclude(t => t.AccountTransactions);
+            var transactions = await _unitOfWork.TransactionRepository.ListAsync(spec);
+            return _mapper.Map<IEnumerable<TransactionResDto>>(transactions);
         }
 
         public async Task<IEnumerable<TransactionResDto>> GetByAccountIdAsync(int accountId, int pageNumber, int pageSize)
         {
             if (accountId <= 0) throw new BadRequestException("Invalid account id.");
-            var query = _unitOfWork.TransactionRepository.QueryByAccountId(accountId).OrderBy(t => t.Id);
-
-            if (_transactionAuth != null)
-            {
-                var result = await _transactionAuth.FilterTransactionsAsync(query, pageNumber, pageSize);
-                var list = result.Transactions;
-                return _mapper.Map<IEnumerable<TransactionResDto>>(list);
-            }
-
-            var total = await query.CountAsync();
-            if (pageNumber < 1) pageNumber = 1;
-            if (pageSize < 1) pageSize = 10;
             var skip = (pageNumber - 1) * pageSize;
-
-            var dtos = await query
-                .ProjectTo<TransactionResDto>(_mapper.ConfigurationProvider)
-                .Skip(skip)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return dtos;
+            var spec = new Specification<Transaction>(t => t.AccountTransactions.Any(at => at.AccountId == accountId))
+                .ApplyPaging(skip, pageSize)
+                .AddInclude(t => t.AccountTransactions);
+            var transactions = await _unitOfWork.TransactionRepository.ListAsync(spec);
+            return _mapper.Map<IEnumerable<TransactionResDto>>(transactions);
         }
 
         public async Task<TransactionResDto> GetByIdAsync(int transactionId)
         {
-            var query = _unitOfWork.TransactionRepository.QueryWithAccountTransactions().Where(t => t.Id == transactionId);
-
-            if (_transactionAuth != null)
-            {
-                var result = await _transactionAuth.FilterTransactionsAsync(query, 1, 1);
-                var trx = result.Transactions.FirstOrDefault();
-                if (trx == null)
-                    throw new ForbiddenException("Access to requested transaction is forbidden.");
-                return _mapper.Map<TransactionResDto>(trx);
-            }
-
-            var dto = await query
-                .ProjectTo<TransactionResDto>(_mapper.ConfigurationProvider)
-                .FirstOrDefaultAsync();
-
-            if (dto == null) throw new TransactionNotFoundException("Transaction not found.");
-            return dto;
+            var spec = new Specification<Transaction>(t => t.Id == transactionId)
+                .AddInclude(t => t.AccountTransactions);
+            var transaction = await _unitOfWork.TransactionRepository.GetAsync(spec);
+            if (transaction == null) throw new TransactionNotFoundException("Transaction not found.");
+            return _mapper.Map<TransactionResDto>(transaction);
         }
     }
 }

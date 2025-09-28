@@ -15,6 +15,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Linq.Expressions;
+using BankingSystemAPI.Application.Specifications;
 
 namespace BankingSystemAPI.Application.Services
 {
@@ -35,37 +36,12 @@ namespace BankingSystemAPI.Application.Services
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
-
-            // If no authorization filtering is needed, project at DB level to avoid materializing full entities
-            if (_accountAuth == null)
-            {
-                var skip = (pageNumber - 1) * pageSize;
-
-                var query = _unitOfWork.AccountRepository.Table
-                    .OfType<SavingsAccount>()
-                    .AsQueryable();
-
-                var dtos = await query
-                    .ProjectTo<SavingsAccountDto>(_mapper.ConfigurationProvider)
-                    .OrderBy(a => a.Id)
-                    .Skip(skip)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-                return dtos;
-            }
-
-            // Build base query and include currency when authorization filtering is required
-            var baseQuery = _unitOfWork.AccountRepository.Table
-                .Where(a => a is SavingsAccount)
-                .Include(a => a.Currency)
-                .AsQueryable();
-
-            var filteredQuery = await _accountAuth.FilterAccountsQueryAsync(baseQuery);
-            var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(filteredQuery, pageNumber, pageSize);
-            var accountsPage = result.Accounts;
-
-            var dtosMapped = _mapper.Map<IEnumerable<SavingsAccountDto>>(accountsPage.OfType<SavingsAccount>());
+            var skip = (pageNumber - 1) * pageSize;
+            var spec = new Specification<Account>(a => a is SavingsAccount)
+                .ApplyPaging(skip, pageSize)
+                .AddInclude(a => a.Currency);
+            var accounts = await _unitOfWork.AccountRepository.ListAsync(spec);
+            var dtosMapped = _mapper.Map<IEnumerable<SavingsAccountDto>>(accounts.OfType<SavingsAccount>());
             return dtosMapped;
         }
 
@@ -74,21 +50,18 @@ namespace BankingSystemAPI.Application.Services
             if (_accountAuth != null)
                 await _accountAuth.CanCreateAccountForUserAsync(reqDto.UserId);
 
-            // Validate currency exists
             var currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(reqDto.CurrencyId);
             if (currency == null)
                 throw new CurrencyNotFoundException($"Currency with ID '{reqDto.CurrencyId}' not found.");
             if (!currency.IsActive)
                 throw new BadRequestException("Cannot create account with inactive currency.");
 
-            // Ensure target user exists via repository using expression includes
             var user = await _unitOfWork.UserRepository.FindWithIncludesAsync(u => u.Id == reqDto.UserId, new Expression<Func<ApplicationUser, object>>[] { u => u.Accounts, u => u.Bank });
             if (user == null)
                 throw new NotFoundException($"User with ID '{reqDto.UserId}' not found.");
             if (!user.IsActive)
                 throw new BadRequestException("Cannot create account for inactive user.");
 
-            // Ensure user has a role assigned
             var targetRole = await _unitOfWork.RoleRepository.GetRoleByUserIdAsync(reqDto.UserId);
             if (targetRole == null || string.IsNullOrWhiteSpace(targetRole.Name))
                 throw new BadRequestException("Cannot create account for a user that has no role assigned. Assign a role first.");
@@ -100,7 +73,6 @@ namespace BankingSystemAPI.Application.Services
             await _unitOfWork.AccountRepository.AddAsync(newAccount);
             await _unitOfWork.SaveAsync();
 
-            // Attach Currency navigation so response contains CurrencyCode
             newAccount.Currency = currency;
 
             return _mapper.Map<SavingsAccountDto>(newAccount);
@@ -108,20 +80,18 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<SavingsAccountDto> UpdateAccountAsync(int accountId, SavingsAccountEditDto reqDto)
         {
-            // Authorization: ensure acting user can access the account to update
             if (_accountAuth != null)
                 await _accountAuth.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
 
-            var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
+            var spec = new Specification<Account>(a => a.Id == accountId && a is SavingsAccount);
+            var account = await _unitOfWork.AccountRepository.GetAsync(spec);
             if (account is not SavingsAccount savingsAccount)
                 throw new AccountNotFoundException($"Savings Account with ID '{accountId}' not found.");
 
-            // Validate currency exists
             var currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(reqDto.CurrencyId);
             if (currency == null)
                 throw new CurrencyNotFoundException($"Currency with ID '{reqDto.CurrencyId}' not found.");
 
-            // Map only allowed edit fields
             savingsAccount.UserId = reqDto.UserId;
             savingsAccount.CurrencyId = reqDto.CurrencyId;
             savingsAccount.InterestRate = reqDto.InterestRate;

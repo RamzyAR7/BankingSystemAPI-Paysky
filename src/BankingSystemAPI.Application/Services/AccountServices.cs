@@ -4,16 +4,15 @@ using BankingSystemAPI.Application.Exceptions;
 using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Domain.Entities;
+using BankingSystemAPI.Application.Specifications;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using BankingSystemAPI.Application.Interfaces.Identity;
+using System.Linq.Expressions;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.Interfaces.Authorization;
-using System.Linq.Expressions;
-using Microsoft.EntityFrameworkCore;
 
 namespace BankingSystemAPI.Application.Services
 {
@@ -38,12 +37,14 @@ namespace BankingSystemAPI.Application.Services
             if (id <= 0)
                 throw new BadRequestException("Invalid account id.");
 
-            // include InterestLogs (for savings), User and Currency using include builder to avoid expression-on-derived-type issues
-            var account = await _unitOfWork.AccountRepository.FindWithIncludeBuilderAsync(a => a.Id == id, q => q.Include("InterestLogs").Include(a => a.User).Include(a => a.Currency));
+            var spec = new Specification<Account>(a => a.Id == id)
+                .AddInclude(a => a.User)
+                .AddInclude(a => a.Currency);
+            var account = await _unitOfWork.AccountRepository.GetAsync(spec);
             if (account == null)
                 throw new NotFoundException($"Account with ID '{id}' not found.");
 
-            if (_accountAuth != null)
+            if (_accountAuth is not null)
                 await _accountAuth.CanViewAccountAsync(id);
 
             return _mapper.Map<AccountDto>(account);
@@ -54,11 +55,14 @@ namespace BankingSystemAPI.Application.Services
             if (string.IsNullOrWhiteSpace(accountNumber))
                 throw new BadRequestException("Account number is required.");
 
-            var account = await _unitOfWork.AccountRepository.FindWithIncludeBuilderAsync(a => a.AccountNumber == accountNumber, q => q.Include("InterestLogs").Include(a => a.User).Include(a => a.Currency));
+            var spec = new Specification<Account>(a => a.AccountNumber == accountNumber)
+                .AddInclude(a => a.User)
+                .AddInclude(a => a.Currency);
+            var account = await _unitOfWork.AccountRepository.GetAsync(spec);
             if (account == null)
                 throw new NotFoundException($"Account with number '{accountNumber}' not found.");
 
-            if (_accountAuth != null)
+            if (_accountAuth is not null)
                 await _accountAuth.CanViewAccountAsync(account.Id);
 
             return _mapper.Map<AccountDto>(account);
@@ -69,22 +73,10 @@ namespace BankingSystemAPI.Application.Services
             if (string.IsNullOrWhiteSpace(userId))
                 throw new BadRequestException("User id is required.");
 
-            // Get repository-level query (includes handled in infra)
-            var query = _unitOfWork.AccountRepository.QueryByUserId(userId);
-
-            IEnumerable<Account> accounts;
-            if (_accountAuth != null)
-            {
-                var filteredQuery = await _accountAuth.FilterAccountsQueryAsync(query);
-                var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(filteredQuery, 1, int.MaxValue);
-                accounts = result.Accounts;
-            }
-            else
-            {
-                var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(query, 1, int.MaxValue);
-                accounts = result.Accounts;
-            }
-
+            var spec = new Specification<Account>(a => a.UserId == userId)
+                .AddInclude(a => a.User)
+                .AddInclude(a => a.Currency);
+            var accounts = await _unitOfWork.AccountRepository.ListAsync(spec);
             return _mapper.Map<IEnumerable<AccountDto>>(accounts);
         }
 
@@ -93,21 +85,10 @@ namespace BankingSystemAPI.Application.Services
             if (string.IsNullOrWhiteSpace(nationalId))
                 throw new BadRequestException("National id is required.");
 
-            var query = _unitOfWork.AccountRepository.QueryByNationalId(nationalId);
-
-            IEnumerable<Account> accounts;
-            if (_accountAuth != null)
-            {
-                var filteredQuery = await _accountAuth.FilterAccountsQueryAsync(query);
-                var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(filteredQuery, 1, int.MaxValue);
-                accounts = result.Accounts;
-            }
-            else
-            {
-                var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(query, 1, int.MaxValue);
-                accounts = result.Accounts;
-            }
-
+            var spec = new Specification<Account>(a => a.User.NationalId == nationalId)
+                .AddInclude(a => a.User)
+                .AddInclude(a => a.Currency);
+            var accounts = await _unitOfWork.AccountRepository.ListAsync(spec);
             return _mapper.Map<IEnumerable<AccountDto>>(accounts);
         }
 
@@ -116,13 +97,14 @@ namespace BankingSystemAPI.Application.Services
             if (id <= 0)
                 throw new BadRequestException("Invalid account id.");
 
-            var account = await _unitOfWork.AccountRepository.GetByIdAsync(id);
+            var spec = new Specification<Account>(a => a.Id == id);
+            var account = await _unitOfWork.AccountRepository.GetAsync(spec);
             if (account == null)
                 throw new NotFoundException($"Account with ID '{id}' not found.");
             if (account.Balance > 0)
                 throw new BadRequestException("Cannot delete an account with a positive balance.");
 
-            if (_accountAuth != null)
+            if (_accountAuth is not null)
                 await _accountAuth.CanModifyAccountAsync(id, AccountModificationOperation.Delete);
 
             await _unitOfWork.AccountRepository.DeleteAsync(account);
@@ -135,7 +117,8 @@ namespace BankingSystemAPI.Application.Services
                 throw new BadRequestException("At least one account id must be provided.");
 
             var distinctIds = ids.Distinct().ToList();
-            var accountsToDelete = await _unitOfWork.AccountRepository.FindAllWithIncludesAsync(a => distinctIds.Contains(a.Id), (Expression<Func<Account, object>>[])null);
+            var spec = new Specification<Account>(a => distinctIds.Contains(a.Id));
+            var accountsToDelete = await _unitOfWork.AccountRepository.ListAsync(spec);
             if (accountsToDelete.Count() != distinctIds.Count())
                 throw new NotFoundException("One or more specified accounts could not be found.");
             if (accountsToDelete.Any(a => a.Balance > 0))
@@ -143,7 +126,7 @@ namespace BankingSystemAPI.Application.Services
 
             foreach (var acc in accountsToDelete)
             {
-                if (_accountAuth != null)
+                if (_accountAuth is not null)
                     await _accountAuth.CanModifyAccountAsync(acc.Id, AccountModificationOperation.Delete);
             }
 
@@ -151,13 +134,13 @@ namespace BankingSystemAPI.Application.Services
             await _unitOfWork.SaveAsync();
         }
 
-
         public async Task SetAccountActiveStatusAsync(int accountId, bool isActive)
         {
-            var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
+            var spec = new Specification<Account>(a => a.Id == accountId);
+            var account = await _unitOfWork.AccountRepository.GetAsync(spec);
             if (account == null) throw new NotFoundException($"Account with ID '{accountId}' not found.");
 
-            if (_accountAuth != null)
+            if (_accountAuth is not null)
                 await _accountAuth.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
 
             account.IsActive = isActive;

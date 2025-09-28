@@ -4,6 +4,7 @@ using BankingSystemAPI.Application.Exceptions;
 using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Domain.Entities;
+using BankingSystemAPI.Application.Specifications;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,31 +36,12 @@ namespace BankingSystemAPI.Application.Services
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
-
-            // Build base query and include currency
-            var query = _unitOfWork.AccountRepository.Table
-                .Where(a => a is CheckingAccount)
-                .Include(a => a.Currency)
-                .AsQueryable();
-
-            // Let authorization filter and paginate at DB level when available
-            IEnumerable<Account> accountsPage;
-            int total;
-            if (_accountAuth != null)
-            {
-                var filteredQuery = await _accountAuth.FilterAccountsQueryAsync(query);
-                var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(filteredQuery, pageNumber, pageSize);
-                accountsPage = result.Accounts;
-                total = result.TotalCount;
-            }
-            else
-            {
-                var result = await _unitOfWork.AccountRepository.GetFilteredAccountsAsync(query, pageNumber, pageSize);
-                accountsPage = result.Accounts;
-                total = result.TotalCount;
-            }
-
-            var dtosAll = _mapper.Map<IEnumerable<CheckingAccountDto>>(accountsPage.OfType<CheckingAccount>());
+            var skip = (pageNumber - 1) * pageSize;
+            var spec = new Specification<Account>(a => a is CheckingAccount)
+                .ApplyPaging(skip, pageSize)
+                .AddInclude(a => a.Currency);
+            var accounts = await _unitOfWork.AccountRepository.ListAsync(spec);
+            var dtosAll = _mapper.Map<IEnumerable<CheckingAccountDto>>(accounts.OfType<CheckingAccount>());
             return dtosAll;
         }
 
@@ -107,7 +89,8 @@ namespace BankingSystemAPI.Application.Services
             if (_accountAuth != null)
                 await _accountAuth.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
 
-            var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
+            var spec = new Specification<Account>(a => a.Id == accountId && a is CheckingAccount);
+            var account = await _unitOfWork.AccountRepository.GetAsync(spec);
             if (account is not CheckingAccount checkingAccount)
                 throw new AccountNotFoundException($"Checking Account with ID '{accountId}' not found.");
 

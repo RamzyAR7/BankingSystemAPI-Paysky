@@ -1,7 +1,6 @@
 ﻿using BankingSystemAPI.Application.Interfaces.Repositories;
 using BankingSystemAPI.Application.Interfaces.Specification;
 using BankingSystemAPI.Infrastructure.Context;
-using BankingSystemAPI.Infrastructure.Specifications;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using System.Linq.Expressions;
@@ -34,14 +33,9 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             return await _dbSet.FindAsync(id);
         }
 
-        // Helper to apply includes (expression includes, or include-builder)
-        private IQueryable<T> ApplyIncludes(IQueryable<T> query, Expression<Func<T, object>>[] includeExpressions = null, Func<IQueryable<T>, IQueryable<T>> includeBuilder = null)
+        // Helper to apply includes (expression includes)
+        private IQueryable<T> ApplyIncludes(IQueryable<T> query, Expression<Func<T, object>>[] includeExpressions = null)
         {
-            if (includeBuilder != null)
-            {
-                return includeBuilder(query);
-            }
-
             if (includeExpressions != null)
             {
                 foreach (var include in includeExpressions)
@@ -61,14 +55,13 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             int skip = 0,
             int take = 0,
             bool asNoTracking = true,
-            Expression<Func<T, object>>[] includeExpressions = null,
-            Func<IQueryable<T>, IQueryable<T>> includeBuilder = null)
+            Expression<Func<T, object>>[] includeExpressions = null)
         {
             IQueryable<T> query = _dbSet;
             if (asNoTracking) query = query.AsNoTracking();
 
             // Apply includes using unified helper
-            query = ApplyIncludes(query, includeExpressions, includeBuilder);
+            query = ApplyIncludes(query, includeExpressions);
 
             if (predicate != null)
                 query = query.Where(predicate);
@@ -124,25 +117,6 @@ namespace BankingSystemAPI.Infrastructure.Repositories
         public async Task<IEnumerable<T>> FindAllAsync(Expression<Func<T, bool>> predicate, int take = 0, int skip = 0, Expression<Func<T, object>> orderBy = null, string orderByDirection = "ASC", Expression<Func<T, object>>[] includeExpressions = null, bool asNoTracking = true)
         {
             var query = BuildQuery(predicate: predicate, orderBy: orderBy, orderByDirection: orderByDirection, skip: skip, take: take, asNoTracking: asNoTracking, includeExpressions: includeExpressions);
-            return await query.ToListAsync();
-        }
-
-        // Unified include-builder overloads (explicit names to avoid ambiguity)
-        public async Task<T> FindWithIncludeBuilderAsync(Expression<Func<T, bool>> predicate, Func<IQueryable<T>, IQueryable<T>> includeBuilder, bool asNoTracking = true)
-        {
-            var query = BuildQuery(predicate: predicate, asNoTracking: asNoTracking, includeBuilder: includeBuilder);
-            return await query.FirstOrDefaultAsync();
-        }
-
-        public async Task<IEnumerable<T>> FindAllWithIncludeBuilderAsync(Expression<Func<T, bool>> predicate, Func<IQueryable<T>, IQueryable<T>> includeBuilder, bool asNoTracking = true)
-        {
-            var query = BuildQuery(predicate: predicate, asNoTracking: asNoTracking, includeBuilder: includeBuilder);
-            return await query.ToListAsync();
-        }
-
-        public async Task<IEnumerable<T>> FindAllWithIncludeBuilderAsync(Expression<Func<T, bool>> predicate, int take, int skip, Expression<Func<T, object>> orderBy, string orderByDirection, Func<IQueryable<T>, IQueryable<T>> includeBuilder, bool asNoTracking = true)
-        {
-            var query = BuildQuery(predicate: predicate, orderBy: orderBy, orderByDirection: orderByDirection, skip: skip, take: take, asNoTracking: asNoTracking, includeBuilder: includeBuilder);
             return await query.ToListAsync();
         }
 
@@ -216,7 +190,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
         public async Task<(IEnumerable<T> Items, int TotalCount)> GetPagedAsync(ISpecification<T> spec)
         {
             // Create a base specification for count (without paging)
-            var baseSpec = new Specification<T>(spec.Criteria);
+            var baseSpec = new BankingSystemAPI.Application.Specifications.Specification<T>(spec.Criteria);
             foreach (var include in spec.Includes)
                 baseSpec.AddInclude(include);
             baseSpec.AsNoTrackingQuery(spec.AsNoTracking);
@@ -420,27 +394,6 @@ namespace BankingSystemAPI.Infrastructure.Repositories
                     foreach (var include in includeExpressions)
                         query = query.Include(include);
                 }
-
-                query = query.Where(x => batch.Contains(EF.Property<TKey>(x, "Id")));
-                results.AddRange(await query.ToListAsync());
-            }
-            return results;
-        }
-
-        // Explicit include-builder variant required by interface
-        public async Task<IEnumerable<T>> GetByIdsWithIncludeBuilderAsync(IEnumerable<TKey> ids, Func<IQueryable<T>, IQueryable<T>> includeBuilder, bool asNoTracking = true, int batchSize = 500)
-        {
-            if (ids == null) return Enumerable.Empty<T>();
-            var idList = ids.Where(i => i != null).Distinct().ToList();
-            if (!idList.Any()) return Enumerable.Empty<T>();
-
-            var results = new List<T>(idList.Count);
-            for (int i = 0; i < idList.Count; i += batchSize)
-            {
-                var batch = idList.Skip(i).Take(batchSize).ToList();
-                IQueryable<T> query = _dbSet;
-                if (asNoTracking) query = query.AsNoTracking();
-                query = includeBuilder(query);
 
                 query = query.Where(x => batch.Contains(EF.Property<TKey>(x, "Id")));
                 results.AddRange(await query.ToListAsync());

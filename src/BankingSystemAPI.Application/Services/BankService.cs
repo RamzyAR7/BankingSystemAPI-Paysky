@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using BankingSystemAPI.Domain.Entities;
 using System;
 using System.Linq.Expressions;
+using BankingSystemAPI.Application.Specifications;
 
 namespace BankingSystemAPI.Application.Services
 {
@@ -29,18 +30,17 @@ namespace BankingSystemAPI.Application.Services
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
             var skip = (pageNumber - 1) * pageSize;
-
-            var (banks, total) = await _uow.BankRepository.GetPagedAsync(b => true, pageSize, skip, b => b.Id, "ASC");
+            var spec = new Specification<Bank>(b => true)
+                .ApplyPaging(skip, pageSize);
+            var banks = await _uow.BankRepository.ListAsync(spec);
             return _mapper.Map<List<BankSimpleResDto>>(banks);
         }
 
         public async Task<BankResDto> GetByIdAsync(int id)
         {
-            // load bank with users and their accounts using include builder
-            var bank = await _uow.BankRepository.FindWithIncludeBuilderAsync(
-                b => b.Id == id,
-                q => q.Include(bk => bk.ApplicationUsers)
-            );
+            var spec = new Specification<Bank>(b => b.Id == id)
+                .AddInclude(b => b.ApplicationUsers);
+            var bank = await _uow.BankRepository.GetAsync(spec);
             if (bank == null) return null;
             var dto = _mapper.Map<BankResDto>(bank);
             if (bank.ApplicationUsers != null)
@@ -50,10 +50,9 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<BankResDto> GetByNameAsync(string name)
         {
-            var bank = await _uow.BankRepository.FindWithIncludeBuilderAsync(
-                b => b.Name == name,
-                q => q.Include(bk => bk.ApplicationUsers)
-            );
+            var spec = new Specification<Bank>(b => b.Name == name)
+                .AddInclude(b => b.ApplicationUsers);
+            var bank = await _uow.BankRepository.GetAsync(spec);
             if (bank == null) return null;
             var dto = _mapper.Map<BankResDto>(bank);
             if (bank.ApplicationUsers != null)
@@ -69,9 +68,9 @@ namespace BankingSystemAPI.Application.Services
             var normalized = dto.Name.Trim();
             var normalizedLower = normalized.ToLowerInvariant();
 
-            // Check duplicate by name (case-insensitive check)
-            var existingCount = await _uow.BankRepository.CountAsync(b => b.Name.ToLower() == normalizedLower);
-            if (existingCount > 0)
+            var spec = new Specification<Bank>(b => b.Name.ToLower() == normalizedLower);
+            var existing = await _uow.BankRepository.GetAsync(spec);
+            if (existing != null)
                 throw new BadRequestException("A bank with the same name already exists.");
 
             var entity = _mapper.Map<Bank>(dto);
@@ -85,7 +84,6 @@ namespace BankingSystemAPI.Application.Services
             }
             catch (DbUpdateException)
             {
-                // Could be unique constraint violation from DB - convert to friendly error
                 throw new BadRequestException("A bank with the same name already exists.");
             }
 
@@ -94,7 +92,8 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<BankResDto> UpdateAsync(int id, BankEditDto dto)
         {
-            var bank = await _uow.BankRepository.GetByIdAsync(id);
+            var spec = new Specification<Bank>(b => b.Id == id);
+            var bank = await _uow.BankRepository.GetAsync(spec);
             if (bank == null) return null;
             bank.Name = dto.Name;
             await _uow.BankRepository.UpdateAsync(bank);
@@ -104,10 +103,10 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var bank = await _uow.BankRepository.GetByIdAsync(id);
+            var spec = new Specification<Bank>(b => b.Id == id);
+            var bank = await _uow.BankRepository.GetAsync(spec);
             if (bank == null) return false;
 
-            // Prevent deleting a bank that still has users
             var hasUsers = await _uow.UserRepository.AnyAsync(u => u.BankId == id);
             if (hasUsers)
                 throw new BadRequestException("Cannot delete bank that has existing users.");
@@ -119,7 +118,8 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task SetBankActiveStatusAsync(int id, bool isActive)
         {
-            var bank = await _uow.BankRepository.GetByIdAsync(id);
+            var spec = new Specification<Bank>(b => b.Id == id);
+            var bank = await _uow.BankRepository.GetAsync(spec);
             if (bank == null) throw new System.Exception($"Bank with ID '{id}' not found.");
             bank.IsActive = isActive;
             await _uow.BankRepository.UpdateAsync(bank);
