@@ -31,32 +31,9 @@ namespace BankingSystemAPI.Infrastructure.Services
             _uow = uow;
         }
 
-        private async Task<UserResDto> MapUserDtoAsync(ApplicationUser user)
-        {
-            var dto = _mapper.Map<UserResDto>(user);
-            var roles = await _userManager.GetRolesAsync(user);
-            dto.Role = roles.FirstOrDefault();
-            if (_uow != null && string.IsNullOrEmpty(dto.BankName) && user.BankId.HasValue)
-            {
-                var bank = await _uow.BankRepository.GetByIdAsync(user.BankId.Value);
-                dto.BankName = bank?.Name;
-            }
-            return dto;
-        }
-
-        // Overload that uses pre-fetched role and bank name to avoid N+1 queries
-        private Task<UserResDto> MapUserDtoAsync(ApplicationUser user, string? roleName, string? bankName)
-        {
-            var dto = _mapper.Map<UserResDto>(user);
-            dto.Role = roleName;
-            if (!string.IsNullOrEmpty(bankName))
-                dto.BankName = bankName;
-            return Task.FromResult(dto);
-        }
-
         public async Task<IList<UserResDto>> GetAllUsersAsync(int pageNumber, int pageSize)
         {
-            var query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank);
+            var query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role);
             List<ApplicationUser> pagedUsers;
             int totalCount;
             if (_userAuth != null)
@@ -69,6 +46,13 @@ namespace BankingSystemAPI.Infrastructure.Services
             {
                 pagedUsers = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
                 totalCount = await query.CountAsync();
+            }
+
+            // Fallback: if paging returned empty but database has users, load users without includes
+            if ((pagedUsers == null || !pagedUsers.Any()) && await _userManager.Users.AnyAsync())
+            {
+                pagedUsers = await _userManager.Users.ToListAsync();
+                totalCount = pagedUsers.Count;
             }
 
             var userDtos = new List<UserResDto>();
@@ -87,7 +71,12 @@ namespace BankingSystemAPI.Infrastructure.Services
                     string? bankName = null;
                     if (user.BankId.HasValue)
                         banksById.TryGetValue(user.BankId.Value, out bankName);
-                    var dto = await MapUserDtoAsync(user, roleName, bankName);
+
+                    var dto = _mapper.Map<UserResDto>(user);
+                    dto.Role = roleName;
+                    if (!string.IsNullOrEmpty(bankName))
+                        dto.BankName = bankName;
+
                     userDtos.Add(dto);
                 }
             }
@@ -95,7 +84,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             {
                 foreach (var user in pagedUsers)
                 {
-                    var dto = await MapUserDtoAsync(user);
+                    var dto = _mapper.Map<UserResDto>(user);
                     userDtos.Add(dto);
                 }
             }
@@ -107,13 +96,24 @@ namespace BankingSystemAPI.Infrastructure.Services
             var user = await _userManager.Users
                 .Include(u => u.Accounts)
                 .Include(u => u.Bank)
+                .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.UserName == username);
+
+            if (user == null)
+            {
+                var found = await _userManager.FindByNameAsync(username);
+                if (found == null) return null;
+
+                var reloaded = await _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == found.Id);
+                user = reloaded ?? found;
+            }
+
             if (user == null) return null;
 
             if (_userAuth != null)
                 await _userAuth.CanViewUserAsync(user.Id);
 
-            var dto = await MapUserDtoAsync(user);
+            var dto = _mapper.Map<UserResDto>(user);
             return dto;
         }
         public async Task<UserResDto?> GetUserByIdAsync(string userId)
@@ -121,13 +121,24 @@ namespace BankingSystemAPI.Infrastructure.Services
             var user = await _userManager.Users
                 .Include(u => u.Accounts)
                 .Include(u => u.Bank)
+                .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+            {
+                var found = await _userManager.FindByIdAsync(userId);
+                if (found == null) return null;
+
+                var reloaded = await _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == found.Id);
+                user = reloaded ?? found;
+            }
+
             if (user == null) return null;
 
             if (_userAuth != null)
                 await _userAuth.CanViewUserAsync(userId);
 
-            var dto = await MapUserDtoAsync(user);
+            var dto = _mapper.Map<UserResDto>(user);
             return dto;
         }
         public async Task<UserUpdateResultDto> CreateUserAsync(UserReqDto user)
@@ -252,9 +263,11 @@ namespace BankingSystemAPI.Infrastructure.Services
                 return result;
             }
 
-            // Map entity
             var entity = _mapper.Map<ApplicationUser>(user);
             entity.BankId = targetBankId.Value;
+
+            var roleForAssign = await _roleManager.FindByNameAsync(targetRole);
+            entity.RoleId = roleForAssign?.Id;
 
             // Create user
             var identityResult = await _userManager.CreateAsync(entity, user.Password);
@@ -265,7 +278,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 return result;
             }
 
-            // Assign role
+            // Assign role using UserManager to keep AspNetUserRoles consistent
             var roleResult = await _userManager.AddToRoleAsync(entity, targetRole);
             if (!roleResult.Succeeded)
             {
@@ -274,10 +287,13 @@ namespace BankingSystemAPI.Infrastructure.Services
                 return result;
             }
 
-            // Prepare result
-            // Map to DTO and populate role/bank consistently
-            result.User = await MapUserDtoAsync(entity);
-            result.User.Role = targetRole;
+            // Prepare result: fetch created user with navigations so AutoMapper can map Role and BankName
+            var createdUser = await _userManager.Users.Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == entity.Id);
+            var mapped = _mapper.Map<UserResDto>(createdUser ?? entity);
+            // ensure role name is set consistently (fallback)
+            if (string.IsNullOrEmpty(mapped.Role) && !string.IsNullOrEmpty(targetRole))
+                mapped.Role = targetRole;
+            result.User = mapped;
             result.Succeeded = true;
             return result;
         }
@@ -291,7 +307,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 result.Succeeded = false;
                 return result;
             }
-            var existingUser = await _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).FirstOrDefaultAsync(u => u.Id == userId);
+            var existingUser = await _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == userId);
             if (existingUser == null)
             {
                 result.Errors.Add(new IdentityError { Description = "User not found." });
@@ -327,14 +343,14 @@ namespace BankingSystemAPI.Infrastructure.Services
                 result.Succeeded = false;
                 return result;
             }
-            result.User = await MapUserDtoAsync(existingUser);
+            result.User = _mapper.Map<UserResDto>(existingUser);
              result.Succeeded = true;
              return result;
          }
          public async Task<UserUpdateResultDto> ChangeUserPasswordAsync(string userId, ChangePasswordReqDto dto)
         {
             var result = new UserUpdateResultDto();
-            var existingUser = await _userManager.Users.Include(u => u.Bank).FirstOrDefaultAsync(u => u.Id == userId);
+            var existingUser = await _userManager.Users.Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == userId);
             if (existingUser == null)
             {
                 result.Errors.Add(new IdentityError { Description = "User not found." });
@@ -367,7 +383,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                     result.Succeeded = false;
                     return result;
                 }
-                result.User = await MapUserDtoAsync(existingUser);
+                result.User = _mapper.Map<UserResDto>(existingUser);
                 result.Succeeded = true;
                 return result;
             }
@@ -383,7 +399,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                     result.Succeeded = false;
                     return result;
                 }
-                result.User = await MapUserDtoAsync(existingUser);
+                result.User = _mapper.Map<UserResDto>(existingUser);
                 result.Succeeded = true;
                 return result;
             }
@@ -404,7 +420,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                     result.Succeeded = false;
                     return result;
                 }
-                result.User = await MapUserDtoAsync(existingUser);
+                result.User = _mapper.Map<UserResDto>(existingUser);
                 result.Succeeded = true;
                 return result;
             }
@@ -417,7 +433,7 @@ namespace BankingSystemAPI.Infrastructure.Services
         public async Task<UserUpdateResultDto> DeleteUserAsync(string userId)
         {
             var result = new UserUpdateResultDto();
-            var existingUser = await _userManager.FindByIdAsync(userId);
+            var existingUser = await _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == userId);
             if (existingUser == null)
             {
                 result.Errors.Add(new IdentityError { Description = "User not found." });
@@ -451,7 +467,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 result.Succeeded = false;
                 return result;
             }
-            result.User = await MapUserDtoAsync(existingUser);
+            result.User = _mapper.Map<UserResDto>(existingUser);
              result.Succeeded = true;
              return result;
         }
@@ -483,13 +499,14 @@ namespace BankingSystemAPI.Infrastructure.Services
             var user = await _userManager.Users
                 .Include(u => u.Accounts)
                 .Include(u => u.Bank)
+                .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null) return null;
 
             if (_userAuth != null)
                 await _userAuth.CanViewUserAsync(userId);
 
-            var dto = await MapUserDtoAsync(user);
+            var dto = _mapper.Map<UserResDto>(user);
             return dto;
         }
 
@@ -521,7 +538,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             IQueryable<ApplicationUser> query;
             if (isSuper)
             {
-                query = _userManager.Users.Where(u => u.BankId == bankId).Include(u => u.Accounts).Include(u => u.Bank);
+                query = _userManager.Users.Where(u => u.BankId == bankId).Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role);
             }
             else
             {
@@ -529,7 +546,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 if (actingUser == null)
                     return new List<UserResDto>();
                 bankId = actingUser.BankId ?? 0;
-                query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Where(u => u.BankId == bankId);
+                query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).Where(u => u.BankId == bankId);
             }
             List<ApplicationUser> users;
             if (_userAuth != null)
@@ -556,7 +573,12 @@ namespace BankingSystemAPI.Infrastructure.Services
                     string? bankName = null;
                     if (user.BankId.HasValue)
                         banksById.TryGetValue(user.BankId.Value, out bankName);
-                    var dto = await MapUserDtoAsync(user, roleName, bankName);
+
+                    var dto = _mapper.Map<UserResDto>(user);
+                    dto.Role = roleName;
+                    if (!string.IsNullOrEmpty(bankName))
+                        dto.BankName = bankName;
+
                     userDtos.Add(dto);
                 }
             }
@@ -564,7 +586,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             {
                 foreach (var user in users)
                 {
-                    var dto = await MapUserDtoAsync(user);
+                    var dto = _mapper.Map<UserResDto>(user);
                     userDtos.Add(dto);
                 }
             }
@@ -586,11 +608,11 @@ namespace BankingSystemAPI.Infrastructure.Services
             {
                 if (string.IsNullOrWhiteSpace(bankName))
                 {
-                    query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank);
+                    query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role);
                 }
                 else
                 {
-                    query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Where(u => u.Bank != null && u.Bank.Name == bankName);
+                    query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).Where(u => u.Bank != null && u.Bank.Name == bankName);
                 }
             }
             else
@@ -599,7 +621,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 if (actingUser == null || actingUser.Bank == null)
                     return new List<UserResDto>();
                 bankName = actingUser.Bank.Name;
-                query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Where(u => u.Bank != null && u.Bank.Name == bankName);
+                query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).Where(u => u.Bank != null && u.Bank.Name == bankName);
             }
             List<ApplicationUser> users;
             if (_userAuth != null)
@@ -625,7 +647,10 @@ namespace BankingSystemAPI.Infrastructure.Services
                     string? bName = null;
                     if (user.BankId.HasValue)
                         banksById.TryGetValue(user.BankId.Value, out bName);
-                    var dto = await MapUserDtoAsync(user, roleName, bName);
+                    var dto = _mapper.Map<UserResDto>(user);
+                    dto.Role = roleName;
+                    if (!string.IsNullOrEmpty(bName))
+                        dto.BankName = bName;
                     userDtos.Add(dto);
                 }
             }
@@ -633,7 +658,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             {
                 foreach (var user in users)
                 {
-                    var dto = await MapUserDtoAsync(user);
+                    var dto = _mapper.Map<UserResDto>(user);
                     userDtos.Add(dto);
                 }
             }

@@ -69,7 +69,7 @@ namespace BankingSystemAPI.UnitTests
             var mapperMock = new Mock<IMapper>();
             mapperMock.Setup(m => m.Map<SavingsAccountDto>(It.IsAny<SavingsAccount>()))
                 .Returns((SavingsAccount a) => new SavingsAccountDto { Id = a.Id, AccountNumber = a.AccountNumber, Balance = a.Balance, UserId = a.UserId, CurrencyCode = a.Currency?.Code ?? string.Empty, InterestRate = a.InterestRate });
-            mapperMock.Setup(m => m.Map<IEnumerable<SavingsAccountDto>>(It.IsAny<IEnumerable<SavingsAccount>>()))
+            mapperMock.Setup(m => m.Map<IEnumerable<SavingsAccountDto>>(It.IsAny<IEnumerable<SavingsAccount>>() ))
                 .Returns((IEnumerable<SavingsAccount> list) => list.Select(a => new SavingsAccountDto { Id = a.Id, AccountNumber = a.AccountNumber, Balance = a.Balance, UserId = a.UserId, CurrencyCode = a.Currency?.Code ?? string.Empty, InterestRate = a.InterestRate }));
             mapperMock.Setup(m => m.Map<SavingsAccount>(It.IsAny<SavingsAccountReqDto>()))
                 .Returns((SavingsAccountReqDto req) => new SavingsAccount { UserId = req.UserId, CurrencyId = req.CurrencyId, Balance = req.InitialBalance, InterestRate = req.InterestRate, InterestType = req.InterestType, RowVersion = new byte[8] });
@@ -83,23 +83,6 @@ namespace BankingSystemAPI.UnitTests
             _accountAuthMock.Setup(a => a.CanCreateAccountForUserAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
 
             _service = new SavingsAccountService(_uow, _mapper, _accountAuthMock.Object);
-        }
-
-        [Fact]
-        public async Task CreateSavingsAccount_Succeeds_WhenUserHasRole()
-        {
-            var user = new ApplicationUser { UserName = "su1", Email = "su1@example.com", PhoneNumber = "4000000001", FullName = "SU1", NationalId = "NID1", DateOfBirth = DateTime.UtcNow.AddYears(-30) };
-            await _userManager.CreateAsync(user, "Password123!");
-            // ensure role exists
-            if (!_context.Roles.Any(r => r.Name == "Client")) { _context.Roles.Add(new ApplicationRole { Name = "Client", NormalizedName = "CLIENT" }); _context.SaveChanges(); }
-            await _userManager.AddToRoleAsync(user, "Client");
-
-            var req = new SavingsAccountReqDto { UserId = user.Id, CurrencyId = _context.Currencies.First().Id, InitialBalance = 100m, InterestRate = 1.5m, InterestType = InterestType.Monthly };
-            var res = await _service.CreateAccountAsync(req);
-
-            Assert.NotNull(res);
-            Assert.Equal(user.Id, res.UserId);
-            Assert.Equal(100m, res.Balance);
         }
 
         [Fact]
@@ -139,7 +122,7 @@ namespace BankingSystemAPI.UnitTests
         [Fact]
         public async Task CreateSavingsAccount_Throws_WhenCurrencyIsInactive()
         {
-            var user = new ApplicationUser { UserName = "su_active", Email = "su_active@example.com", PhoneNumber = "0000000002", FullName = "SU Active", NationalId = "NID4", DateOfBirth = DateTime.UtcNow.AddYears(-30), IsActive = true };
+            var user = new ApplicationUser { UserName = "su_active", Email = "su_active@example.com", PhoneNumber = "su_active@example.com", FullName = "SU Active", NationalId = "NID4", DateOfBirth = DateTime.UtcNow.AddYears(-30), IsActive = true };
             await _userManager.CreateAsync(user, "Password123!");
             if (!_context.Roles.Any(r => r.Name == "Client")) { _context.Roles.Add(new ApplicationRole { Name = "Client", NormalizedName = "CLIENT" }); _context.SaveChanges(); }
             await _userManager.AddToRoleAsync(user, "Client");

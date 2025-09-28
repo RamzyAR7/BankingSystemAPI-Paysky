@@ -39,32 +39,25 @@ namespace BankingSystemAPI.Infrastructure.Services
                 return result;
             }
 
-            // If Role is null -> remove all roles from the user
+            // If Role is explicitly null -> remove all roles from user
             if (dto.Role == null)
             {
-                var existingRoles = await _userManager.GetRolesAsync(user);
-                if (!existingRoles.Any())
+                var userRoles = await _userManager.GetRolesAsync(user);
+                if (userRoles.Any())
                 {
-                    result.Succeeded = true;
-                    result.UserRole = new UserRoleResDto
+                    var removeResult = await _userManager.RemoveFromRolesAsync(user, userRoles);
+                    if (!removeResult.Succeeded)
                     {
-                        UserId = user.Id,
-                        UserName = user.UserName,
-                        Email = user.Email,
-                        Role = null
-                    };
-                    return result;
+                        result.Errors.AddRange(removeResult.Errors);
+                        result.Succeeded = false;
+                        return result;
+                    }
                 }
 
-                var removeResult = await _userManager.RemoveFromRolesAsync(user, existingRoles);
-                if (!removeResult.Succeeded)
-                {
-                    result.Errors.AddRange(removeResult.Errors);
-                    result.Succeeded = false;
-                    return result;
-                }
+                // Clear FK on user and persist (use RoleId empty string to satisfy required FK)
+                user.RoleId = string.Empty;
+                await _userManager.UpdateAsync(user);
 
-                result.Succeeded = true;
                 result.UserRole = new UserRoleResDto
                 {
                     UserId = user.Id,
@@ -72,6 +65,16 @@ namespace BankingSystemAPI.Infrastructure.Services
                     Email = user.Email,
                     Role = null
                 };
+
+                result.Succeeded = true;
+                return result;
+            }
+
+            // Do not allow empty/whitespace role in request
+            if (string.IsNullOrWhiteSpace(dto.Role))
+            {
+                result.Errors.Add(new IdentityError { Description = "Role is required." });
+                result.Succeeded = false;
                 return result;
             }
 
@@ -100,10 +103,10 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
 
             // Remove all existing roles then add the single target role (ensure single-role invariant)
-            var userRoles = await _userManager.GetRolesAsync(user);
-            if (userRoles.Any())
+            var existingUserRoles = await _userManager.GetRolesAsync(user);
+            if (existingUserRoles.Any())
             {
-                var removeResult = await _userManager.RemoveFromRolesAsync(user, userRoles);
+                var removeResult = await _userManager.RemoveFromRolesAsync(user, existingUserRoles);
                 if (!removeResult.Succeeded)
                 {
                     result.Errors.AddRange(removeResult.Errors);
@@ -119,16 +122,17 @@ namespace BankingSystemAPI.Infrastructure.Services
                 result.Succeeded = false;
                 return result;
             }
+            // Set FK on user and persist
+            user.RoleId = targetRole.Id;
+            await _userManager.UpdateAsync(user);
 
-            var updatedRoles = await _userManager.GetRolesAsync(user);
-            var role = updatedRoles.ToList();
-
+            var role = await _roleManager.FindByIdAsync(user.RoleId);
             result.UserRole = new UserRoleResDto
             {
                 UserId = user.Id,
                 UserName = user.UserName,
                 Email = user.Email,
-                Role = role.FirstOrDefault()    
+                Role = role.Name    
             };
             result.Succeeded = true;
             return result;

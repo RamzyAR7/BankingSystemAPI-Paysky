@@ -3,32 +3,23 @@ using BankingSystemAPI.Application.Interfaces;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Threading.Tasks;
-using BankingSystemAPI.Infrastructure.Services;
 
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class RoleRepository : GenericRepository<ApplicationRole, string>, IRoleRepository
     {
-
         private static readonly Func<ApplicationDbContext, string, string> _compiledGetRoleIdByUserId =
             EF.CompileQuery((ApplicationDbContext ctx, string userId) =>
-                ctx.UserRoles.AsNoTracking().Where(ur => ur.UserId == userId).Select(ur => ur.RoleId).FirstOrDefault());
+                ctx.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.RoleId).FirstOrDefault());
 
         private readonly ICacheService _cache;
-        private readonly TimeSpan _defaultTtl = TimeSpan.FromMinutes(5);
-
         public RoleRepository(ApplicationDbContext context, ICacheService cache) : base(context)
         {
-            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            _cache = cache;
         }
 
+        // This method fetches role for a single userId
         public async Task<ApplicationRole> GetRoleByUserIdAsync(string userId)
         {
             if (string.IsNullOrWhiteSpace(userId)) return null;
@@ -40,66 +31,54 @@ namespace BankingSystemAPI.Infrastructure.Repositories
                 return await FindAsync(r => r.Name == cachedRoleName);
             }
 
-            // Use compiled query for roleId lookup
+            // Primary source: RoleId stored on Users table
             var roleId = _compiledGetRoleIdByUserId(_context, userId);
 
             if (string.IsNullOrEmpty(roleId))
             {
-                _cache.Set($"role_user_{userId}", string.Empty, _defaultTtl);
+                _cache.Set($"role_user_{userId}", string.Empty, TimeSpan.FromHours(1));
                 return null;
             }
 
             var role = await FindAsync(r => r.Id == roleId);
 
             // Cache role name for fast future lookups
-            _cache.Set($"role_user_{userId}", role?.Name ?? string.Empty, _defaultTtl);
+            _cache.Set($"role_user_{userId}", role?.Name ?? string.Empty, TimeSpan.FromHours(1));
 
             return role;
         }
 
+        // this method fetches roles for multiple userIds and returns a dictionary of userId -> roleName
         public async Task<Dictionary<string, string>> GetRolesByUserIdsAsync(IEnumerable<string> userIds)
         {
             if (userIds == null || !userIds.Any())
                 return new Dictionary<string, string>();
 
-            // For batch queries, bypass cache and query DB directly (optimized JOIN)
-            return await _context.UserRoles
-                .Where(ur => userIds.Contains(ur.UserId))
-                .Join(_context.Roles,
-                      ur => ur.RoleId,
-                      r => r.Id,
-                      (ur, r) => new { ur.UserId, r.Name })
-                .GroupBy(x => x.UserId)
-                .ToDictionaryAsync(g => g.Key, g => g.First().Name);
-        }
+            // Use Role navigation to fetch role name in a single query
+            var userRoles = await _context.Users
+                .AsNoTracking()
+                .Where(u => userIds.Contains(u.Id) && u.Role != null)
+                .Select(u => new { u.Id, RoleName = u.Role.Name })
+                .ToDictionaryAsync(x => x.Id, x => x.RoleName);
 
+            return userRoles;
+        }
         public IQueryable<string> UsersWithRoleQuery(string roleName)
         {
-            // Use IdentityDbContext's UserRoles and Roles navigation
-            return _context.UserRoles
-                .Join(_context.Roles,
-                      ur => ur.RoleId,
-                      r => r.Id,
-                      (ur, r) => new { ur.UserId, r.Name })
-                .Where(x => x.Name == roleName)
-                .Select(x => x.UserId);
-        }
+            if (string.IsNullOrWhiteSpace(roleName))
+                return Enumerable.Empty<string>().AsQueryable();
 
-        // Cache invalidation on role changes
-        public override async Task<ApplicationRole> AddAsync(ApplicationRole Entity)
-        {
-            var result = await base.AddAsync(Entity);
-            // New role usually has no user assignments; nothing to evict
-            return result;
+            // Use Role navigation to filter by role name directly
+            return _context.Users
+                .Where(u => u.Role != null && u.Role.Name == roleName)
+                .Select(u => u.Id);
         }
-
         public override async Task<ApplicationRole> UpdateAsync(ApplicationRole Entity)
         {
             var result = await base.UpdateAsync(Entity);
             if (result != null)
             {
-                // Evict user->role cache entries for users that have this role
-                var userIds = await _context.UserRoles.Where(ur => ur.RoleId == result.Id).Select(ur => ur.UserId).ToListAsync();
+                var userIds = await _context.Users.Where(u => u.RoleId == result.Id).Select(u => u.Id).ToListAsync();
                 foreach (var uid in userIds)
                 {
                     _cache.Remove($"role_user_{uid}");
@@ -110,12 +89,20 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 
         public override async Task DeleteAsync(ApplicationRole Entity)
         {
-            // Capture affected users before deletion
-            var userIds = await _context.UserRoles.Where(ur => ur.RoleId == Entity.Id).Select(ur => ur.UserId).ToListAsync();
+            var usersWithRole = await _context.Users.Where(u => u.RoleId == Entity.Id).ToListAsync();
+            if (usersWithRole.Any())
+            {
+                foreach (var u in usersWithRole)
+                {
+                    u.RoleId = string.Empty;
+                }
+                await _context.SaveChangesAsync();
+            }
 
             await base.DeleteAsync(Entity);
 
-            foreach (var uid in userIds)
+            // Remove cached entries
+            foreach (var uid in usersWithRole.Select(u => u.Id))
             {
                 _cache.Remove($"role_user_{uid}");
             }

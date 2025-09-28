@@ -27,6 +27,7 @@ namespace BankingSystemAPI.Infrastructure.Seeding
             RoleManager<ApplicationRole> _roleManager,
             ApplicationDbContext db)
         {
+            var superAdminRole = await _roleManager.FindByNameAsync(UserRole.SuperAdmin.ToString());
             var superAdmin = new ApplicationUser
             {
                 UserName = "SuperAdmin",
@@ -35,6 +36,7 @@ namespace BankingSystemAPI.Infrastructure.Seeding
                 NationalId = "12345678901234",
                 PhoneNumber = "01027746531",
                 DateOfBirth = new DateTime(2000, 1, 1),
+                RoleId = superAdminRole.Id,
             };
 
             var existingUser = await _userManager.FindByEmailAsync(superAdmin.Email);

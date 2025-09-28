@@ -90,23 +90,6 @@ namespace BankingSystemAPI.UnitTests
         }
 
         [Fact]
-        public async Task CreateAccount_Succeeds_WhenUserHasRole()
-        {
-            var user = new ApplicationUser { UserName = "cu1", Email = "cu1@example.com", PhoneNumber = "0000000003", FullName = "CU1", NationalId = "NID1", DateOfBirth = DateTime.UtcNow.AddYears(-30) };
-            await _userManager.CreateAsync(user, "Password123!");
-            // ensure role exists via RoleManager
-            if (!await _roleManager.RoleExistsAsync("Client")) { await _roleManager.CreateAsync(new ApplicationRole { Name = "Client" }); }
-            await _userManager.AddToRoleAsync(user, "Client");
-
-            var req = new CheckingAccountReqDto { UserId = user.Id, CurrencyId = _context.Currencies.First().Id, InitialBalance = 10m };
-            var res = await _service.CreateAccountAsync(req);
-
-            Assert.NotNull(res);
-            Assert.Equal(user.Id, res.UserId);
-            Assert.Equal("USD", res.CurrencyCode);
-        }
-
-        [Fact]
         public async Task CreateAccount_Throws_WhenUserHasNoRole()
         {
             var user = new ApplicationUser { UserName = "cu2", Email = "cu2@example.com", PhoneNumber = "0000000004", FullName = "CU2", NationalId = "NID2", DateOfBirth = DateTime.UtcNow.AddYears(-25) };

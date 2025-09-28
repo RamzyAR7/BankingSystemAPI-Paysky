@@ -84,6 +84,24 @@ namespace BankingSystemAPI.UnitTests
 
             // helper mock
             _helperMock = new Mock<ITransactionHelperService>();
+
+            // Setup id-based conversion mock
+            _helperMock.Setup(h => h.ConvertAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<decimal>()))
+                .ReturnsAsync((int fromId, int toId, decimal amt) =>
+                {
+                    // map ids to codes using in-memory context
+                    var from = _context.Currencies.Find(fromId);
+                    var to = _context.Currencies.Find(toId);
+                    if (from == null || to == null) return amt;
+
+                    if (string.Equals(from.Code, "USD", System.StringComparison.OrdinalIgnoreCase) && string.Equals(to.Code, "EUR", System.StringComparison.OrdinalIgnoreCase))
+                        return System.Math.Round(amt * 0.8m, 2);
+                    if (string.Equals(from.Code, "EUR", System.StringComparison.OrdinalIgnoreCase) && string.Equals(to.Code, "USD", System.StringComparison.OrdinalIgnoreCase))
+                        return System.Math.Round(amt / 0.8m, 2);
+                    return amt;
+                });
+
+            // keep code-based overload mock for compatibility
             _helperMock.Setup(h => h.ConvertAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<decimal>()))
                 .ReturnsAsync((string from, string to, decimal amt) =>
                 {

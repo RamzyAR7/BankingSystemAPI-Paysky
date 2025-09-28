@@ -311,15 +311,16 @@ namespace BankingSystemAPI.Application.Services
                         throw new InvalidAccountOperationException("Cannot perform transaction: target user's bank is inactive.");
                 }
 
-                var sourceCode = source.Currency?.Code ?? string.Empty;
-                var targetCode = target.Currency?.Code ?? string.Empty;
+                // Use currency IDs for conversion
+                var sourceCurrencyId = source.CurrencyId;
+                var targetCurrencyId = target.CurrencyId;
 
                 decimal targetAmount = request.Amount;
-                bool differentCurrency = !string.Equals(sourceCode, targetCode, StringComparison.OrdinalIgnoreCase);
+                bool differentCurrency = sourceCurrencyId != targetCurrencyId;
                 if (differentCurrency)
                 {
-                    // use code-based conversion helper
-                    targetAmount = await _helper.ConvertAsync(sourceCode, targetCode, request.Amount);
+                    // convert using id-based helper
+                    targetAmount = await _helper.ConvertAsync(sourceCurrencyId, targetCurrencyId, request.Amount);
                 }
 
                 // determine fee rate

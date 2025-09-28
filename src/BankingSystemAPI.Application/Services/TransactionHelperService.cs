@@ -41,7 +41,7 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<decimal> ConvertAsync(string fromCurrencyCode, string toCurrencyCode, decimal amount)
         {
-            if (string.IsNullOrEmpty(fromCurrencyCode) || string.IsNullOrEmpty(toCurrencyCode))
+            if (string.IsNullOrWhiteSpace(fromCurrencyCode) || string.IsNullOrWhiteSpace(toCurrencyCode))
                 throw new BadRequestException("Currency code is required.");
 
             var from = await _unitOfWork.CurrencyRepository.FindAsync(c => c.Code == fromCurrencyCode);

@@ -8,8 +8,11 @@
 
   <ItemGroup>
     <Compile Remove="Cache\**" />
+    <Compile Remove="Services\**" />
     <EmbeddedResource Remove="Cache\**" />
+    <EmbeddedResource Remove="Services\**" />
     <None Remove="Cache\**" />
+    <None Remove="Services\**" />
   </ItemGroup>
 
   <ItemGroup>

@@ -130,7 +130,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             if (actingUser == null)
                 return (Enumerable.Empty<Account>(), 0);
 
-            var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery("Client"); // IQueryable<string> of userIds
+            var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery(UserRole.Client.ToString()); // IQueryable<string> of userIds
             query = query.Where(a => clientUserIds.Contains(a.UserId) && a.User.BankId == actingUser.BankId).OrderBy(a => a.Id);
             return await _uow.AccountRepository.GetFilteredAccountsAsync(query, pageNumber, pageSize);
         }

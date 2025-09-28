@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
 
 namespace BankingSystemAPI.Infrastructure.Context
 {

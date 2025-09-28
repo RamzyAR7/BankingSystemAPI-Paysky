@@ -31,22 +31,32 @@ namespace BankingSystemAPI.Application.Mapping
         private void ConfigureUserMappings()
         {
             #region User
-            CreateMap<ApplicationUser, UserResDto>()
-                .ForMember(dest => dest.Role, opt => opt.Ignore())
-                .ForMember(dest => dest.Accounts, opt => opt.MapFrom(src => src.Accounts))
-                .ForMember(dest => dest.BankName, opt => opt.MapFrom(src => src.Bank != null ? src.Bank.Name : null));
-
             CreateMap<UserReqDto, ApplicationUser>()
+                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Username))
                 .ForMember(dest => dest.DateOfBirth, opt => opt.MapFrom(src => src.DateOfBirth.ToDateTime(new TimeOnly(0, 0))))
-                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Username));
+                // Do not let AutoMapper try to map Role string to ApplicationRole navigation
+                .ForMember(dest => dest.Role, opt => opt.Ignore())
+                // RoleId will be set by the service after resolving the role name
+                .ForMember(dest => dest.RoleId, opt => opt.Ignore())
+                .ForMember(dest => dest.Bank, opt => opt.Ignore())
+                .ForMember(dest => dest.Accounts, opt => opt.Ignore())
+                .ForMember(dest => dest.RefreshTokens, opt => opt.Ignore());
 
             CreateMap<UserEditDto, ApplicationUser>()
+                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Username))
                 .ForMember(dest => dest.DateOfBirth, opt => opt.MapFrom(src => src.DateOfBirth.ToDateTime(new TimeOnly(0, 0))))
-                .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.RefreshTokens, opt => opt.Ignore())
+                .ForMember(dest => dest.Role, opt => opt.Ignore())
+                .ForMember(dest => dest.RoleId, opt => opt.Ignore())
+                .ForMember(dest => dest.Bank, opt => opt.Ignore())
                 .ForMember(dest => dest.Accounts, opt => opt.Ignore())
-                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Username));
+                .ForMember(dest => dest.RefreshTokens, opt => opt.Ignore());
+
+            CreateMap<ApplicationUser, UserResDto>()
+                .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.UserName))
+                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role != null ? src.Role.Name : string.Empty))
+                .ForMember(dest => dest.BankName, opt => opt.MapFrom(src => src.Bank != null ? src.Bank.Name : string.Empty))
+                .ForMember(dest => dest.DateOfBirth, opt => opt.MapFrom(src => src.DateOfBirth))
+                .ForMember(dest => dest.Accounts, opt => opt.Ignore());
             #endregion
         }
 

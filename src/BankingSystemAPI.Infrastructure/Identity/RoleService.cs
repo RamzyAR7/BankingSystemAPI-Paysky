@@ -86,9 +86,10 @@ namespace BankingSystemAPI.Infrastructure.Services
                 return result;
             }
 
-            // Prevent deletion if any users are assigned to this role
-            var hasUsers = await _db.UserRoles.AnyAsync(ur => ur.RoleId == roleId);
-            if (hasUsers)
+            // Prevent deletion if any users are assigned to this role (check Users.RoleId OR UserRoles join table)
+            var hasUsersViaFk = await _db.Users.AnyAsync(u => u.RoleId == roleId);
+            var hasUsersViaJoin = await _db.UserRoles.AnyAsync(ur => ur.RoleId == roleId);
+            if (hasUsersViaFk || hasUsersViaJoin)
             {
                 result.Errors.Add(new IdentityError { Description = "Cannot delete role because it is assigned to one or more users." });
                 result.Succeeded = false;

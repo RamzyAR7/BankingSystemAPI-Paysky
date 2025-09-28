@@ -39,6 +39,9 @@ namespace BankingSystemAPI.Infrastructure.Configuration_Classes
             builder.Property(u => u.IsActive)
                 .HasDefaultValue(true);
 
+            builder.Property(u => u.RoleId)
+                .IsRequired();
+
             // Composite Indexes (Unique per Bank)
             builder.HasIndex(u => new { u.UserName, u.BankId }).IsUnique();
             builder.HasIndex(u => new { u.Email, u.BankId }).IsUnique();
@@ -54,7 +57,11 @@ namespace BankingSystemAPI.Infrastructure.Configuration_Classes
                 .WithOne(rt => rt.User)
                 .HasForeignKey(rt => rt.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-        }
 
+            builder.HasOne(u => u.Role)
+                .WithMany(r => r.Users)
+                .HasForeignKey(u => u.RoleId)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

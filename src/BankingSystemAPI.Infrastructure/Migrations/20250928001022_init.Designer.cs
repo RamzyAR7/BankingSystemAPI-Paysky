@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BankingSystemAPI.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250926191533_init")]
+    [Migration("20250928001022_init")]
     partial class init
     {
         /// <inheritdoc />
@@ -201,6 +201,10 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<string>("RoleId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
@@ -223,6 +227,8 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex")
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
+
+                    b.HasIndex("RoleId");
 
                     b.HasIndex("Email", "BankId")
                         .IsUnique()
@@ -558,7 +564,15 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                         .HasForeignKey("BankId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("BankingSystemAPI.Domain.Entities.ApplicationRole", "Role")
+                        .WithMany("Users")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Bank");
+
+                    b.Navigation("Role");
                 });
 
             modelBuilder.Entity("BankingSystemAPI.Domain.Entities.InterestLog", b =>
@@ -637,6 +651,11 @@ namespace BankingSystemAPI.Infrastructure.Migrations
             modelBuilder.Entity("BankingSystemAPI.Domain.Entities.Account", b =>
                 {
                     b.Navigation("AccountTransactions");
+                });
+
+            modelBuilder.Entity("BankingSystemAPI.Domain.Entities.ApplicationRole", b =>
+                {
+                    b.Navigation("Users");
                 });
 
             modelBuilder.Entity("BankingSystemAPI.Domain.Entities.ApplicationUser", b =>

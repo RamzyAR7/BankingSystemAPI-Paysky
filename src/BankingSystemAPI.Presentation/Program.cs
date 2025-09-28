@@ -339,12 +339,19 @@ using (var scope = app.Services.CreateScope())
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
 
-        // Seed roles
+        // 1) Ensure role seeding completes
         await IdentitySeeding.SeedingRoleAsync(roleManager);
 
-        // Seed users
-        await IdentitySeeding.SeedingUsersAsync(userManager, roleManager, db);
-
+        // 2) Verify roles were created successfully before proceeding
+        var rolesExist = await roleManager.Roles.AnyAsync();
+        if (!rolesExist)
+        {
+            logger.LogWarning("Role seeding completed but no roles were found. Skipping user, currency, and bank seeding.");
+        }
+        else
+        {
+            await IdentitySeeding.SeedingUsersAsync(userManager, roleManager, db);
+        }
         // Seed currencies
         await CurrencySeeding.SeedAsync(db);
 

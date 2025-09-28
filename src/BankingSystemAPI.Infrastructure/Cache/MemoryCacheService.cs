@@ -1,46 +1,37 @@
 using BankingSystemAPI.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 
-
 namespace BankingSystemAPI.Infrastructure.Services
 {
     public class MemoryCacheService : ICacheService
     {
-        private readonly IMemoryCache _cache;
-        private readonly MemoryCacheEntryOptions _defaultOptions = new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10) };
-
-        public MemoryCacheService(IMemoryCache cache)
+        private readonly IMemoryCache _memoryCache;
+        private readonly MemoryCacheEntryOptions _defaultCacheOptions =  new MemoryCacheEntryOptions
         {
-            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+        };
+        public MemoryCacheService(IMemoryCache memoryCache)
+        {
+            _memoryCache = memoryCache;
         }
-
         public bool TryGetValue<T>(object key, out T value)
         {
-            if (_cache.TryGetValue(key, out var raw))
+            if(_memoryCache.TryGetValue(key, out var cached))
             {
-                value = (T)raw;
+                value = (T)cached;
                 return true;
             }
-            value = default!;
+            value = default;
             return false;
         }
-
         public void Set<T>(object key, T value, TimeSpan? absoluteExpirationRelativeToNow = null)
         {
-            var options = absoluteExpirationRelativeToNow.HasValue ? new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = absoluteExpirationRelativeToNow } : _defaultOptions;
-            _cache.Set(key, value, options);
+            var options =  new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = absoluteExpirationRelativeToNow } ?? _defaultCacheOptions;
+            _memoryCache.Set(key, value, options);
         }
-
-        public T GetOrCreate<T>(object key, Func<T> factory, TimeSpan? absoluteExpirationRelativeToNow = null)
+        public void Remove(object key)
         {
-            if (TryGetValue<T>(key, out var existing))
-                return existing;
-
-            var created = factory();
-            Set(key, created, absoluteExpirationRelativeToNow);
-            return created;
+            _memoryCache.Remove(key);
         }
-
-        public void Remove(object key) => _cache.Remove(key);
     }
 }

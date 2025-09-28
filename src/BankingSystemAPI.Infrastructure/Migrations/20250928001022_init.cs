@@ -104,6 +104,7 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                     DateOfBirth = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     BankId = table.Column<int>(type: "int", nullable: true),
+                    RoleId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     UserName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
@@ -122,6 +123,12 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AspNetUsers_AspNetRoles_RoleId",
+                        column: x => x.RoleId,
+                        principalTable: "AspNetRoles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_AspNetUsers_Banks_BankId",
                         column: x => x.BankId,
@@ -408,6 +415,11 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                 filter: "[BankId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
+                name: "IX_AspNetUsers_RoleId",
+                table: "AspNetUsers",
+                column: "RoleId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_AspNetUsers_UserName_BankId",
                 table: "AspNetUsers",
                 columns: new[] { "UserName", "BankId" },
@@ -498,9 +510,6 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                 name: "Transactions");
 
             migrationBuilder.DropTable(
-                name: "AspNetRoles");
-
-            migrationBuilder.DropTable(
                 name: "SavingsAccounts");
 
             migrationBuilder.DropTable(
@@ -508,6 +517,9 @@ namespace BankingSystemAPI.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "Currencies");
+
+            migrationBuilder.DropTable(
+                name: "AspNetRoles");
 
             migrationBuilder.DropTable(
                 name: "Banks");
