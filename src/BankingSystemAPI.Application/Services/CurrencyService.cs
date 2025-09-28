@@ -4,6 +4,7 @@ using BankingSystemAPI.Application.Exceptions;
 using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Domain.Entities;
+using BankingSystemAPI.Application.Specifications;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,7 +26,8 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<IEnumerable<CurrencyDto>> GetAllAsync()
         {
-            var currencies = await _unitOfWork.CurrencyRepository.GetAllAsync();
+            var spec = new Specification<Currency>();
+            var currencies = await _unitOfWork.CurrencyRepository.ListAsync(spec);
             return _mapper.Map<IEnumerable<CurrencyDto>>(currencies);
         }
 
@@ -34,7 +36,8 @@ namespace BankingSystemAPI.Application.Services
             if (id <= 0)
                 throw new BadRequestException("Invalid currency id.");
 
-            var currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(id);
+            var spec = new Specification<Currency>(c => c.Id == id);
+            var currency = await _unitOfWork.CurrencyRepository.GetAsync(spec);
             if (currency == null)
                 throw new CurrencyNotFoundException($"Currency with ID '{id}' not found.");
             return _mapper.Map<CurrencyDto>(currency);
@@ -52,7 +55,8 @@ namespace BankingSystemAPI.Application.Services
             // Ensure only one base currency exists
             if (reqDto.IsBase)
             {
-                var existingBase = await _unitOfWork.CurrencyRepository.FindAsync(c => c.IsBase);
+                var baseSpec = new CurrencyBaseSpecification();
+                var existingBase = await _unitOfWork.CurrencyRepository.GetAsync(baseSpec);
                 if (existingBase != null)
                     throw new BadRequestException("A base currency already exists. Clear it before creating another base currency.");
             }
@@ -76,14 +80,16 @@ namespace BankingSystemAPI.Application.Services
             if (reqDto.ExchangeRate <= 0)
                 throw new BadRequestException("Exchange rate must be greater than zero.");
 
-            var currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(id);
+            var spec = new Specification<Currency>(c => c.Id == id);
+            var currency = await _unitOfWork.CurrencyRepository.GetAsync(spec);
             if (currency == null)
                 throw new CurrencyNotFoundException($"Currency with ID '{id}' not found.");
 
             // If setting to base, ensure no other base currency exists (except this one)
             if (reqDto.IsBase && !currency.IsBase)
             {
-                var existingBase = await _unitOfWork.CurrencyRepository.FindAsync(c => c.IsBase && c.Id != id);
+                var baseSpec = new CurrencyBaseSpecification(id);
+                var existingBase = await _unitOfWork.CurrencyRepository.GetAsync(baseSpec);
                 if (existingBase != null)
                     throw new BadRequestException("Another base currency already exists. Clear it before setting this currency as base.");
             }
@@ -100,7 +106,8 @@ namespace BankingSystemAPI.Application.Services
             if (id <= 0)
                 throw new BadRequestException("Invalid currency id.");
 
-            var currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(id);
+            var spec = new Specification<Currency>(c => c.Id == id);
+            var currency = await _unitOfWork.CurrencyRepository.GetAsync(spec);
             if (currency == null)
                 throw new CurrencyNotFoundException($"Currency with ID '{id}' not found.");
 
@@ -115,7 +122,8 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task SetCurrencyActiveStatusAsync(int currencyId, bool isActive)
         {
-            var currency = await _unitOfWork.CurrencyRepository.GetByIdAsync(currencyId);
+            var spec = new Specification<Currency>(c => c.Id == currencyId);
+            var currency = await _unitOfWork.CurrencyRepository.GetAsync(spec);
             if (currency == null) throw new CurrencyNotFoundException($"Currency with ID '{currencyId}' not found.");
             currency.IsActive = isActive;
             await _unitOfWork.CurrencyRepository.UpdateAsync(currency);
