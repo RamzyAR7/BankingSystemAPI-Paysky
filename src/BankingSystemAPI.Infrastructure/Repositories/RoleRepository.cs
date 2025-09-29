@@ -3,6 +3,8 @@ using BankingSystemAPI.Application.Interfaces;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
+using BankingSystemAPI.Application.Specifications;
+using BankingSystemAPI.Application.Specifications.UserSpecifications;
 
 
 namespace BankingSystemAPI.Infrastructure.Repositories
@@ -28,7 +30,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             if (_cache.TryGetValue<string>($"role_user_{userId}", out var cachedRoleName))
             {
                 if (string.IsNullOrEmpty(cachedRoleName)) return null;
-                return await FindAsync(r => r.Name == cachedRoleName);
+                return await FindAsync(new RoleByNameSpecification(cachedRoleName));
             }
 
             // Primary source: RoleId stored on Users table
@@ -40,7 +42,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
                 return null;
             }
 
-            var role = await FindAsync(r => r.Id == roleId);
+            var role = await FindAsync(new RoleByIdSpecification(roleId));
 
             // Cache role name for fast future lookups
             _cache.Set($"role_user_{userId}", role?.Name ?? string.Empty, TimeSpan.FromHours(1));

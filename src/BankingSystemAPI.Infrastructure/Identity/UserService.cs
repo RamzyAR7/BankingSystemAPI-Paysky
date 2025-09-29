@@ -31,9 +31,20 @@ namespace BankingSystemAPI.Infrastructure.Services
             _uow = uow;
         }
 
-        public async Task<IList<UserResDto>> GetAllUsersAsync(int pageNumber, int pageSize)
+        public async Task<IList<UserResDto>> GetAllUsersAsync(int pageNumber, int pageSize, string? orderBy = null, string? orderDirection = null)
         {
-            var query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role);
+            IQueryable<ApplicationUser> query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role);
+
+            // Apply ordering if provided
+            if (!string.IsNullOrWhiteSpace(orderBy))
+            {
+                var dir = (orderDirection ?? "ASC").ToUpperInvariant();
+                if (dir == "ASC")
+                    query = query.OrderBy(u => EF.Property<object>(u, orderBy));
+                else
+                    query = query.OrderByDescending(u => EF.Property<object>(u, orderBy));
+            }
+
             List<ApplicationUser> pagedUsers;
             int totalCount;
             if (_userAuth != null)

@@ -10,7 +10,7 @@ namespace BankingSystemAPI.Application.Interfaces.Services
     // TResDto - DTO returned to clients
     public interface IAccountTypeService<TAccount, TCreateDto, TEditDto, TResDto> where TAccount : Account
     {
-        Task<IEnumerable<TResDto>> GetAccountsAsync(int pageNumber, int pageSize);
+        Task<IEnumerable<TResDto>> GetAccountsAsync(int pageNumber, int pageSize, string? orderBy = null, string? orderDirection = null);
         Task<TResDto> CreateAccountAsync(TCreateDto reqDto);
         Task<TResDto> UpdateAccountAsync(int accountId, TEditDto reqDto);
     }

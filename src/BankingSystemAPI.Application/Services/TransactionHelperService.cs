@@ -4,6 +4,8 @@ using BankingSystemAPI.Application.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Threading.Tasks;
+using BankingSystemAPI.Application.Specifications;
+using BankingSystemAPI.Application.Specifications.CurrencySpecification;
 
 namespace BankingSystemAPI.Application.Services
 {
@@ -44,8 +46,11 @@ namespace BankingSystemAPI.Application.Services
             if (string.IsNullOrWhiteSpace(fromCurrencyCode) || string.IsNullOrWhiteSpace(toCurrencyCode))
                 throw new BadRequestException("Currency code is required.");
 
-            var from = await _unitOfWork.CurrencyRepository.FindAsync(c => c.Code == fromCurrencyCode);
-            var to = await _unitOfWork.CurrencyRepository.FindAsync(c => c.Code == toCurrencyCode);
+            var fromSpec = new CurrencyByCodeSpecification(fromCurrencyCode);
+            var toSpec = new CurrencyByCodeSpecification(toCurrencyCode);
+
+            var from = await _unitOfWork.CurrencyRepository.FindAsync(fromSpec);
+            var to = await _unitOfWork.CurrencyRepository.FindAsync(toSpec);
 
             if (from == null || to == null)
                 throw new CurrencyNotFoundException("One or both currencies are invalid.");

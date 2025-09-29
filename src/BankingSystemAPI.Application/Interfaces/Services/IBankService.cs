@@ -6,7 +6,7 @@ namespace BankingSystemAPI.Application.Interfaces.Services
 {
     public interface IBankService
     {
-        Task<List<BankSimpleResDto>> GetAllAsync(int pageNumber = 1, int pageSize = 10);
+        Task<List<BankSimpleResDto>> GetAllAsync(int pageNumber = 1, int pageSize = 10, string? orderBy = null, string? orderDirection = null);
         Task<BankResDto> GetByIdAsync(int id);
         Task<BankResDto> GetByNameAsync(string name);
         Task<BankResDto> CreateAsync(BankReqDto dto);

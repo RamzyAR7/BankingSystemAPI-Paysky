@@ -2,6 +2,7 @@ using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
+using BankingSystemAPI.Presentation.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -33,9 +34,13 @@ namespace BankingSystemAPI.Presentation.Controllers
         [PermissionFilterFactory(Permission.User.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetAllUsers(int pageNumber = 1, int pageSize = 10)
+        public async Task<IActionResult> GetAllUsers(int pageNumber = 1, int pageSize = 10, string? orderBy = null, string? orderDirection = null)
         {
-            var users = await _userService.GetAllUsersAsync(pageNumber, pageSize);
+            var allowed = new[] { "Id", "UserName", "Email", "FullName", "CreatedDate" };
+            if (!OrderByValidator.IsValid(orderBy, allowed))
+                return BadRequest($"Invalid orderBy value. Allowed: {string.Join(',', allowed)}");
+
+            var users = await _userService.GetAllUsersAsync(pageNumber, pageSize, orderBy, orderDirection);
             if (users == null || !users.Any())
             {
                 return NotFound("No users found.");

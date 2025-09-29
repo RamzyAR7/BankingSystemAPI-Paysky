@@ -6,7 +6,7 @@ namespace BankingSystemAPI.Application.Interfaces.Identity
 {
     public interface IUserService
     {
-        Task<IList<UserResDto>> GetAllUsersAsync(int pageNumber, int pageSize);
+        Task<IList<UserResDto>> GetAllUsersAsync(int pageNumber, int pageSize, string? orderBy = null, string? orderDirection = null);
         Task<UserResDto?> GetUserByUsernameAsync(string username);
         Task<UserResDto?> GetUserByIdAsync(string userId);
         Task<UserUpdateResultDto> CreateUserAsync(UserReqDto user);

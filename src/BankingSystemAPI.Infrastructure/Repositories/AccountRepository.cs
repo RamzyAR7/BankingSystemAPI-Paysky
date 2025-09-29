@@ -8,6 +8,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using BankingSystemAPI.Application.Specifications;
+using BankingSystemAPI.Application.Specifications.AccountSpecification;
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
@@ -37,18 +39,29 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
-            Expression<Func<Account, bool>> predicate = a => a is T;
+            var skip = (pageNumber - 1) * pageSize;
 
-            // Use GetPagedAsync(IQueryable,...) for paging
-            var baseQuery = Table.Where(predicate).Include(a => a.Currency).AsQueryable();
-            var (items, total) = await GetPagedAsync(baseQuery, pageNumber, pageSize);
+            // Use generic PagedSpecification to handle includes/paging
+            var spec = new PagedSpecification<Account>(a => a is T, skip, pageSize, orderByProperty: null, orderDirection: null, includes: (a => a.Currency));
+            var (items, total) = await GetPagedAsync(spec);
 
             return items.OfType<T>();
         }
 
         public async Task<(IEnumerable<Account> Accounts, int TotalCount)> GetFilteredAccountsAsync(IQueryable<Account> query, int pageNumber, int pageSize)
         {
-            return await GetPagedAsync(query, pageNumber, pageSize);
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            var skip = (pageNumber - 1) * pageSize;
+
+            // Make sure we operate on an IQueryable that can execute against EF
+            var baseQuery = query;
+
+            var total = await baseQuery.CountAsync();
+            var items = await baseQuery.Skip(skip).Take(pageSize).ToListAsync();
+
+            return (items, total);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using BankingSystemAPI.Application.Authorization.Helpers;
+using BankingSystemAPI.Application.Authorization.Helpers;
 using BankingSystemAPI.Application.Exceptions;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Identity;
@@ -6,6 +6,10 @@ using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
 using System.Linq.Expressions;
+using BankingSystemAPI.Application.Specifications;
+using System.Linq;
+using BankingSystemAPI.Application.Specifications.AccountSpecification;
+using BankingSystemAPI.Application.Specifications.UserSpecifications;
 
 namespace BankingSystemAPI.Application.AuthorizationServices
 {
@@ -33,15 +37,13 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             if (scope == AccessScope.Global)
                 return;
 
-            var source = await _uow.AccountRepository.FindWithIncludesAsync(
-                a => a.Id == sourceAccountId,
-                new Expression<Func<Account, object>>[] { a => a.User });
+            var sourceSpec = new AccountByIdSpecification(sourceAccountId);
+            var source = await _uow.AccountRepository.FindAsync(sourceSpec);
 
             if (source == null) throw new NotFoundException("Source account not found.");
 
-            var target = await _uow.AccountRepository.FindWithIncludesAsync(
-                a => a.Id == targetAccountId,
-                new Expression<Func<Account, object>>[] { a => a.User });
+            var targetSpec = new AccountByIdSpecification(targetAccountId);
+            var target = await _uow.AccountRepository.FindAsync(targetSpec);
 
             if (target == null) throw new NotFoundException("Target account not found.");
 
@@ -56,9 +58,8 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                     return;
 
                 case AccessScope.BankLevel:
-                    var actingUser = await _uow.UserRepository.FindWithIncludesAsync(
-                        u => u.Id == _currentUser.UserId,
-                        new Expression<Func<ApplicationUser, object>>[] { u => u.Bank });
+                    var actingUserSpec = new UserByIdSpecification(_currentUser.UserId);
+                    var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec);
 
                     if (actingUser == null)
                         throw new ForbiddenException("Acting user not found.");
@@ -75,31 +76,33 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         public async Task<(IEnumerable<Transaction> Transactions, int TotalCount)> FilterTransactionsAsync(IQueryable<Transaction> query, int pageNumber = 1, int pageSize = 10)
         {
             var scope = await _scopeResolver.GetScopeAsync();
+            var skip = (pageNumber - 1) * pageSize;
             switch (scope)
             {
                 case AccessScope.Global:
-                    query = query.OrderBy(t => t.Id);
                     {
-                        var res = await _uow.TransactionRepository.GetPagedAsync(query, pageNumber, pageSize);
+                        var spec = new PagedSpecification<Transaction>(skip, pageSize, orderByProperty: "Timestamp", orderDirection: "DESC", includes: (t => t.AccountTransactions));
+                        var res = await _uow.TransactionRepository.GetPagedAsync(spec);
                         return (res.Items, res.TotalCount);
                     }
                 case AccessScope.Self:
-                    var userId = _currentUser.UserId;
-                    query = query.Where(t => t.AccountTransactions.Any(at => at.Account.UserId == userId)).OrderBy(t => t.Id);
                     {
-                        var res = await _uow.TransactionRepository.GetPagedAsync(query, pageNumber, pageSize);
+                        var userId = _currentUser.UserId;
+                        var spec = new PagedSpecification<Transaction>(t => t.AccountTransactions.Any(at => at.Account.UserId == userId), skip, pageSize, orderByProperty: "Timestamp", orderDirection: "DESC", includes: (t => t.AccountTransactions));
+                        var res = await _uow.TransactionRepository.GetPagedAsync(spec);
                         return (res.Items, res.TotalCount);
                     }
                 case AccessScope.BankLevel:
-                    var actingUser = await _uow.UserRepository.FindWithIncludesAsync(
-                        u => u.Id == _currentUser.UserId,
-                        new Expression<Func<ApplicationUser, object>>[] { u => u.Bank });
-                    if (actingUser == null)
-                        return (Enumerable.Empty<Transaction>(), 0);
-                    var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery(UserRole.Client.ToString());
-                    query = query.Where(t => t.AccountTransactions.Any(at => clientUserIds.Contains(at.Account.UserId) && at.Account.User.BankId == actingUser.BankId)).OrderBy(t => t.Id);
                     {
-                        var res = await _uow.TransactionRepository.GetPagedAsync(query, pageNumber, pageSize);
+                        var actingUserSpec = new UserByIdSpecification(_currentUser.UserId);
+                        var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec);
+                        if (actingUser == null)
+                            return (Enumerable.Empty<Transaction>(), 0);
+
+                        var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery(UserRole.Client.ToString());
+                        Expression<Func<Transaction, bool>> criteria = t => t.AccountTransactions.Any(at => clientUserIds.Contains(at.Account.UserId) && at.Account.User.BankId == actingUser.BankId);
+                        var spec = new PagedSpecification<Transaction>(criteria, skip, pageSize, orderByProperty: "Timestamp", orderDirection: "DESC", includes: (t => t.AccountTransactions));
+                        var res = await _uow.TransactionRepository.GetPagedAsync(spec);
                         return (res.Items, res.TotalCount);
                     }
                 default:

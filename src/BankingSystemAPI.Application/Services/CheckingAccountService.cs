@@ -15,6 +15,8 @@ using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using Microsoft.EntityFrameworkCore;
+using BankingSystemAPI.Application.Specifications.UserSpecifications;
+using BankingSystemAPI.Application.Specifications.AccountSpecification;
 
 
 namespace BankingSystemAPI.Application.Services
@@ -32,14 +34,16 @@ namespace BankingSystemAPI.Application.Services
             _accountAuth = accountAuth;
         }
 
-        public async Task<IEnumerable<CheckingAccountDto>> GetAccountsAsync(int pageNumber, int pageSize)
+        public async Task<IEnumerable<CheckingAccountDto>> GetAccountsAsync(int pageNumber, int pageSize, string? orderBy = null, string? orderDirection = null)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
             var skip = (pageNumber - 1) * pageSize;
-            var spec = new Specification<Account>(a => a is CheckingAccount)
-                .ApplyPaging(skip, pageSize)
-                .AddInclude(a => a.Currency);
+
+            var orderProp = string.IsNullOrWhiteSpace(orderBy) ? "CreatedDate" : orderBy;
+            var orderDir = string.IsNullOrWhiteSpace(orderDirection) ? "DESC" : orderDirection;
+
+            var spec = new PagedSpecification<Account>(a => a is CheckingAccount, skip, pageSize, orderProp, orderDir, a => a.Currency);
             var accounts = await _unitOfWork.AccountRepository.ListAsync(spec);
             var dtosAll = _mapper.Map<IEnumerable<CheckingAccountDto>>(accounts.OfType<CheckingAccount>());
             return dtosAll;
@@ -58,8 +62,9 @@ namespace BankingSystemAPI.Application.Services
             if (!currency.IsActive)
                 throw new BadRequestException("Cannot create account with inactive currency.");
 
-            // Ensure target user exists via repository
-            var user = await _unitOfWork.UserRepository.FindWithIncludesAsync(u => u.Id == reqDto.UserId, new Expression<Func<ApplicationUser, object>>[] { u => u.Accounts, u => u.Bank }, true);
+            // Ensure target user exists via repository (use specification)
+            var userSpec = new UserByIdSpecification(reqDto.UserId);
+            var user = await _unitOfWork.UserRepository.FindAsync(userSpec);
             if (user == null)
                 throw new NotFoundException($"User with ID '{reqDto.UserId}' not found.");
             if (!user.IsActive)
@@ -89,8 +94,8 @@ namespace BankingSystemAPI.Application.Services
             if (_accountAuth != null)
                 await _accountAuth.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
 
-            var spec = new Specification<Account>(a => a.Id == accountId && a is CheckingAccount);
-            var account = await _unitOfWork.AccountRepository.GetAsync(spec);
+            var spec = new CheckingAccountByIdSpecification(accountId);
+            var account = await _unitOfWork.AccountRepository.FindAsync(spec);
             if (account is not CheckingAccount checkingAccount)
                 throw new AccountNotFoundException($"Checking Account with ID '{accountId}' not found.");
 

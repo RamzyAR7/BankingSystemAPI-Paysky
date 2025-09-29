@@ -5,10 +5,10 @@ using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Authorization.Helpers;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
+using BankingSystemAPI.Application.Specifications;
 using System.Linq.Expressions;
-using System.Threading.Tasks;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
+using BankingSystemAPI.Application.Specifications.UserSpecifications;
 
 namespace BankingSystemAPI.Application.AuthorizationServices
 {
@@ -44,9 +44,8 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
             // BankLevel
             var actingBankId = _currentUser.BankId;
-            var targetUser = await _uow.UserRepository.FindWithIncludesAsync(
-                u => u.Id == targetUserId,
-                new Expression<Func<ApplicationUser, object>>[] { u => u.Bank })
+            var spec = new UserByIdSpecification(targetUserId);
+            var targetUser = await _uow.UserRepository.FindAsync(spec)
                 ?? throw new NotFoundException("Target user not found.");
 
             BankGuard.EnsureSameBank(actingBankId, targetUser.BankId);
@@ -56,9 +55,8 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         {
             var scope = await _scopeResolver.GetScopeAsync();
 
-            var actingUser = await _uow.UserRepository.FindWithIncludesAsync(
-                u => u.Id == _currentUser.UserId,
-                new Expression<Func<ApplicationUser, object>>[] { u => u.Bank })
+            var actingSpec = new UserByIdSpecification(_currentUser.UserId);
+            var actingUser = await _uow.UserRepository.FindAsync(actingSpec)
                 ?? throw new ForbiddenException("Acting user not found.");
 
             // Prevent self-modification
@@ -68,7 +66,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                     throw new ForbiddenException("Users cannot delete themselves.");
 
                 if (operation == UserModificationOperation.Edit)
-                    throw new ForbiddenException("Users cannot edit their own profile details (only password).");
+                    throw new ForbiddenException("Users cannot edit their own profile details (only password).\u00A0");
 
                 if (operation == UserModificationOperation.ChangePassword)
                     return;
@@ -83,9 +81,8 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                     throw new ForbiddenException("Clients cannot modify other users.");
 
                 case AccessScope.BankLevel:
-                    var targetUser = await _uow.UserRepository.FindWithIncludesAsync(
-                        u => u.Id == targetUserId,
-                        new Expression<Func<ApplicationUser, object>>[] { u => u.Bank })
+                    var targetSpec = new UserByIdSpecification(targetUserId);
+                    var targetUser = await _uow.UserRepository.FindAsync(targetSpec)
                         ?? throw new NotFoundException("Target user not found.");
 
                     var targetRole = await _uow.RoleRepository.GetRoleByUserIdAsync(targetUserId);
@@ -105,33 +102,29 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         {
             var scope = await _scopeResolver.GetScopeAsync();
 
+            var skip = (pageNumber - 1) * pageSize;
             switch (scope)
             {
                 case AccessScope.Global:
-                    // Paging and filtering in DB
-                    query = query.OrderBy(u => u.Id);
-                    {
-                        var res = await _uow.UserRepository.GetPagedAsync(query, pageNumber, pageSize);
-                        return (res.Items, res.TotalCount);
-                    }
+                    // Paging and filtering in DB via spec
+                    var globalSpec = new PagedSpecification<ApplicationUser>(u => true, skip, pageSize);
+                    var globalRes = await _uow.UserRepository.GetPagedAsync(globalSpec);
+                    return (globalRes.Items, globalRes.TotalCount);
 
                 case AccessScope.Self:
-                    query = query.Where(u => u.Id == _currentUser.UserId).OrderBy(u => u.Id);
-                    {
-                        var res = await _uow.UserRepository.GetPagedAsync(query, pageNumber, pageSize);
-                        return (res.Items, res.TotalCount);
-                    }
+                    var selfSpec = new PagedSpecification<ApplicationUser>(u => u.Id == _currentUser.UserId, skip, pageSize);
+                    var selfRes = await _uow.UserRepository.GetPagedAsync(selfSpec);
+                    return (selfRes.Items, selfRes.TotalCount);
 
                 case AccessScope.BankLevel:
                     // Filter by BankId and role Client in DB
                     var bankId = _currentUser.BankId;
                     // Subquery for Client users
                     var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery("Client"); // IQueryable<string> of userIds
-                    query = query.Where(u => u.BankId == bankId && clientUserIds.Contains(u.Id)).OrderBy(u => u.Id);
-                    {
-                        var res = await _uow.UserRepository.GetPagedAsync(query, pageNumber, pageSize);
-                        return (res.Items, res.TotalCount);
-                    }
+                    Expression<Func<ApplicationUser, bool>> criteria = u => u.BankId == bankId && clientUserIds.Contains(u.Id);
+                    var bankSpec = new PagedSpecification<ApplicationUser>(criteria, skip, pageSize);
+                    var bankRes = await _uow.UserRepository.GetPagedAsync(bankSpec);
+                    return (bankRes.Items, bankRes.TotalCount);
 
                 default:
                     return (Enumerable.Empty<ApplicationUser>(), 0);

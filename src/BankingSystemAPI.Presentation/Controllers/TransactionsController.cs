@@ -2,6 +2,7 @@
 using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
+using BankingSystemAPI.Presentation.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -35,9 +36,13 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetTransactionHistory(int accountId, int pageNumber = 1, int pageSize = 20)
+        public async Task<IActionResult> GetTransactionHistory(int accountId, int pageNumber = 1, int pageSize = 20, string? orderBy = null, string? orderDirection = null)
         {
-            var history = await _transactionService.GetByAccountIdAsync(accountId, pageNumber, pageSize);
+            var allowed = new[] { "Timestamp", "Amount", "Id" };
+            if (!OrderByValidator.IsValid(orderBy, allowed))
+                return BadRequest($"Invalid orderBy value. Allowed: {string.Join(',', allowed)}");
+
+            var history = await _transactionService.GetByAccountIdAsync(accountId, pageNumber, pageSize, orderBy, orderDirection);
             return Ok(new { message = "Transaction history retrieved successfully.", history });
         }
 
@@ -65,9 +70,13 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetAllTransactions(int pageNumber = 1, int pageSize = 10)
+        public async Task<IActionResult> GetAllTransactions(int pageNumber = 1, int pageSize = 10, string? orderBy = null, string? orderDirection = null)
         {
-            var transactions = await _transactionService.GetAllAsync(pageNumber, pageSize);
+            var allowed = new[] { "Timestamp", "Amount", "Id" };
+            if (!OrderByValidator.IsValid(orderBy, allowed))
+                return BadRequest($"Invalid orderBy value. Allowed: {string.Join(',', allowed)}");
+
+            var transactions = await _transactionService.GetAllAsync(pageNumber, pageSize, orderBy, orderDirection);
             return Ok(new { message = "Transactions retrieved successfully.", transactions });
         }
     }

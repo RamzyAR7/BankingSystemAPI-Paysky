@@ -37,6 +37,8 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         /// <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
         /// <param name="pageSize">Number of items per page. Defaults to 10.</param>
+        /// <param name="orderBy">Optional. Property name to sort by. Allowed values: "Id", "Name".</param>
+        /// <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC". Defaults to "ASC".</param>
         /// <returns>
         /// 200 OK with a list of banks when successful.
         /// 401 Unauthorized if the caller is not authenticated.
@@ -45,9 +47,14 @@ namespace BankingSystemAPI.Presentation.Controllers
         [PermissionFilterFactory(Permission.Bank.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10)
+        public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10, string? orderBy = null, string? orderDirection = null)
         {
-            var banks = await _bankService.GetAllAsync(pageNumber, pageSize);
+            // validate orderBy against allowed fields to avoid runtime exceptions
+            var allowed = new[] { "Id", "Name" };
+            if (!string.IsNullOrWhiteSpace(orderBy) && !allowed.Contains(orderBy, StringComparer.OrdinalIgnoreCase))
+                return BadRequest($"Invalid orderBy value. Allowed: {string.Join(',', allowed)}");
+
+            var banks = await _bankService.GetAllAsync(pageNumber, pageSize, orderBy, orderDirection);
             return Ok(new { message = "Banks retrieved successfully.", banks });
         }
 

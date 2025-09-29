@@ -13,6 +13,8 @@ using Microsoft.Extensions.Logging;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using System.Linq.Expressions;
 using BankingSystemAPI.Application.Specifications;
+using BankingSystemAPI.Application.Specifications.AccountSpecification;
+using BankingSystemAPI.Application.Specifications.TransactionSpecification;
 
 namespace BankingSystemAPI.Application.Services
 {
@@ -123,10 +125,8 @@ namespace BankingSystemAPI.Application.Services
                     await _accountAuth.CanModifyAccountAsync(request.AccountId, AccountModificationOperation.Deposit); // deposit uses access rules
 
                 // Load account including User and Currency in a single query and request tracking so we can update
-                var account = await _unitOfWork.AccountRepository.FindWithIncludesAsync(
-                    a => a.Id == request.AccountId,
-                    new Expression<Func<Account, object>>[] { a => a.User, a => a.Currency },
-                    asNoTracking: false);
+                var spec = new AccountByIdSpecification(request.AccountId).WithTracking(false);
+                var account = await _unitOfWork.AccountRepository.FindAsync(spec);
 
                 if (account == null)
                 {
@@ -193,10 +193,8 @@ namespace BankingSystemAPI.Application.Services
                 if (_accountAuth != null)
                     await _accountAuth.CanModifyAccountAsync(request.AccountId, AccountModificationOperation.Withdraw); // withdraw uses access rules
 
-                var account = await _unitOfWork.AccountRepository.FindWithIncludesAsync(
-                    a => a.Id == request.AccountId,
-                    new Expression<Func<Account, object>>[] { a => a.User, a => a.Currency },
-                    asNoTracking: false);
+                var spec = new AccountByIdSpecification(request.AccountId).WithTracking(false);
+                var account = await _unitOfWork.AccountRepository.FindAsync(spec);
 
                 if (account == null)
                 {
@@ -264,15 +262,11 @@ namespace BankingSystemAPI.Application.Services
                     await _transactionAuth.CanInitiateTransferAsync(request.SourceAccountId, request.TargetAccountId);
 
                 // Load both accounts including User and Currency in tracked state to avoid extra round-trips
-                var source = await _unitOfWork.AccountRepository.FindWithIncludesAsync(
-                    a => a.Id == request.SourceAccountId,
-                    new Expression<Func<Account, object>>[] { a => a.User, a => a.Currency },
-                    asNoTracking: false);
+                var srcSpec = new AccountByIdSpecification(request.SourceAccountId).WithTracking(false);
+                var source = await _unitOfWork.AccountRepository.FindAsync(srcSpec);
 
-                var target = await _unitOfWork.AccountRepository.FindWithIncludesAsync(
-                    a => a.Id == request.TargetAccountId,
-                    new Expression<Func<Account, object>>[] { a => a.User, a => a.Currency },
-                    asNoTracking: false);
+                var tgtSpec = new AccountByIdSpecification(request.TargetAccountId).WithTracking(false);
+                var target = await _unitOfWork.AccountRepository.FindAsync(tgtSpec);
 
                 if (source == null)
                 {
@@ -385,32 +379,33 @@ namespace BankingSystemAPI.Application.Services
             return _mapper.Map<TransactionResDto>(trx);
         }
 
-        public async Task<IEnumerable<TransactionResDto>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<IEnumerable<TransactionResDto>> GetAllAsync(int pageNumber, int pageSize, string? orderBy = null, string? orderDirection = null)
         {
             var skip = (pageNumber - 1) * pageSize;
-            var spec = new Specification<Transaction>(t => true)
-                .ApplyPaging(skip, pageSize)
-                .AddInclude(t => t.AccountTransactions);
+            var orderProp = string.IsNullOrWhiteSpace(orderBy) ? "Timestamp" : orderBy;
+            var orderDir = string.IsNullOrWhiteSpace(orderDirection) ? "DESC" : orderDirection;
+
+            var spec = new PagedSpecification<Transaction>(skip, pageSize, orderProp, orderDir, t => t.AccountTransactions);
             var transactions = await _unitOfWork.TransactionRepository.ListAsync(spec);
             return _mapper.Map<IEnumerable<TransactionResDto>>(transactions);
         }
 
-        public async Task<IEnumerable<TransactionResDto>> GetByAccountIdAsync(int accountId, int pageNumber, int pageSize)
+        public async Task<IEnumerable<TransactionResDto>> GetByAccountIdAsync(int accountId, int pageNumber, int pageSize, string? orderBy = null, string? orderDirection = null)
         {
             if (accountId <= 0) throw new BadRequestException("Invalid account id.");
             var skip = (pageNumber - 1) * pageSize;
-            var spec = new Specification<Transaction>(t => t.AccountTransactions.Any(at => at.AccountId == accountId))
-                .ApplyPaging(skip, pageSize)
-                .AddInclude(t => t.AccountTransactions);
+            var orderProp = string.IsNullOrWhiteSpace(orderBy) ? "Timestamp" : orderBy;
+            var orderDir = string.IsNullOrWhiteSpace(orderDirection) ? "DESC" : orderDirection;
+
+            var spec = new PagedSpecification<Transaction>(t => t.AccountTransactions.Any(at => at.AccountId == accountId), skip, pageSize, orderProp, orderDir, t => t.AccountTransactions);
             var transactions = await _unitOfWork.TransactionRepository.ListAsync(spec);
             return _mapper.Map<IEnumerable<TransactionResDto>>(transactions);
         }
 
         public async Task<TransactionResDto> GetByIdAsync(int transactionId)
         {
-            var spec = new Specification<Transaction>(t => t.Id == transactionId)
-                .AddInclude(t => t.AccountTransactions);
-            var transaction = await _unitOfWork.TransactionRepository.GetAsync(spec);
+            var spec = new TransactionByIdSpecification(transactionId);
+            var transaction = await _unitOfWork.TransactionRepository.FindAsync(spec);
             if (transaction == null) throw new TransactionNotFoundException("Transaction not found.");
             return _mapper.Map<TransactionResDto>(transaction);
         }

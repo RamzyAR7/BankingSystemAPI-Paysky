@@ -12,6 +12,7 @@ using BankingSystemAPI.Domain.Entities;
 using System;
 using System.Linq.Expressions;
 using BankingSystemAPI.Application.Specifications;
+using BankingSystemAPI.Application.Specifications.BankSpecification;
 
 namespace BankingSystemAPI.Application.Services
 {
@@ -25,22 +26,20 @@ namespace BankingSystemAPI.Application.Services
             _mapper = mapper;
         }
 
-        public async Task<List<BankSimpleResDto>> GetAllAsync(int pageNumber = 1, int pageSize = 10)
+        public async Task<List<BankSimpleResDto>> GetAllAsync(int pageNumber = 1, int pageSize = 10, string? orderBy = null, string? orderDirection = null)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
             var skip = (pageNumber - 1) * pageSize;
-            var spec = new Specification<Bank>(b => true)
-                .ApplyPaging(skip, pageSize);
+            var spec = new PagedSpecification<Bank>(skip, pageSize, orderBy, orderDirection);
             var banks = await _uow.BankRepository.ListAsync(spec);
             return _mapper.Map<List<BankSimpleResDto>>(banks);
         }
 
         public async Task<BankResDto> GetByIdAsync(int id)
         {
-            var spec = new Specification<Bank>(b => b.Id == id)
-                .AddInclude(b => b.ApplicationUsers);
-            var bank = await _uow.BankRepository.GetAsync(spec);
+            var spec = new BankByIdSpecification(id);
+            var bank = await _uow.BankRepository.FindAsync(spec);
             if (bank == null) return null;
             var dto = _mapper.Map<BankResDto>(bank);
             if (bank.ApplicationUsers != null)
@@ -50,9 +49,8 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<BankResDto> GetByNameAsync(string name)
         {
-            var spec = new Specification<Bank>(b => b.Name == name)
-                .AddInclude(b => b.ApplicationUsers);
-            var bank = await _uow.BankRepository.GetAsync(spec);
+            var spec = new BankByNameSpecification(name);
+            var bank = await _uow.BankRepository.FindAsync(spec);
             if (bank == null) return null;
             var dto = _mapper.Map<BankResDto>(bank);
             if (bank.ApplicationUsers != null)
@@ -68,8 +66,8 @@ namespace BankingSystemAPI.Application.Services
             var normalized = dto.Name.Trim();
             var normalizedLower = normalized.ToLowerInvariant();
 
-            var spec = new Specification<Bank>(b => b.Name.ToLower() == normalizedLower);
-            var existing = await _uow.BankRepository.GetAsync(spec);
+            var spec = new BankByNormalizedNameSpecification(normalizedLower);
+            var existing = await _uow.BankRepository.FindAsync(spec);
             if (existing != null)
                 throw new BadRequestException("A bank with the same name already exists.");
 
@@ -92,8 +90,8 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<BankResDto> UpdateAsync(int id, BankEditDto dto)
         {
-            var spec = new Specification<Bank>(b => b.Id == id);
-            var bank = await _uow.BankRepository.GetAsync(spec);
+            var spec = new BankByIdSpecification(id);
+            var bank = await _uow.BankRepository.FindAsync(spec);
             if (bank == null) return null;
             bank.Name = dto.Name;
             await _uow.BankRepository.UpdateAsync(bank);
@@ -103,8 +101,8 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var spec = new Specification<Bank>(b => b.Id == id);
-            var bank = await _uow.BankRepository.GetAsync(spec);
+            var spec = new BankByIdSpecification(id);
+            var bank = await _uow.BankRepository.FindAsync(spec);
             if (bank == null) return false;
 
             var hasUsers = await _uow.UserRepository.AnyAsync(u => u.BankId == id);
@@ -118,8 +116,8 @@ namespace BankingSystemAPI.Application.Services
 
         public async Task SetBankActiveStatusAsync(int id, bool isActive)
         {
-            var spec = new Specification<Bank>(b => b.Id == id);
-            var bank = await _uow.BankRepository.GetAsync(spec);
+            var spec = new BankByIdSpecification(id);
+            var bank = await _uow.BankRepository.FindAsync(spec);
             if (bank == null) throw new System.Exception($"Bank with ID '{id}' not found.");
             bank.IsActive = isActive;
             await _uow.BankRepository.UpdateAsync(bank);

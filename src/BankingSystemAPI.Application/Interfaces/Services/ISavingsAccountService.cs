@@ -8,7 +8,7 @@ namespace BankingSystemAPI.Application.Interfaces.Services
 {
     public interface ISavingsAccountService : IAccountTypeService<SavingsAccount, SavingsAccountReqDto, SavingsAccountEditDto, SavingsAccountDto>
     {
-        Task<(IEnumerable<InterestLogDto> logs, int totalCount)> GetAllInterestLogsAsync(int pageNumber, int pageSize);
-        Task<(IEnumerable<InterestLogDto> logs, int totalCount)> GetInterestLogsByAccountIdAsync(int accountId, int pageNumber, int pageSize);
+        Task<(IEnumerable<InterestLogDto> logs, int totalCount)> GetAllInterestLogsAsync(int pageNumber, int pageSize, string? orderBy = null, string? orderDirection = null);
+        Task<(IEnumerable<InterestLogDto> logs, int totalCount)> GetInterestLogsByAccountIdAsync(int accountId, int pageNumber, int pageSize, string? orderBy = null, string? orderDirection = null);
     }
 }

@@ -4,6 +4,7 @@ using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
+using BankingSystemAPI.Presentation.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -38,9 +39,13 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10)
+        public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10, string? orderBy = null, string? orderDirection = null)
         {
-            var accounts = await _savingsAccountService.GetAccountsAsync(pageNumber, pageSize);
+            var allowed = new[] { "Id", "AccountNumber", "Balance", "CreatedDate" };
+            if (!OrderByValidator.IsValid(orderBy, allowed))
+                return BadRequest($"Invalid orderBy value. Allowed: {string.Join(',', allowed)}");
+
+            var accounts = await _savingsAccountService.GetAccountsAsync(pageNumber, pageSize, orderBy, orderDirection);
             return Ok(new { message = "Savings accounts retrieved successfully.", accounts });
         }
 

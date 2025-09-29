@@ -8,6 +8,8 @@ using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Repositories;
 using BankingSystemAPI.Application.Interfaces.Identity;
+using BankingSystemAPI.Application.Specifications;
+using BankingSystemAPI.Application.Interfaces.Specification;
 
 namespace BankingSystemAPI.UnitTests
 {
@@ -27,13 +29,20 @@ namespace BankingSystemAPI.UnitTests
             // Use concrete CheckingAccount for test
             var sourceAccount = new CheckingAccount { Id = 1, UserId = "user1", User = new ApplicationUser { Id = "user1" } };
             var targetAccount = new CheckingAccount { Id = 2, UserId = "user2", User = new ApplicationUser { Id = "user2" } };
-            accountRepoMock.Setup(r => r.FindAsync(It.IsAny<Expression<System.Func<Account, bool>>>(), It.IsAny<Expression<System.Func<Account, object>>[]>(), It.IsAny<bool>()))
-                .ReturnsAsync((Expression<System.Func<Account, bool>> predicate, Expression<System.Func<Account, object>>[] includes, bool asNoTracking) =>
+
+            accountRepoMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Account>>() ))
+                .ReturnsAsync((ISpecification<Account> spec) =>
                 {
-                    if (predicate.Compile().Invoke(sourceAccount)) return sourceAccount;
-                    if (predicate.Compile().Invoke(targetAccount)) return targetAccount;
+                    // simple evaluator using compiled Criteria
+                    if (spec?.Criteria != null)
+                    {
+                        var p = spec.Criteria.Compile();
+                        if (p(sourceAccount)) return sourceAccount;
+                        if (p(targetAccount)) return targetAccount;
+                    }
                     return null;
                 });
+
             uowMock.Setup(u => u.AccountRepository).Returns(accountRepoMock.Object);
 
             var service = new TransactionAuthorizationService(currentUserMock.Object, uowMock.Object, scopeResolverMock.Object);

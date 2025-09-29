@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Identity;
 using AutoMapper;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Domain.Constant;
+using BankingSystemAPI.Application.Interfaces.Specification;
 
 namespace BankingSystemAPI.UnitTests
 {
@@ -29,7 +30,8 @@ namespace BankingSystemAPI.UnitTests
             var service = new CheckingAccountService(uow.Object, mapper.Object, accountAuth.Object);
             var user = new ApplicationUser { Id = "u1", IsActive = false };
             uow.Setup(u => u.CurrencyRepository.GetByIdAsync(It.IsAny<int>())).ReturnsAsync(new Currency { Id = 1, IsActive = true });
-            uow.Setup(u => u.UserRepository.FindWithIncludesAsync(It.IsAny<System.Linq.Expressions.Expression<Func<ApplicationUser, bool>>>(), It.IsAny<System.Linq.Expressions.Expression<Func<ApplicationUser, object>>[]>(), true)).ReturnsAsync(user);
+            // Replace legacy FindWithIncludesAsync with specification-based FindAsync
+            uow.Setup(u => u.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(user);
             uow.Setup(u => u.RoleRepository.GetRoleByUserIdAsync("u1")).ReturnsAsync(new ApplicationRole { Name = "Client" });
             var req = new CheckingAccountReqDto { UserId = "u1", CurrencyId = 1, InitialBalance = 0 };
             await Assert.ThrowsAsync<BadRequestException>(() => service.CreateAccountAsync(req));
@@ -44,7 +46,8 @@ namespace BankingSystemAPI.UnitTests
             var service = new CheckingAccountService(uow.Object, mapper.Object, accountAuth.Object);
             var user = new ApplicationUser { Id = "u1", IsActive = true };
             uow.Setup(u => u.CurrencyRepository.GetByIdAsync(It.IsAny<int>())).ReturnsAsync(new Currency { Id = 1, IsActive = false });
-            uow.Setup(u => u.UserRepository.FindWithIncludesAsync(It.IsAny<System.Linq.Expressions.Expression<Func<ApplicationUser, bool>>>(), It.IsAny<System.Linq.Expressions.Expression<Func<ApplicationUser, object>>[]>(), true)).ReturnsAsync(user);
+            // Replace legacy FindWithIncludesAsync with specification-based FindAsync
+            uow.Setup(u => u.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(user);
             uow.Setup(u => u.RoleRepository.GetRoleByUserIdAsync("u1")).ReturnsAsync(new ApplicationRole { Name = "Client" });
             var req = new CheckingAccountReqDto { UserId = "u1", CurrencyId = 1, InitialBalance = 0 };
             await Assert.ThrowsAsync<BadRequestException>(() => service.CreateAccountAsync(req));

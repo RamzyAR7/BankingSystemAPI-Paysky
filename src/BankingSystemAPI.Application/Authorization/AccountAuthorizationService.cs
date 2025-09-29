@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BankingSystemAPI.Application.Specifications.AccountSpecification;
+using BankingSystemAPI.Application.Specifications.UserSpecifications;
 
 namespace BankingSystemAPI.Application.AuthorizationServices
 {
@@ -36,9 +38,8 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             if (scope == AccessScope.Global)
                 return;
 
-            var account = await _uow.AccountRepository.FindWithIncludesAsync(
-                a => a.Id == accountId,
-                new Expression<Func<Account, object>>[] { a => a.User })
+            var spec = new AccountByIdSpecification(accountId);
+            var account = await _uow.AccountRepository.FindAsync(spec)
                 ?? throw new NotFoundException("Account not found.");
 
             if (scope == AccessScope.Self)
@@ -56,14 +57,12 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         {
             var scope = await _scopeResolver.GetScopeAsync();
 
-            var actingUser = await _uow.UserRepository.FindWithIncludesAsync(
-                u => u.Id == _currentUser.UserId,
-                new Expression<Func<ApplicationUser, object>>[] { u => u.Bank })
+            var actingUserSpec = new UserByIdSpecification(_currentUser.UserId);
+            var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec)
                 ?? throw new ForbiddenException("Acting user not found.");
 
-            var account = await _uow.AccountRepository.FindWithIncludesAsync(
-                a => a.Id == accountId,
-                new Expression<Func<Account, object>>[] { a => a.User })
+            var accountSpec = new AccountByIdSpecification(accountId);
+            var account = await _uow.AccountRepository.FindAsync(accountSpec)
                 ?? throw new NotFoundException("Account not found.");
 
             // Self-modification rules
@@ -123,10 +122,8 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 return await _uow.AccountRepository.GetFilteredAccountsAsync(query, pageNumber, pageSize);
             }
 
-            var actingUser = await _uow.UserRepository.FindWithIncludesAsync(
-                u => u.Id == _currentUser.UserId,
-                new Expression<Func<ApplicationUser, object>>[] { u => u.Bank }
-            );
+            var actingUserSpec = new UserByIdSpecification(_currentUser.UserId);
+            var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec);
             if (actingUser == null)
                 return (Enumerable.Empty<Account>(), 0);
 
@@ -146,14 +143,12 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 throw new ForbiddenException("Clients cannot create accounts for other users.");
 
             // BankLevel
-            var actingUser = await _uow.UserRepository.FindWithIncludesAsync(
-                u => u.Id == _currentUser.UserId,
-                new Expression<Func<ApplicationUser, object>>[] { u => u.Bank })
+            var actingUserSpec = new UserByIdSpecification(_currentUser.UserId);
+            var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec)
                 ?? throw new ForbiddenException("Acting user not found.");
 
-            var targetUser = await _uow.UserRepository.FindWithIncludesAsync(
-                u => u.Id == targetUserId,
-                new Expression<Func<ApplicationUser, object>>[] { u => u.Bank })
+            var targetUserSpec = new UserByIdSpecification(targetUserId);
+            var targetUser = await _uow.UserRepository.FindAsync(targetUserSpec)
                 ?? throw new NotFoundException("Target user not found.");
 
             var targetRole = await _uow.RoleRepository.GetRoleByUserIdAsync(targetUserId);
@@ -172,10 +167,8 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             if (RoleHelper.IsClient(role.Name))
                 return query.Where(a => a.UserId == _currentUser.UserId).OrderBy(a => a.Id);
 
-            var actingUser = await _uow.UserRepository.FindWithIncludesAsync(
-                u => u.Id == _currentUser.UserId,
-                new Expression<Func<ApplicationUser, object>>[] { u => u.Bank }
-            );
+            var actingUserSpec = new UserByIdSpecification(_currentUser.UserId);
+            var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec);
             if (actingUser == null)
                 return Enumerable.Empty<Account>().AsQueryable();
 

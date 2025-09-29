@@ -11,6 +11,8 @@ using BankingSystemAPI.Application.DTOs.Currency;
 using BankingSystemAPI.Application.Exceptions;
 using Moq;
 using BankingSystemAPI.Domain.Entities;
+using BankingSystemAPI.Application.Specifications;
+using BankingSystemAPI.Application.Specifications.CurrencySpecification;
 
 namespace BankingSystemAPI.UnitTests
 {
@@ -54,8 +56,8 @@ namespace BankingSystemAPI.UnitTests
         [Fact]
         public async Task Convert_ById_BaseToOther()
         {
-            var baseCurr = await _uow.CurrencyRepository.FindAsync(c => c.IsBase);
-            var other = await _uow.CurrencyRepository.FindAsync(c => c.Code == "A");
+            var baseCurr = await _uow.CurrencyRepository.FindAsync(new CurrencyByCodeSpecification("BASE"));
+            var other = await _uow.CurrencyRepository.FindAsync(new CurrencyByCodeSpecification("A"));
 
             var converted = await _service.ConvertAsync(baseCurr.Id, other.Id, 10m);
             Assert.Equal(20m, converted);
@@ -72,7 +74,7 @@ namespace BankingSystemAPI.UnitTests
         [Fact]
         public async Task Convert_SameCurrency_ReturnsAmount()
         {
-            var currency = await _uow.CurrencyRepository.FindAsync(c => c.Code == "A");
+            var currency = await _uow.CurrencyRepository.FindAsync(new CurrencyByCodeSpecification("A"));
             var converted = await _service.ConvertAsync(currency.Id, currency.Id, 5m);
             Assert.Equal(5m, converted);
         }
@@ -86,7 +88,7 @@ namespace BankingSystemAPI.UnitTests
         [Fact]
         public async Task Convert_InvalidAmount_Throws()
         {
-            var currency = await _uow.CurrencyRepository.FindAsync(c => c.Code == "A");
+            var currency = await _uow.CurrencyRepository.FindAsync(new CurrencyByCodeSpecification("A"));
             await Assert.ThrowsAsync<BadRequestException>(() => _service.ConvertAsync(currency.Id, 1, 0m));
         }
 
