@@ -10,13 +10,10 @@ namespace BankingSystemAPI.Application.DTOs.Account
     /// </summary>
     public class AccountReqDto
     {
-        [Required]
         public string UserId { get; set; }
 
-        [Required]
         public int CurrencyId { get; set; }
 
-        [Range(0, double.MaxValue, ErrorMessage = "Initial balance must be non-negative.")]
         public decimal InitialBalance { get; set; }
 
         /// <summary>

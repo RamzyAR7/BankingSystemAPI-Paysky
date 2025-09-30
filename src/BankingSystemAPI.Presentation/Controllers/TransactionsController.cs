@@ -1,8 +1,10 @@
-﻿using BankingSystemAPI.Application.DTOs.Transactions;
-using BankingSystemAPI.Application.Interfaces.Services;
+﻿using BankingSystemAPI.Application.Features.Transactions.Queries.GetAllTransactions;
+using BankingSystemAPI.Application.Features.Transactions.Queries.GetByAccountId;
+using BankingSystemAPI.Application.Features.Transactions.Queries.GetById;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
 using BankingSystemAPI.Presentation.Helpers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -19,11 +21,11 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiExplorerSettings(GroupName = "Transactions")]
     public class TransactionsController : ControllerBase
     {
-        private readonly ITransactionService _transactionService;
+        private readonly IMediator _mediator;
 
-        public TransactionsController(ITransactionService transactionService)
+        public TransactionsController(IMediator mediator)
         {
-            _transactionService = transactionService;
+            _mediator = mediator;
         }
 
         /// <summary>
@@ -42,8 +44,9 @@ namespace BankingSystemAPI.Presentation.Controllers
             if (!OrderByValidator.IsValid(orderBy, allowed))
                 return BadRequest($"Invalid orderBy value. Allowed: {string.Join(',', allowed)}");
 
-            var history = await _transactionService.GetByAccountIdAsync(accountId, pageNumber, pageSize, orderBy, orderDirection);
-            return Ok(new { message = "Transaction history retrieved successfully.", history });
+            var res = await _mediator.Send(new GetTransactionsByAccountQuery(accountId, pageNumber, pageSize, orderBy, orderDirection));
+            if (!res.Succeeded) return BadRequest(res.Errors);
+            return Ok(new { message = "Transaction history retrieved successfully.", history = res.Value });
         }
 
         /// <summary>
@@ -56,10 +59,9 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetById(int transactionId)
         {
-            var trx = await _transactionService.GetByIdAsync(transactionId);
-            if (trx == null)
-                return NotFound(new { message = "Transaction not found.", transaction = (TransactionResDto?)null });
-            return Ok(new { message = "Transaction retrieved successfully.", transaction = trx });
+            var res = await _mediator.Send(new GetTransactionByIdQuery(transactionId));
+            if (!res.Succeeded) return NotFound(new { message = res.Errors.FirstOrDefault() ?? "Transaction not found.", transaction = (object?)null });
+            return Ok(new { message = "Transaction retrieved successfully.", transaction = res.Value });
         }
 
         /// <summary>
@@ -70,14 +72,11 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetAllTransactions(int pageNumber = 1, int pageSize = 10, string? orderBy = null, string? orderDirection = null)
+        public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 20, string? orderBy = null, string? orderDirection = null)
         {
-            var allowed = new[] { "Timestamp", "Amount", "Id" };
-            if (!OrderByValidator.IsValid(orderBy, allowed))
-                return BadRequest($"Invalid orderBy value. Allowed: {string.Join(',', allowed)}");
-
-            var transactions = await _transactionService.GetAllAsync(pageNumber, pageSize, orderBy, orderDirection);
-            return Ok(new { message = "Transactions retrieved successfully.", transactions });
+            var res = await _mediator.Send(new GetAllTransactionsQuery(pageNumber, pageSize, orderBy, orderDirection));
+            if (!res.Succeeded) return BadRequest(res.Errors);
+            return Ok(new { message = "Transactions retrieved successfully.", transactions = res.Value });
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using Microsoft.EntityFrameworkCore;
@@ -21,13 +22,15 @@ using BankingSystemAPI.Application.DTOs.Transactions;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Application.Interfaces.Authorization;
+using BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateSavingsAccount;
+using BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw;
 
 namespace BankingSystemAPI.UnitTests
 {
     public class SavingsAccountServiceTests : IDisposable
     {
         private readonly ApplicationDbContext _context;
-        private readonly SavingsAccountService _service;
+        private readonly CreateSavingsAccountCommandHandler _createHandler;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly Mock<ICurrentUserService> _currentUserMock;
         private readonly IUnitOfWork _uow;
@@ -82,7 +85,7 @@ namespace BankingSystemAPI.UnitTests
             _accountAuthMock.Setup(a => a.FilterAccountsQueryAsync(It.IsAny<IQueryable<Account>>())).ReturnsAsync((IQueryable<Account> q) => q);
             _accountAuthMock.Setup(a => a.CanCreateAccountForUserAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
 
-            _service = new SavingsAccountService(_uow, _mapper, _accountAuthMock.Object);
+            _createHandler = new CreateSavingsAccountCommandHandler(_uow, _mapper, _accountAuthMock.Object);
         }
 
         [Fact]
@@ -102,10 +105,11 @@ namespace BankingSystemAPI.UnitTests
             var userStore = new UserStore<ApplicationUser>(_context);
             var userManager = new UserManager<ApplicationUser>(userStore, null, new PasswordHasher<ApplicationUser>(), new IUserValidator<ApplicationUser>[0], new IPasswordValidator<ApplicationUser>[0], new UpperInvariantLookupNormalizer(), new IdentityErrorDescriber(), null, new NullLogger<UserManager<ApplicationUser>>());
             var currentUserMock = new Mock<ICurrentUserService>();
-            var txService = new TransactionService(_uow, txMapper, helperMock.Object, userManager, currentUserMock.Object, null, null, new NullLogger<BankingSystemAPI.Application.Services.TransactionService>());
+            var withdrawHandler = new WithdrawCommandHandler(_uow, txMapper);
 
             var req = new WithdrawReqDto { AccountId = sv.Id, Amount = 20m };
-            await Assert.ThrowsAsync<InvalidOperationException>(() => txService.WithdrawAsync(req));
+            var res = await withdrawHandler.Handle(new WithdrawCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
@@ -116,7 +120,9 @@ namespace BankingSystemAPI.UnitTests
             if (!_context.Roles.Any(r => r.Name == "Client")) { _context.Roles.Add(new ApplicationRole { Name = "Client", NormalizedName = "CLIENT" }); _context.SaveChanges(); }
             await _userManager.AddToRoleAsync(user, "Client");
             var req = new SavingsAccountReqDto { UserId = user.Id, CurrencyId = _context.Currencies.First().Id, InitialBalance = 100m, InterestRate = 1.5m, InterestType = InterestType.Monthly };
-            await Assert.ThrowsAsync<BankingSystemAPI.Application.Exceptions.BadRequestException>(() => _service.CreateAccountAsync(req));
+
+            var res = await _createHandler.Handle(new CreateSavingsAccountCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
@@ -130,7 +136,9 @@ namespace BankingSystemAPI.UnitTests
             currency.IsActive = false;
             _context.SaveChanges();
             var req = new SavingsAccountReqDto { UserId = user.Id, CurrencyId = currency.Id, InitialBalance = 100m, InterestRate = 1.5m, InterestType = InterestType.Monthly };
-            await Assert.ThrowsAsync<BankingSystemAPI.Application.Exceptions.BadRequestException>(() => _service.CreateAccountAsync(req));
+
+            var res = await _createHandler.Handle(new CreateSavingsAccountCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         public void Dispose()

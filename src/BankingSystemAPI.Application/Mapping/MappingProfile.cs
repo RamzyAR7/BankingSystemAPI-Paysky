@@ -56,7 +56,8 @@ namespace BankingSystemAPI.Application.Mapping
                 .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role != null ? src.Role.Name : string.Empty))
                 .ForMember(dest => dest.BankName, opt => opt.MapFrom(src => src.Bank != null ? src.Bank.Name : string.Empty))
                 .ForMember(dest => dest.DateOfBirth, opt => opt.MapFrom(src => src.DateOfBirth))
-                .ForMember(dest => dest.Accounts, opt => opt.Ignore());
+                // Map accounts navigation to DTO list
+                .ForMember(dest => dest.Accounts, opt => opt.MapFrom(src => src.Accounts ?? new List<Account>()));
             #endregion
         }
 
@@ -74,11 +75,11 @@ namespace BankingSystemAPI.Application.Mapping
                 .ForSourceMember(src => src.AccountTransactions, opt => opt.DoNotValidate());
 
             CreateMap<SavingsAccount, SavingsAccountDto>()
-                .ForMember(dest => dest.AccountType, opt => opt.MapFrom(src => AccountType.Savings.ToString()))
+                .ForMember(dest => dest.Type, opt => opt.MapFrom(src => AccountType.Savings.ToString()))
                 .ForMember(dest => dest.InterestType, opt => opt.MapFrom(src => src.InterestType.ToString()));
 
             CreateMap<CheckingAccount, CheckingAccountDto>()
-                .ForMember(dest => dest.AccountType, opt => opt.MapFrom(src => AccountType.Checking.ToString()));
+                .ForMember(dest => dest.Type, opt => opt.MapFrom(src => AccountType.Checking.ToString()));
 
             CreateMap<SavingsAccountReqDto, SavingsAccount>()
                 .ForMember(dest => dest.Balance, opt => opt.MapFrom(src => src.InitialBalance))

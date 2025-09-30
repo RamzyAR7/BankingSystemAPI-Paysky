@@ -1,11 +1,20 @@
 ﻿using BankingSystemAPI.Application.DTOs.Account;
-using BankingSystemAPI.Application.Interfaces.Services;
+using BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccount;
+using BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts;
+using BankingSystemAPI.Application.Features.Accounts.Commands.SetAccountActiveStatus;
+using BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountByAccountNumber;
+using BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountById;
+using BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByNationalId;
+using BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByUserId;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -18,11 +27,11 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiExplorerSettings(GroupName = "Accounts")]
     public class AccountController : ControllerBase
     {
-        private readonly IAccountService _accountService;
+        private readonly IMediator _mediator;
 
-        public AccountController(IAccountService accountService)
+        public AccountController(IMediator mediator)
         {
-            _accountService = accountService;
+            _mediator = mediator;
         }
 
         /// <summary>
@@ -43,10 +52,10 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<AccountDto>> GetById(int id)
         {
-            var account = await _accountService.GetAccountByIdAsync(id);
-            if (account == null)
-                return NotFound(new { message = "Account not found.", account = (AccountDto?)null });
-            return Ok(new { message = "Account retrieved successfully.", account });
+            var res = await _mediator.Send(new GetAccountByIdQuery(id));
+            if (!res.Succeeded)
+                return NotFound(new { message = res.Errors.FirstOrDefault() ?? "Account not found.", account = (AccountDto?)null });
+            return Ok(new { message = "Account retrieved successfully.", account = res.Value });
         }
 
         /// <summary>
@@ -67,10 +76,10 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<AccountDto>> GetByAccountNumber(string accountNumber)
         {
-            var account = await _accountService.GetAccountByAccountNumberAsync(accountNumber);
-            if (account == null)
-                return NotFound(new { message = "Account not found.", account = (AccountDto?)null });
-            return Ok(new { message = "Account retrieved successfully.", account });
+            var res = await _mediator.Send(new GetAccountByAccountNumberQuery(accountNumber));
+            if (!res.Succeeded)
+                return NotFound(new { message = res.Errors.FirstOrDefault() ?? "Account not found.", account = (AccountDto?)null });
+            return Ok(new { message = "Account retrieved successfully.", account = res.Value });
         }
 
         /// <summary>
@@ -89,8 +98,9 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<IEnumerable<AccountDto>>> GetByUserId(string userId)
         {
-            var accounts = await _accountService.GetAccountsByUserIdAsync(userId);
-            return Ok(new { message = "Accounts retrieved successfully.", accounts });
+            var res = await _mediator.Send(new GetAccountsByUserIdQuery(userId));
+            if (!res.Succeeded) return BadRequest(res.Errors);
+            return Ok(new { message = "Accounts retrieved successfully.", accounts = res.Value });
         }
 
         /// <summary>
@@ -109,8 +119,9 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<IEnumerable<AccountDto>>> GetByNationalId(string nationalId)
         {
-            var accounts = await _accountService.GetAccountsByNationalIdAsync(nationalId);
-            return Ok(new { message = "Accounts retrieved successfully.", accounts });
+            var res = await _mediator.Send(new GetAccountsByNationalIdQuery(nationalId));
+            if (!res.Succeeded) return BadRequest(res.Errors);
+            return Ok(new { message = "Accounts retrieved successfully.", accounts = res.Value });
         }
 
         /// <summary>
@@ -130,7 +141,8 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult> Delete(int id)
         {
-            await _accountService.DeleteAccountAsync(id);
+            var res = await _mediator.Send(new DeleteAccountCommand(id));
+            if (!res.Succeeded) return BadRequest(res.Errors);
             return Ok(new { message = "Account deleted successfully." });
         }
 
@@ -149,7 +161,8 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult> DeleteMany([FromBody] IEnumerable<int> ids)
         {
-            await _accountService.DeleteAccountsAsync(ids);
+            var res = await _mediator.Send(new DeleteAccountsCommand(ids));
+            if (!res.Succeeded) return BadRequest(res.Errors);
             return Ok(new { message = "Accounts deleted successfully." });
         }
 
@@ -163,7 +176,8 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> SetActive(int id, [FromQuery] bool isActive)
         {
-            await _accountService.SetAccountActiveStatusAsync(id, isActive);
+            var res = await _mediator.Send(new SetAccountActiveStatusCommand(id, isActive));
+            if (!res.Succeeded) return BadRequest(res.Errors);
             return Ok(new { message = $"Account active status changed to {isActive}." });
         }
     }

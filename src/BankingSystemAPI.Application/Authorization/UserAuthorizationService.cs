@@ -107,13 +107,15 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             {
                 case AccessScope.Global:
                     // Paging and filtering in DB via spec
-                    var globalSpec = new PagedSpecification<ApplicationUser>(u => true, skip, pageSize);
+                    var globalSpec = new PagedSpecification<ApplicationUser>(u => true, skip, pageSize, null, null, u => u.Accounts, u => u.Bank, u => u.Role);
                     var globalRes = await _uow.UserRepository.GetPagedAsync(globalSpec);
+                    await PopulateAccountCurrenciesAsync(globalRes.Items);
                     return (globalRes.Items, globalRes.TotalCount);
 
                 case AccessScope.Self:
-                    var selfSpec = new PagedSpecification<ApplicationUser>(u => u.Id == _currentUser.UserId, skip, pageSize);
+                    var selfSpec = new PagedSpecification<ApplicationUser>(u => u.Id == _currentUser.UserId, skip, pageSize, null, null, u => u.Accounts, u => u.Bank, u => u.Role);
                     var selfRes = await _uow.UserRepository.GetPagedAsync(selfSpec);
+                    await PopulateAccountCurrenciesAsync(selfRes.Items);
                     return (selfRes.Items, selfRes.TotalCount);
 
                 case AccessScope.BankLevel:
@@ -122,8 +124,9 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                     // Subquery for Client users
                     var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery("Client"); // IQueryable<string> of userIds
                     Expression<Func<ApplicationUser, bool>> criteria = u => u.BankId == bankId && clientUserIds.Contains(u.Id);
-                    var bankSpec = new PagedSpecification<ApplicationUser>(criteria, skip, pageSize);
+                    var bankSpec = new PagedSpecification<ApplicationUser>(criteria, skip, pageSize, null, null, u => u.Accounts, u => u.Bank, u => u.Role);
                     var bankRes = await _uow.UserRepository.GetPagedAsync(bankSpec);
+                    await PopulateAccountCurrenciesAsync(bankRes.Items);
                     return (bankRes.Items, bankRes.TotalCount);
 
                 default:
@@ -131,6 +134,39 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             }
         }
 
+        private async Task PopulateAccountCurrenciesAsync(IEnumerable<ApplicationUser> users)
+        {
+            if (users == null) return;
+            var accountCurrencyIds = users
+                .Where(u => u.Accounts != null)
+                .SelectMany(u => u.Accounts)
+                .Where(a => a != null)
+                .Select(a => a.CurrencyId)
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+
+            if (!accountCurrencyIds.Any()) return;
+
+            var currencyMap = new Dictionary<int, Currency>();
+            foreach (var cid in accountCurrencyIds)
+            {
+                var cur = await _uow.CurrencyRepository.GetByIdAsync(cid);
+                if (cur != null)
+                    currencyMap[cid] = cur;
+            }
+
+            foreach (var user in users)
+            {
+                if (user.Accounts == null) continue;
+                foreach (var acc in user.Accounts)
+                {
+                    if (acc == null) continue;
+                    if (acc.Currency == null && currencyMap.TryGetValue(acc.CurrencyId, out var cur))
+                        acc.Currency = cur;
+                }
+            }
+        }
 
         public async Task CanCreateUserAsync()
         {

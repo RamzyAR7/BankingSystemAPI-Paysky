@@ -13,15 +13,26 @@ using System.Linq;
 using System;
 using System.Collections.Generic;
 using BankingSystemAPI.Application.Exceptions;
+using BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountById;
+using BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountByAccountNumber;
+using BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByUserId;
+using BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccount;
+using BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts;
 
 namespace BankingSystemAPI.UnitTests
 {
     public class AccountServiceTests : IDisposable
     {
         private readonly ApplicationDbContext _context;
-        private readonly AccountService _service;
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
+
+        // handlers
+        private readonly GetAccountByIdQueryHandler _getByIdHandler;
+        private readonly GetAccountByAccountNumberQueryHandler _getByNumberHandler;
+        private readonly GetAccountsByUserIdQueryHandler _getByUserHandler;
+        private readonly DeleteAccountCommandHandler _deleteHandler;
+        private readonly DeleteAccountsCommandHandler _deleteManyHandler;
 
         public AccountServiceTests()
         {
@@ -49,12 +60,18 @@ namespace BankingSystemAPI.UnitTests
 
             var mapperMock = new Mock<IMapper>();
             mapperMock.Setup(m => m.Map<AccountDto>(It.IsAny<Account>()))
-                .Returns((Account a) => new AccountDto { Id = a.Id, AccountNumber = a.AccountNumber, Balance = a.Balance, UserId = a.UserId, CurrencyCode = a.Currency?.Code ?? string.Empty, AccountType = a.GetType().Name });
+                .Returns((Account a) => new AccountDto { Id = a.Id, AccountNumber = a.AccountNumber, Balance = a.Balance, UserId = a.UserId, CurrencyCode = a.Currency?.Code ?? string.Empty, Type = a.GetType().Name });
             mapperMock.Setup(m => m.Map<IEnumerable<AccountDto>>(It.IsAny<IEnumerable<Account>>() ))
-                .Returns((IEnumerable<Account> list) => list.Select(a => new AccountDto { Id = a.Id, AccountNumber = a.AccountNumber, Balance = a.Balance, UserId = a.UserId, CurrencyCode = a.Currency?.Code ?? string.Empty, AccountType = a.GetType().Name }));
+                .Returns((IEnumerable<Account> list) => list.Select(a => new AccountDto { Id = a.Id, AccountNumber = a.AccountNumber, Balance = a.Balance, UserId = a.UserId, CurrencyCode = a.Currency?.Code ?? string.Empty, Type = a.GetType().Name }));
 
             _mapper = mapperMock.Object;
-            _service = new AccountService(_uow, _mapper);
+
+            // init handlers
+            _getByIdHandler = new GetAccountByIdQueryHandler(_uow, _mapper);
+            _getByNumberHandler = new GetAccountByAccountNumberQueryHandler(_uow, _mapper);
+            _getByUserHandler = new GetAccountsByUserIdQueryHandler(_uow, _mapper);
+            _deleteHandler = new DeleteAccountCommandHandler(_uow);
+            _deleteManyHandler = new DeleteAccountsCommandHandler(_uow);
 
             // seed some accounts and users
             _context.Currencies.Add(new Currency { Code = "USD", ExchangeRate = 1m, IsBase = true });
@@ -74,60 +91,71 @@ namespace BankingSystemAPI.UnitTests
         public async Task GetAccountById_ReturnsDto()
         {
             var existing = _context.CheckingAccounts.First();
-            var dto = await _service.GetAccountByIdAsync(existing.Id);
+            var res = await _getByIdHandler.Handle(new GetAccountByIdQuery(existing.Id), CancellationToken.None);
+            Assert.True(res.Succeeded);
+            var dto = res.Value!;
             Assert.Equal(existing.AccountNumber, dto.AccountNumber);
         }
 
         [Fact]
-        public async Task GetAccountById_InvalidId_Throws()
+        public async Task GetAccountById_InvalidId_ReturnsFailure()
         {
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.GetAccountByIdAsync(0));
+            var res = await _getByIdHandler.Handle(new GetAccountByIdQuery(0), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
         public async Task GetByAccountNumber_ReturnsDto()
         {
             var existing = _context.CheckingAccounts.First();
-            var dto = await _service.GetAccountByAccountNumberAsync(existing.AccountNumber);
+            var res = await _getByNumberHandler.Handle(new GetAccountByAccountNumberQuery(existing.AccountNumber), CancellationToken.None);
+            Assert.True(res.Succeeded);
+            var dto = res.Value!;
             Assert.Equal(existing.AccountNumber, dto.AccountNumber);
         }
 
         [Fact]
-        public async Task GetByAccountNumber_Invalid_Throws()
+        public async Task GetByAccountNumber_Invalid_ReturnsFailure()
         {
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.GetAccountByAccountNumberAsync("  "));
+            var res = await _getByNumberHandler.Handle(new GetAccountByAccountNumberQuery("  "), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
         public async Task GetAccountsByUserId_ReturnsList()
         {
             var user = _context.Users.First();
-            var list = await _service.GetAccountsByUserIdAsync(user.Id);
+            var res = await _getByUserHandler.Handle(new GetAccountsByUserIdQuery(user.Id), CancellationToken.None);
+            Assert.True(res.Succeeded);
+            var list = res.Value!;
             Assert.Single(list);
             Assert.Equal(user.Id, list.First().UserId);
         }
 
         [Fact]
-        public async Task GetAccountsByUserId_Invalid_Throws()
+        public async Task GetAccountsByUserId_Invalid_ReturnsFailure()
         {
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.GetAccountsByUserIdAsync(""));
+            var res = await _getByUserHandler.Handle(new GetAccountsByUserIdQuery(""), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
-        public async Task DeleteAccount_WithBalance_Throws()
+        public async Task DeleteAccount_WithBalance_ReturnsFailure()
         {
             var acc = _context.CheckingAccounts.First();
             acc.Balance = 10m;
             _context.SaveChanges();
 
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.DeleteAccountAsync(acc.Id));
+            var res = await _deleteHandler.Handle(new DeleteAccountCommand(acc.Id), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
-        public async Task DeleteMany_PartialMissing_ThrowsNotFound()
+        public async Task DeleteMany_PartialMissing_ReturnsFailure()
         {
             var existing = _context.CheckingAccounts.First();
-            await Assert.ThrowsAsync<NotFoundException>(() => _service.DeleteAccountsAsync(new[] { existing.Id, 999 }));
+            var res = await _deleteManyHandler.Handle(new DeleteAccountsCommand(new[] { existing.Id, 999 }), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         public void Dispose()

@@ -1,7 +1,15 @@
 using BankingSystemAPI.Application.DTOs.Bank;
+using BankingSystemAPI.Application.Features.Banks.Commands.CreateBank;
+using BankingSystemAPI.Application.Features.Banks.Commands.DeleteBank;
+using BankingSystemAPI.Application.Features.Banks.Commands.SetBankActiveStatus;
+using BankingSystemAPI.Application.Features.Banks.Commands.UpdateBank;
+using BankingSystemAPI.Application.Features.Banks.Queries.GetAllBanks;
+using BankingSystemAPI.Application.Features.Banks.Queries.GetBankById;
+using BankingSystemAPI.Application.Features.Banks.Queries.GetBankByName;
 using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -21,15 +29,16 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiExplorerSettings(GroupName = "Banks")]
     public class BankController : ControllerBase
     {
-        private readonly IBankService _bankService;
+        private readonly IMediator _mediator;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BankController"/> class.
         /// </summary>
-        /// <param name="bankService">Service used to manage banks.</param>
-        public BankController(IBankService bankService)
+        /// <param name="mediator">MediatR mediator for dispatching commands/queries.</param>
+        /// <param name="bankService">Service used to manage banks (fallback).</param>
+        public BankController(IMediator mediator)
         {
-            _bankService = bankService;
+            _mediator = mediator;
         }
 
         /// <summary>
@@ -54,8 +63,13 @@ namespace BankingSystemAPI.Presentation.Controllers
             if (!string.IsNullOrWhiteSpace(orderBy) && !allowed.Contains(orderBy, StringComparer.OrdinalIgnoreCase))
                 return BadRequest($"Invalid orderBy value. Allowed: {string.Join(',', allowed)}");
 
-            var banks = await _bankService.GetAllAsync(pageNumber, pageSize, orderBy, orderDirection);
-            return Ok(new { message = "Banks retrieved successfully.", banks });
+            var query = new GetAllBanksQuery(pageNumber, pageSize, orderBy, orderDirection);
+            var result = await _mediator.Send(query);
+
+            if (!result.Succeeded)
+                return BadRequest(result.Errors);
+
+            return Ok(new { message = "Banks retrieved successfully.", banks = result.Value });
         }
 
         /// <summary>
@@ -72,10 +86,11 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
         {
-            var bank = await _bankService.GetByIdAsync(id);
-            if (bank == null)
-                return NotFound(new { message = "Bank not found.", bank = (BankResDto?)null });
-            return Ok(new { message = "Bank retrieved successfully.", bank });
+            var result = await _mediator.Send(new GetBankByIdQuery(id));
+            if (!result.Succeeded)
+                return NotFound(new { message = result.Errors.FirstOrDefault() ?? "Bank not found.", bank = (BankResDto?)null });
+
+            return Ok(new { message = "Bank retrieved successfully.", bank = result.Value });
         }
 
         /// <summary>
@@ -92,10 +107,11 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetByName(string name)
         {
-            var bank = await _bankService.GetByNameAsync(name);
-            if (bank == null)
-                return NotFound(new { message = "Bank not found.", bank = (BankResDto?)null });
-            return Ok(new { message = "Bank retrieved successfully.", bank });
+            var result = await _mediator.Send(new GetBankByNameQuery(name));
+            if (!result.Succeeded)
+                return NotFound(new { message = result.Errors.FirstOrDefault() ?? "Bank not found.", bank = (BankResDto?)null });
+
+            return Ok(new { message = "Bank retrieved successfully.", bank = result.Value });
         }
 
         /// <summary>
@@ -114,7 +130,12 @@ namespace BankingSystemAPI.Presentation.Controllers
         {
             if (dto == null)
                 return BadRequest("Bank data is required.");
-            var created = await _bankService.CreateAsync(dto);
+
+            var result = await _mediator.Send(new CreateBankCommand(dto));
+            if (!result.Succeeded)
+                return BadRequest(result.Errors);
+
+            var created = result.Value!;
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, new { message = "Bank created successfully.", bank = created });
         }
 
@@ -137,10 +158,12 @@ namespace BankingSystemAPI.Presentation.Controllers
         {
             if (dto == null)
                 return BadRequest("Bank data is required.");
-            var updated = await _bankService.UpdateAsync(id, dto);
-            if (updated == null)
-                return NotFound(new { message = "Bank not found." });
-            return Ok(new { message = "Bank updated successfully.", bank = updated });
+
+            var result = await _mediator.Send(new UpdateBankCommand(id, dto));
+            if (!result.Succeeded)
+                return NotFound(new { message = result.Errors.FirstOrDefault() ?? "Bank not found." });
+
+            return Ok(new { message = "Bank updated successfully.", bank = result.Value });
         }
 
         /// <summary>
@@ -157,8 +180,9 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
         {
-            var deleted = await _bankService.DeleteAsync(id);
-            if (!deleted)
+            // Delete is not yet implemented as a command in the Application layer, fall back to service
+            var result = await _mediator.Send(new DeleteBankCommand(id));
+            if (!result.Succeeded)
                 return NotFound(new { message = "Bank not found." });
             return Ok(new { message = "Bank deleted successfully." });
         }
@@ -178,7 +202,8 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> SetActive(int id, [FromQuery] bool isActive)
         {
-            await _bankService.SetBankActiveStatusAsync(id, isActive);
+            // Set active status is not yet implemented as a command in the Application layer, use service for now
+            await _mediator.Send(new SetBankActiveStatusCommand(id, isActive));
             return Ok(new { message = "Bank active status changed.", isActive });
         }
     }

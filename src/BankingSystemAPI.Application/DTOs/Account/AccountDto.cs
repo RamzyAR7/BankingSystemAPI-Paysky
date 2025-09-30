@@ -45,7 +45,7 @@ namespace BankingSystemAPI.Application.DTOs.Account
         /// <summary>
         /// Type of the account (e.g. "Checking", "Savings").
         /// </summary>
-        public string AccountType { get; set; }
+        public string Type { get; set; }
 
         /// <summary>
         /// Indicates if the account is active.

@@ -1,22 +1,31 @@
-using BankingSystemAPI.Application.Interfaces.UnitOfWork;
-using BankingSystemAPI.Application.Interfaces.Repositories;
-using BankingSystemAPI.Infrastructure.UnitOfWork;
-using BankingSystemAPI.Infrastructure.Repositories;
-using BankingSystemAPI.Application.DTOs.Account;
+using BankingSystemAPI.Application.Authorization;
+using BankingSystemAPI.Application.Authorization.Helpers;
 using BankingSystemAPI.Application.AuthorizationServices;
+using BankingSystemAPI.Application.Behaviors;
+using BankingSystemAPI.Application.DTOs.Account;
+using BankingSystemAPI.Application.Interfaces;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Identity;
-using BankingSystemAPI.Application.Services;
+using BankingSystemAPI.Application.Interfaces.Repositories;
 using BankingSystemAPI.Application.Interfaces.Services;
-using BankingSystemAPI.Domain.Entities;
+using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Mapping;
+using BankingSystemAPI.Application.Services;
+using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Context;
 using BankingSystemAPI.Infrastructure.Identity;
 using BankingSystemAPI.Infrastructure.Jobs;
 using BankingSystemAPI.Infrastructure.Mapping;
+using BankingSystemAPI.Infrastructure.Repositories;
 using BankingSystemAPI.Infrastructure.Seeding;
 using BankingSystemAPI.Infrastructure.Services;
 using BankingSystemAPI.Infrastructure.Setting;
+using BankingSystemAPI.Infrastructure.UnitOfWork;
+using BankingSystemAPI.Presentation.Filters;
+using BankingSystemAPI.Presentation.Middlewares;
+using BankingSystemAPI.Presentation.Swagger;
+using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -26,12 +35,6 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
-using BankingSystemAPI.Presentation.Swagger;
-using BankingSystemAPI.Application.Authorization;
-using BankingSystemAPI.Presentation.Middlewares;
-using BankingSystemAPI.Presentation.Filters;
-using BankingSystemAPI.Application.Authorization.Helpers;
-using BankingSystemAPI.Application.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -207,6 +210,15 @@ builder.Services.AddMemoryCache();
 // Register ICacheService wrapper around IMemoryCache
 builder.Services.AddSingleton<ICacheService, MemoryCacheService>();
 
+// Register MediatR (use Application assembly where handlers live)
+builder.Services.AddMediatR(typeof(MappingProfile).Assembly);
+
+// Register FluentValidation (validators live in Application assembly)
+builder.Services.AddValidatorsFromAssembly(typeof(MappingProfile).Assembly);
+
+// Register MediatR validation behavior
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
 #region Register Repositories and Unit of Work
 // Register Unit of Work
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -222,42 +234,24 @@ builder.Services.AddScoped<IBankRepository, BankRepository>();
 #endregion
 
 #region Register Services
-
-// Bank
-builder.Services.AddScoped<IBankService, BankService>();
 // Identity
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserRolesService, UserRolesService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IRoleClaimsService, RoleClaimsService>();
-// Accounts
-builder.Services.AddScoped<IAccountService, AccountService>();
-// Register closed generic implementations for account type services (separate create/edit DTOs)
-builder.Services.AddScoped<IAccountTypeService<CheckingAccount, CheckingAccountReqDto, CheckingAccountEditDto, CheckingAccountDto>, CheckingAccountService>();
-builder.Services.AddScoped<IAccountTypeService<SavingsAccount, SavingsAccountReqDto, SavingsAccountEditDto, SavingsAccountDto>, SavingsAccountService>();
-builder.Services.AddScoped<ISavingsAccountService, SavingsAccountService>();
-
-// Currency
-builder.Services.AddScoped<ICurrencyService,  CurrencyService>();
-
 // Register IHttpContextAccessor for services that need access to the current user
 builder.Services.AddHttpContextAccessor();
-
-// Register CurrentUserService helper
-builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-
-// Register Transaction Service
-builder.Services.AddScoped<ITransactionService, TransactionService>();
-
-// Register helper service
-builder.Services.AddScoped<ITransactionHelperService, TransactionHelperService>();
-
-// Register Authrization Scope helper service
-builder.Services.AddScoped<IScopeResolver, ScopeResolver>();
+// Register AuthorizationService
 builder.Services.AddScoped<IAccountAuthorizationService, AccountAuthorizationService>();
 builder.Services.AddScoped<IUserAuthorizationService, UserAuthorizationService>();
 builder.Services.AddScoped<ITransactionAuthorizationService, TransactionAuthorizationService>();
+// Register CurrentUserService helper
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+// Register TransactionHelperService
+builder.Services.AddScoped<ITransactionHelperService, TransactionHelperService>();
+// Register ScopeResolver
+builder.Services.AddScoped<IScopeResolver, ScopeResolver>();
 #endregion
 
 #region Register Job Services

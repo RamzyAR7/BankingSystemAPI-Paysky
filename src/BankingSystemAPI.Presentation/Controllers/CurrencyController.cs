@@ -1,11 +1,16 @@
 ﻿using BankingSystemAPI.Application.DTOs.Currency;
-using BankingSystemAPI.Application.Interfaces.Services;
+using BankingSystemAPI.Application.Features.Currencies.Commands.CreateCurrency;
+using BankingSystemAPI.Application.Features.Currencies.Commands.DeleteCurrency;
+using BankingSystemAPI.Application.Features.Currencies.Commands.SetCurrencyActiveStatus;
+using BankingSystemAPI.Application.Features.Currencies.Commands.UpdateCurrency;
+using BankingSystemAPI.Application.Features.Currencies.Queries.GetAllCurrencies;
+using BankingSystemAPI.Application.Features.Currencies.Queries.GetCurrencyById;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Permissions;
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -18,11 +23,11 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiExplorerSettings(GroupName = "Currency")]
     public class CurrencyController : ControllerBase
     {
-        private readonly ICurrencyService _currencyService;
+        private readonly IMediator _mediator;
 
-        public CurrencyController(ICurrencyService currencyService)
+        public CurrencyController(IMediator mediator)
         {
-            _currencyService = currencyService;
+            _mediator = mediator;
         }
 
         /// <summary>
@@ -35,8 +40,9 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetAll()
         {
-            var currencies = await _currencyService.GetAllAsync();
-            return Ok(new { message = "Currencies retrieved successfully.", currencies });
+            var result = await _mediator.Send(new GetAllCurrenciesQuery());
+            if (!result.Succeeded) return BadRequest(result.Errors);
+            return Ok(new { message = "Currencies retrieved successfully.", currencies = result.Value });
         }
 
         /// <summary>
@@ -49,10 +55,9 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetById(int id)
         {
-            var currency = await _currencyService.GetByIdAsync(id);
-            if (currency == null)
-                return NotFound(new { message = "Currency not found.", currency = (CurrencyDto?)null });
-            return Ok(new { message = "Currency retrieved successfully.", currency });
+            var result = await _mediator.Send(new GetCurrencyByIdQuery(id));
+            if (!result.Succeeded) return NotFound(new { message = result.Errors.FirstOrDefault() ?? "Currency not found.", currency = (CurrencyDto?)null });
+            return Ok(new { message = "Currency retrieved successfully.", currency = result.Value });
         }
 
         /// <summary>
@@ -65,7 +70,9 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Create([FromBody] CurrencyReqDto reqDto)
         {
-            var created = await _currencyService.CreateAsync(reqDto);
+            var result = await _mediator.Send(new CreateCurrencyCommand(reqDto));
+            if (!result.Succeeded) return BadRequest(result.Errors);
+            var created = result.Value!;
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, new { message = "Currency created successfully.", currency = created });
         }
 
@@ -79,8 +86,9 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Update(int id, [FromBody] CurrencyReqDto reqDto)
         {
-            var updated = await _currencyService.UpdateAsync(id, reqDto);
-            return Ok(new { message = "Currency updated successfully.", currency = updated });
+            var result = await _mediator.Send(new UpdateCurrencyCommand(id, reqDto));
+            if (!result.Succeeded) return BadRequest(result.Errors);
+            return Ok(new { message = "Currency updated successfully.", currency = result.Value });
         }
 
         /// <summary>
@@ -92,7 +100,8 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Delete(int id)
         {
-            await _currencyService.DeleteAsync(id);
+            var result = await _mediator.Send(new DeleteCurrencyCommand(id));
+            if (!result.Succeeded) return BadRequest(result.Errors);
             return Ok(new { message = "Currency deleted successfully." });
         }
 
@@ -106,7 +115,8 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> SetActive(int id, [FromQuery] bool isActive)
         {
-            await _currencyService.SetCurrencyActiveStatusAsync(id, isActive);
+            var result = await _mediator.Send(new SetCurrencyActiveStatusCommand(id, isActive));
+            if (!result.Succeeded) return BadRequest(result.Errors);
             return Ok(new { message = $"Currency active status changed to {isActive}." });
         }
     }

@@ -1,5 +1,4 @@
 using AutoMapper;
-using BankingSystemAPI.Application.Services;
 using BankingSystemAPI.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using BankingSystemAPI.Infrastructure.Repositories;
@@ -9,6 +8,12 @@ using BankingSystemAPI.Application.DTOs.Currency;
 using Moq;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Application.Exceptions;
+using BankingSystemAPI.Application.Features.Currencies.Commands.CreateCurrency;
+using BankingSystemAPI.Application.Features.Currencies.Commands.UpdateCurrency;
+using BankingSystemAPI.Application.Features.Currencies.Commands.DeleteCurrency;
+using BankingSystemAPI.Application.Features.Currencies.Queries.GetAllCurrencies;
+using BankingSystemAPI.Application.Features.Currencies.Queries.GetCurrencyById;
+using System.Linq;
 
 namespace BankingSystemAPI.UnitTests
 {
@@ -17,7 +22,13 @@ namespace BankingSystemAPI.UnitTests
         private readonly ApplicationDbContext _context;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
-        private readonly CurrencyService _service;
+
+        // Handlers
+        private readonly CreateCurrencyCommandHandler _createHandler;
+        private readonly UpdateCurrencyCommandHandler _updateHandler;
+        private readonly DeleteCurrencyCommandHandler _deleteHandler;
+        private readonly GetAllCurrenciesQueryHandler _getAllHandler;
+        private readonly GetCurrencyByIdQueryHandler _getByIdHandler;
 
         public CurrencyServiceTests()
         {
@@ -35,8 +46,12 @@ namespace BankingSystemAPI.UnitTests
             mapperMock.Setup(m => m.Map<CurrencyDto>(It.IsAny<Currency>()))
                 .Returns((Currency c) => new CurrencyDto { Id = c.Id, Code = c.Code, ExchangeRate = c.ExchangeRate, IsBase = c.IsBase });
 
+            // handle both IEnumerable and List mapping expectations
             mapperMock.Setup(m => m.Map<IEnumerable<CurrencyDto>>(It.IsAny<IEnumerable<Currency>>() ))
                 .Returns((IEnumerable<Currency> list) => list.Select(c => new CurrencyDto { Id = c.Id, Code = c.Code, ExchangeRate = c.ExchangeRate, IsBase = c.IsBase }));
+
+            mapperMock.Setup(m => m.Map<List<CurrencyDto>>(It.IsAny<IEnumerable<Currency>>() ))
+                .Returns((IEnumerable<Currency> list) => list.Select(c => new CurrencyDto { Id = c.Id, Code = c.Code, ExchangeRate = c.ExchangeRate, IsBase = c.IsBase }).ToList());
 
             // handle mapping from reqDto onto existing Currency instance for UpdateAsync
             mapperMock.Setup(m => m.Map(It.IsAny<CurrencyReqDto>(), It.IsAny<Currency>()))
@@ -66,14 +81,21 @@ namespace BankingSystemAPI.UnitTests
 
             _unitOfWork = new UnitOfWork(userRepo, roleRepo, accountRepo, transactionRepo, accountTxRepo, interestLogRepo, currencyRepo, bankRepo, _context);
 
-            _service = new CurrencyService(_unitOfWork, _mapper);
+            // init handlers
+            _createHandler = new CreateCurrencyCommandHandler(_unitOfWork, _mapper);
+            _updateHandler = new UpdateCurrencyCommandHandler(_unitOfWork, _mapper);
+            _deleteHandler = new DeleteCurrencyCommandHandler(_unitOfWork);
+            _getAllHandler = new GetAllCurrenciesQueryHandler(_unitOfWork, _mapper);
+            _getByIdHandler = new GetCurrencyByIdQueryHandler(_unitOfWork, _mapper);
         }
 
         [Fact]
         public async Task Create_ReturnsCreatedCurrency()
         {
             var req = new CurrencyReqDto { Code = "USD", ExchangeRate = 1m, IsBase = true };
-            var created = await _service.CreateAsync(req);
+            var result = await _createHandler.Handle(new CreateCurrencyCommand(req), CancellationToken.None);
+            Assert.True(result.Succeeded);
+            var created = result.Value!;
             Assert.NotNull(created);
             Assert.Equal("USD", created.Code);
             Assert.True(created.IsBase);
@@ -81,51 +103,51 @@ namespace BankingSystemAPI.UnitTests
         }
 
         [Fact]
-        public async Task Create_MultipleBaseCurrencies_ThrowsBadRequest()
+        public async Task Create_MultipleBaseCurrencies_Fails()
         {
-            // create first base currency
             var req1 = new CurrencyReqDto { Code = "USD", ExchangeRate = 1m, IsBase = true };
-            var created1 = await _service.CreateAsync(req1);
+            var r1 = await _createHandler.Handle(new CreateCurrencyCommand(req1), CancellationToken.None);
+            Assert.True(r1.Succeeded);
 
-            // attempt to create a second base currency
             var req2 = new CurrencyReqDto { Code = "EUR", ExchangeRate = 0.9m, IsBase = true };
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateAsync(req2));
+            var r2 = await _createHandler.Handle(new CreateCurrencyCommand(req2), CancellationToken.None);
+            Assert.False(r2.Succeeded);
+            Assert.Contains(r2.Errors, e => e.Contains("base currency"));
         }
 
         [Fact]
-        public async Task Update_SetBase_WhenAnotherBaseExists_ThrowsBadRequest()
+        public async Task Update_SetBase_WhenAnotherBaseExists_Fails()
         {
-            // create initial base currency
             var baseReq = new CurrencyReqDto { Code = "USD", ExchangeRate = 1m, IsBase = true };
-            var baseCurr = await _service.CreateAsync(baseReq);
+            var baseCurr = (await _createHandler.Handle(new CreateCurrencyCommand(baseReq), CancellationToken.None)).Value!;
 
-            // create another non-base currency
             var otherReq = new CurrencyReqDto { Code = "EUR", ExchangeRate = 0.9m, IsBase = false };
-            var other = await _service.CreateAsync(otherReq);
+            var other = (await _createHandler.Handle(new CreateCurrencyCommand(otherReq), CancellationToken.None)).Value!;
 
-            // attempt to set the other currency to base
             var updateReq = new CurrencyReqDto { Code = "EUR", ExchangeRate = 0.9m, IsBase = true };
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.UpdateAsync(other.Id, updateReq));
+            var updateResult = await _updateHandler.Handle(new UpdateCurrencyCommand(other.Id, updateReq), CancellationToken.None);
+            Assert.False(updateResult.Succeeded);
+            Assert.Contains(updateResult.Errors, e => e.Contains("Another base currency"));
         }
 
         [Fact]
         public async Task GetAll_ReturnsCurrencies()
         {
             var req = new CurrencyReqDto { Code = "USD", ExchangeRate = 1m, IsBase = true };
-            await _service.CreateAsync(req);
+            await _createHandler.Handle(new CreateCurrencyCommand(req), CancellationToken.None);
 
-            var all = (await _service.GetAllAsync()).ToList();
+            var all = (await _getAllHandler.Handle(new GetAllCurrenciesQuery(), CancellationToken.None)).Value!;
             Assert.Single(all);
-            Assert.Equal("USD", all[0].Code);
+            Assert.Equal("USD", all.First().Code);
         }
 
         [Fact]
         public async Task GetById_ReturnsCurrency()
         {
             var req = new CurrencyReqDto { Code = "USD", ExchangeRate = 1m, IsBase = true };
-            var created = await _service.CreateAsync(req);
+            var created = (await _createHandler.Handle(new CreateCurrencyCommand(req), CancellationToken.None)).Value!;
 
-            var fetched = await _service.GetByIdAsync(created.Id);
+            var fetched = (await _getByIdHandler.Handle(new GetCurrencyByIdQuery(created.Id), CancellationToken.None)).Value!;
             Assert.Equal(created.Code, fetched.Code);
         }
 
@@ -133,10 +155,10 @@ namespace BankingSystemAPI.UnitTests
         public async Task Update_ChangesExchangeRate()
         {
             var req = new CurrencyReqDto { Code = "USD", ExchangeRate = 1m, IsBase = true };
-            var created = await _service.CreateAsync(req);
+            var created = (await _createHandler.Handle(new CreateCurrencyCommand(req), CancellationToken.None)).Value!;
 
             var updateReq = new CurrencyReqDto { Code = "USD", ExchangeRate = 1.5m, IsBase = true };
-            var updated = await _service.UpdateAsync(created.Id, updateReq);
+            var updated = (await _updateHandler.Handle(new UpdateCurrencyCommand(created.Id, updateReq), CancellationToken.None)).Value!;
             Assert.Equal(1.5m, updated.ExchangeRate);
         }
 
@@ -144,39 +166,46 @@ namespace BankingSystemAPI.UnitTests
         public async Task Delete_RemovesCurrency()
         {
             var req = new CurrencyReqDto { Code = "USD", ExchangeRate = 1m, IsBase = true };
-            var created = await _service.CreateAsync(req);
+            var created = (await _createHandler.Handle(new CreateCurrencyCommand(req), CancellationToken.None)).Value!;
 
-            await _service.DeleteAsync(created.Id);
-            await Assert.ThrowsAsync<CurrencyNotFoundException>(() => _service.GetByIdAsync(created.Id));
+            var del = await _deleteHandler.Handle(new DeleteCurrencyCommand(created.Id), CancellationToken.None);
+            Assert.True(del.Succeeded);
+
+            var get = await _getByIdHandler.Handle(new GetCurrencyByIdQuery(created.Id), CancellationToken.None);
+            Assert.False(get.Succeeded);
         }
 
         [Fact]
-        public async Task Create_MissingCode_ThrowsBadRequest()
+        public async Task Create_MissingCode_Fails()
         {
             var req = new CurrencyReqDto { Code = "", ExchangeRate = 1m, IsBase = false };
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateAsync(req));
+            var result = await _createHandler.Handle(new CreateCurrencyCommand(req), CancellationToken.None);
+            Assert.False(result.Succeeded);
+            Assert.Contains(result.Errors, e => e.Contains("code"));
         }
 
         [Fact]
-        public async Task Create_InvalidExchangeRate_ThrowsBadRequest()
+        public async Task Create_InvalidExchangeRate_Fails()
         {
             var req = new CurrencyReqDto { Code = "EUR", ExchangeRate = 0m, IsBase = false };
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateAsync(req));
+            var result = await _createHandler.Handle(new CreateCurrencyCommand(req), CancellationToken.None);
+            Assert.False(result.Succeeded);
+            Assert.Contains(result.Errors, e => e.Contains("Exchange rate"));
         }
 
         [Fact]
-        public async Task Update_InvalidId_ThrowsBadRequest()
+        public async Task Update_InvalidId_Fails()
         {
             var req = new CurrencyReqDto { Code = "X", ExchangeRate = 1m, IsBase = false };
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.UpdateAsync(0, req));
+            var result = await _updateHandler.Handle(new UpdateCurrencyCommand(0, req), CancellationToken.None);
+            Assert.False(result.Succeeded);
         }
 
         [Fact]
-        public async Task Delete_InUse_ThrowsInvalidAccountOperation()
+        public async Task Delete_InUse_Fails()
         {
-            // create currency
             var req = new CurrencyReqDto { Code = "USD", ExchangeRate = 1m, IsBase = true };
-            var created = await _service.CreateAsync(req);
+            var created = (await _createHandler.Handle(new CreateCurrencyCommand(req), CancellationToken.None)).Value!;
 
             // add an account that uses this currency
             var user = new ApplicationUser { UserName = "accuser", Email = "acc@example.com", PhoneNumber = "6000000001", FullName = "Acc User", NationalId = Guid.NewGuid().ToString().Substring(0,10), DateOfBirth = DateTime.UtcNow.AddYears(-30) };
@@ -188,7 +217,9 @@ namespace BankingSystemAPI.UnitTests
             _context.CheckingAccounts.Add(acc);
             _context.SaveChanges();
 
-            await Assert.ThrowsAsync<InvalidAccountOperationException>(() => _service.DeleteAsync(created.Id));
+            var del = await _deleteHandler.Handle(new DeleteCurrencyCommand(created.Id), CancellationToken.None);
+            Assert.False(del.Succeeded);
+            Assert.Contains(del.Errors, e => e.Contains("in use"));
         }
 
         public void Dispose()

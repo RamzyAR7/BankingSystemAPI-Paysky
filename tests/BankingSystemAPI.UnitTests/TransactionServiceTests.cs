@@ -18,6 +18,9 @@ using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.Exceptions;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using System.Linq;
+using BankingSystemAPI.Application.Features.Transactions.Commands.Deposit;
+using BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw;
+using BankingSystemAPI.Application.Features.Transactions.Commands.Transfer;
 
 namespace BankingSystemAPI.UnitTests
 {
@@ -25,7 +28,10 @@ namespace BankingSystemAPI.UnitTests
     {
         private readonly ApplicationDbContext _context;
         private readonly IUnitOfWork _uow;
-        private readonly TransactionService _service;
+        // use handlers rather than a concrete service
+        private readonly DepositCommandHandler _depositHandler;
+        private readonly WithdrawCommandHandler _withdrawHandler;
+        private readonly TransferCommandHandler _transferHandler;
         private readonly Mock<ITransactionHelperService> _helperMock;
         private readonly IMapper _mapper;
         private readonly Mock<IAccountAuthorizationService> _accountAuthMock;
@@ -124,12 +130,15 @@ namespace BankingSystemAPI.UnitTests
             _transactionAuthMock.Setup(t => t.FilterTransactionsAsync(It.IsAny<IQueryable<Transaction>>(), It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync((IQueryable<Transaction> txs, int page, int size) => (txs.ToList(), txs.Count()));
 
-            // setup UserManager (not used for these tests but required by ctor)
+            // setup UserManager (not used for these tests but required by some constructors)
             var userStore = new UserStore<ApplicationUser>(_context);
             var userManager = new UserManager<ApplicationUser>(userStore, null, new PasswordHasher<ApplicationUser>(), new IUserValidator<ApplicationUser>[0], new IPasswordValidator<ApplicationUser>[0], new UpperInvariantLookupNormalizer(), new IdentityErrorDescriber(), null, new NullLogger<UserManager<ApplicationUser>>());
             var currentUserMock = new Mock<ICurrentUserService>();
 
-            _service = new TransactionService(_uow, _mapper, _helperMock.Object, userManager, currentUserMock.Object, _accountAuthMock.Object, _transactionAuthMock.Object, new NullLogger<TransactionService>());
+            // initialize handlers
+            _depositHandler = new DepositCommandHandler(_uow, _mapper);
+            _withdrawHandler = new WithdrawCommandHandler(_uow, _mapper);
+            _transferHandler = new TransferCommandHandler(_uow, _mapper, _helperMock.Object, _transactionAuthMock.Object);
         }
 
         [Fact]
@@ -138,12 +147,13 @@ namespace BankingSystemAPI.UnitTests
             var account = _context.CheckingAccounts.First(a => a.AccountNumber == "SRC1");
             var req = new DepositReqDto { AccountId = account.Id, Amount = 100m };
 
-            var res = await _service.DepositAsync(req);
+            var res = await _depositHandler.Handle(new DepositCommand(req), CancellationToken.None);
+            Assert.True(res.Succeeded);
 
             var updated = await _uow.AccountRepository.GetByIdAsync(account.Id);
             Assert.Equal(300m, updated.Balance);
 
-            var trx = _context.Transactions.Include(t => t.AccountTransactions).FirstOrDefault(t => t.Id == res.TransactionId);
+            var trx = _context.Transactions.Include(t => t.AccountTransactions).FirstOrDefault(t => t.Id == res.Value.TransactionId);
             Assert.NotNull(trx);
             Assert.Equal(TransactionType.Deposit, trx.TransactionType);
             Assert.Single(trx.AccountTransactions);
@@ -155,7 +165,8 @@ namespace BankingSystemAPI.UnitTests
         {
             var account = _context.CheckingAccounts.First(a => a.AccountNumber == "SRC1");
             var req = new DepositReqDto { AccountId = account.Id, Amount = 0m };
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.DepositAsync(req));
+            var res = await _depositHandler.Handle(new DepositCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
@@ -168,12 +179,13 @@ namespace BankingSystemAPI.UnitTests
             _context.SaveChanges();
 
             var req = new WithdrawReqDto { AccountId = account.Id, Amount = 40m };
-            var res = await _service.WithdrawAsync(req);
+            var res = await _withdrawHandler.Handle(new WithdrawCommand(req), CancellationToken.None);
+            Assert.True(res.Succeeded);
 
             var updated = await _uow.AccountRepository.GetByIdAsync(account.Id);
             Assert.Equal(-40m, updated.Balance);
 
-            var trx = _context.Transactions.Include(t => t.AccountTransactions).FirstOrDefault(t => t.Id == res.TransactionId);
+            var trx = _context.Transactions.Include(t => t.AccountTransactions).FirstOrDefault(t => t.Id == res.Value.TransactionId);
             Assert.NotNull(trx);
             Assert.Equal(TransactionType.Withdraw, trx.TransactionType);
         }
@@ -187,7 +199,8 @@ namespace BankingSystemAPI.UnitTests
             _context.SaveChanges();
 
             var req = new WithdrawReqDto { AccountId = sv.Id, Amount = 20m };
-            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.WithdrawAsync(req));
+            var res = await _withdrawHandler.Handle(new WithdrawCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
@@ -202,7 +215,8 @@ namespace BankingSystemAPI.UnitTests
             _context.SaveChanges();
 
             var req = new TransferReqDto { SourceAccountId = source.Id, TargetAccountId = target.Id, Amount = 100m };
-            var res = await _service.TransferAsync(req);
+            var res = await _transferHandler.Handle(new TransferCommand(req), CancellationToken.None);
+            Assert.True(res.Succeeded);
 
             var updatedSource = await _uow.AccountRepository.GetByIdAsync(source.Id);
             var updatedTarget = await _uow.AccountRepository.GetByIdAsync(target.Id);
@@ -211,7 +225,7 @@ namespace BankingSystemAPI.UnitTests
             Assert.Equal(99.5m, updatedSource.Balance);
             Assert.Equal(150m, updatedTarget.Balance);
 
-            var trx = _context.Transactions.Include(t => t.AccountTransactions).FirstOrDefault(t => t.Id == res.TransactionId);
+            var trx = _context.Transactions.Include(t => t.AccountTransactions).FirstOrDefault(t => t.Id == res.Value.TransactionId);
             Assert.NotNull(trx);
             Assert.Equal(2, trx.AccountTransactions.Count);
         }
@@ -227,7 +241,8 @@ namespace BankingSystemAPI.UnitTests
             _context.SaveChanges();
 
             var req = new TransferReqDto { SourceAccountId = source.Id, TargetAccountId = target.Id, Amount = 100m };
-            var res = await _service.TransferAsync(req);
+            var res = await _transferHandler.Handle(new TransferCommand(req), CancellationToken.None);
+            Assert.True(res.Succeeded);
 
             var updatedSource = await _uow.AccountRepository.GetByIdAsync(source.Id);
             var updatedTarget = await _uow.AccountRepository.GetByIdAsync(target.Id);
@@ -243,7 +258,8 @@ namespace BankingSystemAPI.UnitTests
             var source = _context.CheckingAccounts.First(a => a.AccountNumber == "SRC1");
             var target = _context.CheckingAccounts.First(a => a.AccountNumber == "TGT1");
             var req = new TransferReqDto { SourceAccountId = source.Id, TargetAccountId = target.Id, Amount = 0m };
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.TransferAsync(req));
+            var res = await _transferHandler.Handle(new TransferCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
@@ -251,7 +267,8 @@ namespace BankingSystemAPI.UnitTests
         {
             var acc = _context.CheckingAccounts.First(a => a.AccountNumber == "SRC1");
             var req = new TransferReqDto { SourceAccountId = acc.Id, TargetAccountId = acc.Id, Amount = 10m };
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.TransferAsync(req));
+            var res = await _transferHandler.Handle(new TransferCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
@@ -263,7 +280,8 @@ namespace BankingSystemAPI.UnitTests
             _context.SaveChanges();
 
             var req = new TransferReqDto { SourceAccountId = source.Id, TargetAccountId = target.Id, Amount = 100m };
-            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.TransferAsync(req));
+            var res = await _transferHandler.Handle(new TransferCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         public void Dispose()

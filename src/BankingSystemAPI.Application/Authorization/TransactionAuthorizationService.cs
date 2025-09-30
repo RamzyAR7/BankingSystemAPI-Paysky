@@ -1,15 +1,15 @@
-using BankingSystemAPI.Application.Authorization.Helpers;
 using BankingSystemAPI.Application.Exceptions;
 using BankingSystemAPI.Application.Interfaces.Authorization;
-using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
+using BankingSystemAPI.Application.Interfaces.Identity;
+using BankingSystemAPI.Application.Authorization.Helpers;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
-using System.Linq.Expressions;
 using BankingSystemAPI.Application.Specifications;
+using System.Linq.Expressions;
 using System.Linq;
-using BankingSystemAPI.Application.Specifications.AccountSpecification;
 using BankingSystemAPI.Application.Specifications.UserSpecifications;
+using Microsoft.EntityFrameworkCore;
 
 namespace BankingSystemAPI.Application.AuthorizationServices
 {
@@ -32,29 +32,21 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         public async Task CanInitiateTransferAsync(int sourceAccountId, int targetAccountId)
         {
             var scope = await _scopeResolver.GetScopeAsync();
+            var srcSpec = new BankingSystemAPI.Application.Specifications.AccountSpecification.AccountByIdSpecification(sourceAccountId);
+            var source = await _uow.AccountRepository.FindAsync(srcSpec);
 
-            // SuperAdmin / Global scope should be allowed without validating account existence
-            if (scope == AccessScope.Global)
-                return;
-
-            var sourceSpec = new AccountByIdSpecification(sourceAccountId);
-            var source = await _uow.AccountRepository.FindAsync(sourceSpec);
-
-            if (source == null) throw new NotFoundException("Source account not found.");
-
-            var targetSpec = new AccountByIdSpecification(targetAccountId);
-            var target = await _uow.AccountRepository.FindAsync(targetSpec);
-
-            if (target == null) throw new NotFoundException("Target account not found.");
+            if (source == null)
+                throw new NotFoundException("Source account not found.");
 
             switch (scope)
             {
                 case AccessScope.Global:
-                    return; // SuperAdmin full access
+                    return;
 
                 case AccessScope.Self:
-                    if (source.UserId != _currentUser.UserId)
-                        throw new ForbiddenException("Clients can only transfer from their own accounts.");
+                    // Acting user must be source owner
+                    if (!_currentUser.UserId.Equals(source.UserId, StringComparison.OrdinalIgnoreCase))
+                        throw new ForbiddenException("Clients cannot initiate transfers from accounts they don't own.");
                     return;
 
                 case AccessScope.BankLevel:
@@ -77,21 +69,23 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         {
             var scope = await _scopeResolver.GetScopeAsync();
             var skip = (pageNumber - 1) * pageSize;
+
+            // Start with the provided query so caller-provided filters (e.g. by account id) are preserved
+            var baseQuery = query;
+
             switch (scope)
             {
                 case AccessScope.Global:
-                    {
-                        var spec = new PagedSpecification<Transaction>(skip, pageSize, orderByProperty: "Timestamp", orderDirection: "DESC", includes: (t => t.AccountTransactions));
-                        var res = await _uow.TransactionRepository.GetPagedAsync(spec);
-                        return (res.Items, res.TotalCount);
-                    }
+                    baseQuery = baseQuery.OrderByDescending(t => t.Timestamp);
+                    break;
+
                 case AccessScope.Self:
                     {
                         var userId = _currentUser.UserId;
-                        var spec = new PagedSpecification<Transaction>(t => t.AccountTransactions.Any(at => at.Account.UserId == userId), skip, pageSize, orderByProperty: "Timestamp", orderDirection: "DESC", includes: (t => t.AccountTransactions));
-                        var res = await _uow.TransactionRepository.GetPagedAsync(spec);
-                        return (res.Items, res.TotalCount);
+                        baseQuery = baseQuery.Where(t => t.AccountTransactions.Any(at => at.Account.UserId == userId)).OrderByDescending(t => t.Timestamp);
+                        break;
                     }
+
                 case AccessScope.BankLevel:
                     {
                         var actingUserSpec = new UserByIdSpecification(_currentUser.UserId);
@@ -100,14 +94,17 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                             return (Enumerable.Empty<Transaction>(), 0);
 
                         var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery(UserRole.Client.ToString());
-                        Expression<Func<Transaction, bool>> criteria = t => t.AccountTransactions.Any(at => clientUserIds.Contains(at.Account.UserId) && at.Account.User.BankId == actingUser.BankId);
-                        var spec = new PagedSpecification<Transaction>(criteria, skip, pageSize, orderByProperty: "Timestamp", orderDirection: "DESC", includes: (t => t.AccountTransactions));
-                        var res = await _uow.TransactionRepository.GetPagedAsync(spec);
-                        return (res.Items, res.TotalCount);
+                        baseQuery = baseQuery.Where(t => t.AccountTransactions.Any(at => clientUserIds.Contains(at.Account.UserId) && at.Account.User.BankId == actingUser.BankId)).OrderByDescending(t => t.Timestamp);
+                        break;
                     }
+
                 default:
                     return (Enumerable.Empty<Transaction>(), 0);
             }
+
+            var total = await baseQuery.CountAsync();
+            var items = await baseQuery.Skip(skip).Take(pageSize).ToListAsync();
+            return (items, total);
         }
     }
 }

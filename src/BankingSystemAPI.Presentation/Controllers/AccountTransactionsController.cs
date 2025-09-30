@@ -1,10 +1,15 @@
 using BankingSystemAPI.Application.DTOs.Transactions;
-using BankingSystemAPI.Application.Interfaces.Services;
+using BankingSystemAPI.Application.Features.Transactions.Commands.Deposit;
+using BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw;
+using BankingSystemAPI.Application.Features.Transactions.Commands.Transfer;
+using BankingSystemAPI.Application.Features.Transactions.Queries.GetByAccountId;
+using BankingSystemAPI.Application.Features.Transactions.Queries.GetBalance;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using MediatR;
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -17,11 +22,11 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiExplorerSettings(GroupName = "AccountTransactions")]
     public class AccountTransactionsController : ControllerBase
     {
-        private readonly ITransactionService _transactionService;
+        private readonly IMediator _mediator;
 
-        public AccountTransactionsController(ITransactionService transactionService)
+        public AccountTransactionsController(IMediator mediator)
         {
-            _transactionService = transactionService;
+            _mediator = mediator;
         }
 
         /// <summary>
@@ -42,12 +47,13 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<TransactionResDto>> Deposit([FromBody] DepositReqDto request)
+        public async Task<ActionResult<object>> Deposit([FromBody] DepositReqDto request)
         {
             if (!ModelState.IsValid) return BadRequest(new { message = "Invalid deposit request.", errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList() });
 
-            var result = await _transactionService.DepositAsync(request);
-            return Ok(new { message = "Deposit completed successfully.", transaction = result });
+            var res = await _mediator.Send(new DepositCommand(request));
+            if (!res.Succeeded) return BadRequest(res.Errors);
+            return Ok(new { message = "Deposit completed successfully.", transaction = res.Value });
         }
 
         /// <summary>
@@ -68,12 +74,13 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<TransactionResDto>> Withdraw([FromBody] WithdrawReqDto request)
+        public async Task<ActionResult<object>> Withdraw([FromBody] WithdrawReqDto request)
         {
             if (!ModelState.IsValid) return BadRequest(new { message = "Invalid withdraw request.", errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList() });
 
-            var result = await _transactionService.WithdrawAsync(request);
-            return Ok(new { message = "Withdrawal completed successfully.", transaction = result });
+            var res = await _mediator.Send(new WithdrawCommand(request));
+            if (!res.Succeeded) return BadRequest(res.Errors);
+            return Ok(new { message = "Withdrawal completed successfully.", transaction = res.Value });
         }
 
         /// <summary>
@@ -96,12 +103,13 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        public async Task<ActionResult<TransactionResDto>> Transfer([FromBody] TransferReqDto request)
+        public async Task<ActionResult<object>> Transfer([FromBody] TransferReqDto request)
         {
             if (!ModelState.IsValid) return BadRequest(new { message = "Invalid transfer request.", errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList() });
 
-            var result = await _transactionService.TransferAsync(request);
-            return Ok(new { message = "Transfer completed successfully.", transaction = result });
+            var res = await _mediator.Send(new TransferCommand(request));
+            if (!res.Succeeded) return BadRequest(res.Errors);
+            return Ok(new { message = "Transfer completed successfully.", transaction = res.Value });
         }
 
         /// <summary>
@@ -114,17 +122,18 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// <response code="403">Forbidden - insufficient permissions.</response>
         /// <response code="404">Account not found.</response>
         // GET /api/accounts/{id}/balance
-        [HttpGet("{id:int}/balance")]
+        [HttpGet("{accountId}/balance")]
         [PermissionFilterFactory(Permission.Transaction.ReadBalance)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetBalance(int id)
+        public async Task<IActionResult> GetBalance(int accountId)
         {
-            var balance = await _transactionService.GetBalanceAsync(id);
-            return Ok(new { message = "Balance retrieved successfully.", balance });
+            var res = await _mediator.Send(new GetBalanceQuery(accountId));
+            if (!res.Succeeded) return NotFound(new { message = res.Errors.FirstOrDefault() ?? "Account not found." });
+            return Ok(new { message = "Balance retrieved successfully.", balance = res.Value });
         }
     }
 }

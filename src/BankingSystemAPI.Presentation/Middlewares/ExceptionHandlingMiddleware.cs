@@ -1,4 +1,5 @@
 using BankingSystemAPI.Application.Exceptions;
+using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -6,6 +7,7 @@ using System;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
+using BankingSystemAPI.Presentation.Helpers;
 
 namespace BankingSystemAPI.Presentation.Middlewares
 {
@@ -47,16 +49,13 @@ namespace BankingSystemAPI.Presentation.Middlewares
 
             switch (realException)
             {
-                case AccountNotFoundException:
-                case TransactionNotFoundException:
-                case CurrencyNotFoundException:
-                    statusCode = (int)HttpStatusCode.NotFound;
+                case ValidationException valEx:
+                    statusCode = (int)HttpStatusCode.BadRequest;
                     break;
                 case NotFoundException:
                     statusCode = (int)HttpStatusCode.NotFound;
                     break;
                 case BadRequestException:
-                case InvalidAccountOperationException:
                 case ArgumentNullException:
                 case ArgumentException:
                     statusCode = (int)HttpStatusCode.BadRequest;
@@ -88,33 +87,26 @@ namespace BankingSystemAPI.Presentation.Middlewares
                 RequestId = requestId
             };
 
-            // Log exception only
-            _logger.LogError(exception, "Error in Request {RequestId}: {Message}", requestId, exception.Message);
+            // If validation exception include errors collection
+            if (realException is ValidationException vEx)
+            {
+                var failures = vEx.Errors
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
 
-            var result = JsonSerializer.Serialize(error);
-            await context.Response.WriteAsync(result);
+                error.Details = failures;
+            }
+
+            var payload = JsonSerializer.Serialize(error);
+            await context.Response.WriteAsync(payload);
         }
 
         private Exception GetInnermostException(Exception ex)
         {
-            if (ex == null) return ex;
+            if (ex is AggregateException aex && aex.InnerExceptions != null && aex.InnerExceptions.Count > 0)
+                return GetInnermostException(aex.InnerExceptions.First());
 
-            if (ex is AggregateException agg && agg.InnerException != null)
-            {
-                ex = agg.Flatten().InnerException ?? ex;
-            }
-
-            while (ex.InnerException != null)
-                ex = ex.InnerException;
-
-            return ex;
-        }
-
-        private class ErrorDetails
-        {
-            public string Code { get; set; } = string.Empty;
-            public string Message { get; set; } = string.Empty;
-            public string RequestId { get; set; } = string.Empty;
+            return ex.InnerException ?? ex;
         }
     }
 }

@@ -127,6 +127,15 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// <summary>
         /// Create a new user.
         /// </summary>
+        /// <remarks>
+        /// Creates a new user in the system. Behavior differs based on the role of the acting user:
+        /// - SuperAdmin: must provide BankId and Role and can create users across banks.
+        /// - Admin: will create users scoped to the admin's bank.
+        /// - Client: forbidden from creating users.
+        /// 
+        /// The controller validates the request body before delegating to the user service. The service
+        /// performs additional checks: bank existence and active status, duplicate detection, and role assignment.
+        /// </remarks>
         /// <response code="201">User created.</response>
         /// <response code="400">Invalid user data.</response>
         /// <response code="401">Unauthorized.</response>
@@ -160,6 +169,11 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// <summary>
         /// Update an existing user.
         /// </summary>
+        /// <remarks>
+        /// Updates user profile fields and performs duplicate detection within the same bank. Role changes
+        /// should be performed through the dedicated user-roles endpoints. The controller delegates
+        /// authorization checks to the user service which enforces role-based scoping rules.
+        /// </remarks>
         /// <response code="200">User updated.</response>
         /// <response code="400">Invalid request.</response>
         /// <response code="401">Unauthorized.</response>

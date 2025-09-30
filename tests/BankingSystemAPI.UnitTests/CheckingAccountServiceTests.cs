@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using Microsoft.EntityFrameworkCore;
@@ -19,13 +20,14 @@ using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using System.Collections.Generic;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Domain.Constant;
+using BankingSystemAPI.Application.Features.CheckingAccounts.Commands.CreateCheckingAccount;
 
 namespace BankingSystemAPI.UnitTests
 {
     public class CheckingAccountServiceTests : IDisposable
     {
         private readonly ApplicationDbContext _context;
-        private readonly CheckingAccountService _service;
+        private readonly CreateCheckingAccountCommandHandler _createHandler;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly Mock<ICurrentUserService> _currentUserMock;
@@ -86,7 +88,7 @@ namespace BankingSystemAPI.UnitTests
             _accountAuthMock.Setup(a => a.FilterAccountsQueryAsync(It.IsAny<IQueryable<Account>>())).ReturnsAsync((IQueryable<Account> q) => q);
             _accountAuthMock.Setup(a => a.CanCreateAccountForUserAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
 
-            _service = new CheckingAccountService(_uow, _mapper, _accountAuthMock.Object);
+            _createHandler = new CreateCheckingAccountCommandHandler(_uow, _mapper, _accountAuthMock.Object);
         }
 
         [Fact]
@@ -96,7 +98,8 @@ namespace BankingSystemAPI.UnitTests
             await _userManager.CreateAsync(user, "Password123!");
 
             var req = new CheckingAccountReqDto { UserId = user.Id, CurrencyId = _context.Currencies.First().Id, InitialBalance = 0m };
-            await Assert.ThrowsAsync<BankingSystemAPI.Application.Exceptions.BadRequestException>(() => _service.CreateAccountAsync(req));
+            var res = await _createHandler.Handle(new CreateCheckingAccountCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
@@ -107,13 +110,14 @@ namespace BankingSystemAPI.UnitTests
             if (!await _roleManager.RoleExistsAsync("Client")) { await _roleManager.CreateAsync(new ApplicationRole { Name = "Client" }); }
             await _userManager.AddToRoleAsync(user, "Client");
             var req = new CheckingAccountReqDto { UserId = user.Id, CurrencyId = _context.Currencies.First().Id, InitialBalance = 10m };
-            await Assert.ThrowsAsync<BankingSystemAPI.Application.Exceptions.BadRequestException>(() => _service.CreateAccountAsync(req));
+            var res = await _createHandler.Handle(new CreateCheckingAccountCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
         public async Task CreateAccount_Throws_WhenCurrencyIsInactive()
         {
-            var user = new ApplicationUser { UserName = "cu_active", Email = "cu_active@example.com", PhoneNumber = "0000000006", FullName = "CU Active", NationalId = "NID4", DateOfBirth = DateTime.UtcNow.AddYears(-30), IsActive = true };
+            var user = new ApplicationUser { UserName = "cu_active", Email = "cu_active@example.com", PhoneNumber = "cu_active@example.com", FullName = "CU Active", NationalId = "NID4", DateOfBirth = DateTime.UtcNow.AddYears(-30), IsActive = true };
             await _userManager.CreateAsync(user, "Password123!");
             if (!await _roleManager.RoleExistsAsync("Client")) { await _roleManager.CreateAsync(new ApplicationRole { Name = "Client" }); }
             await _userManager.AddToRoleAsync(user, "Client");
@@ -121,7 +125,8 @@ namespace BankingSystemAPI.UnitTests
             currency.IsActive = false;
             _context.SaveChanges();
             var req = new CheckingAccountReqDto { UserId = user.Id, CurrencyId = currency.Id, InitialBalance = 10m };
-            await Assert.ThrowsAsync<BankingSystemAPI.Application.Exceptions.BadRequestException>(() => _service.CreateAccountAsync(req));
+            var res = await _createHandler.Handle(new CreateCheckingAccountCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         public void Dispose()

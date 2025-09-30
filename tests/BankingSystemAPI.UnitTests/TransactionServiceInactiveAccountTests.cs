@@ -18,18 +18,24 @@ using BankingSystemAPI.Infrastructure.Repositories;
 using BankingSystemAPI.Infrastructure.UnitOfWork;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using BankingSystemAPI.Application.Interfaces.Authorization;
+using BankingSystemAPI.Application.Features.Transactions.Commands.Deposit;
+using BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw;
+using BankingSystemAPI.Application.Features.Transactions.Commands.Transfer;
 
 namespace BankingSystemAPI.UnitTests
 {
     public class TransactionServiceInactiveAccountTests
     {
         private readonly ApplicationDbContext _context;
-        private readonly TransactionService _service;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly Mock<ICurrentUserService> _currentUserMock;
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
         private readonly Mock<ITransactionHelperService> _helperMock;
+
+        private readonly DepositCommandHandler _depositHandler;
+        private readonly WithdrawCommandHandler _withdrawHandler;
+        private readonly TransferCommandHandler _transferHandler;
 
         public TransactionServiceInactiveAccountTests()
         {
@@ -64,11 +70,14 @@ namespace BankingSystemAPI.UnitTests
 
             _helperMock = new Mock<ITransactionHelperService>();
 
-            _service = new TransactionService(_uow, _mapper, _helperMock.Object, _userManager, _currentUserMock.Object, null, null, new NullLogger<TransactionService>());
+            // initialize handlers
+            _depositHandler = new DepositCommandHandler(_uow, _mapper);
+            _withdrawHandler = new WithdrawCommandHandler(_uow, _mapper);
+            _transferHandler = new TransferCommandHandler(_uow, _mapper, _helperMock.Object, null);
         }
 
         [Fact]
-        public async Task Deposit_InactiveAccount_Throws()
+        public async Task Deposit_InactiveAccount_ReturnsFailure()
         {
             var currency = new Currency { Code = "USD", ExchangeRate = 1m, IsBase = true, IsActive = true };
             _context.Currencies.Add(currency);
@@ -79,11 +88,13 @@ namespace BankingSystemAPI.UnitTests
             _context.CheckingAccounts.Add(account);
             _context.SaveChanges();
             var req = new DepositReqDto { AccountId = account.Id, Amount = 10m };
-            await Assert.ThrowsAsync<InvalidAccountOperationException>(() => _service.DepositAsync(req));
+
+            var res = await _depositHandler.Handle(new DepositCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
-        public async Task Withdraw_InactiveAccount_Throws()
+        public async Task Withdraw_InactiveAccount_ReturnsFailure()
         {
             var currency = new Currency { Code = "USD", ExchangeRate = 1m, IsBase = true, IsActive = true };
             _context.Currencies.Add(currency);
@@ -94,11 +105,13 @@ namespace BankingSystemAPI.UnitTests
             _context.CheckingAccounts.Add(account);
             _context.SaveChanges();
             var req = new WithdrawReqDto { AccountId = account.Id, Amount = 10m };
-            await Assert.ThrowsAsync<InvalidAccountOperationException>(() => _service.WithdrawAsync(req));
+
+            var res = await _withdrawHandler.Handle(new WithdrawCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
-        public async Task Transfer_InactiveSourceAccount_Throws()
+        public async Task Transfer_InactiveSourceAccount_ReturnsFailure()
         {
             var currency = new Currency { Code = "USD", ExchangeRate = 1m, IsBase = true, IsActive = true };
             _context.Currencies.Add(currency);
@@ -112,11 +125,13 @@ namespace BankingSystemAPI.UnitTests
             _context.CheckingAccounts.AddRange(srcAccount, tgtAccount);
             _context.SaveChanges();
             var req = new TransferReqDto { SourceAccountId = srcAccount.Id, TargetAccountId = tgtAccount.Id, Amount = 10m };
-            await Assert.ThrowsAsync<InvalidAccountOperationException>(() => _service.TransferAsync(req));
+
+            var res = await _transferHandler.Handle(new TransferCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
 
         [Fact]
-        public async Task Transfer_InactiveTargetAccount_Throws()
+        public async Task Transfer_InactiveTargetAccount_ReturnsFailure()
         {
             var currency = new Currency { Code = "USD", ExchangeRate = 1m, IsBase = true, IsActive = true };
             _context.Currencies.Add(currency);
@@ -130,7 +145,9 @@ namespace BankingSystemAPI.UnitTests
             _context.CheckingAccounts.AddRange(srcAccount, tgtAccount);
             _context.SaveChanges();
             var req = new TransferReqDto { SourceAccountId = srcAccount.Id, TargetAccountId = tgtAccount.Id, Amount = 10m };
-            await Assert.ThrowsAsync<InvalidAccountOperationException>(() => _service.TransferAsync(req));
+
+            var res = await _transferHandler.Handle(new TransferCommand(req), CancellationToken.None);
+            Assert.False(res.Succeeded);
         }
     }
 }

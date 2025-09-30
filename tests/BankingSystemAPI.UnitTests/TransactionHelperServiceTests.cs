@@ -82,7 +82,7 @@ namespace BankingSystemAPI.UnitTests
         [Fact]
         public async Task Convert_InvalidCurrency_Throws()
         {
-            await Assert.ThrowsAsync<CurrencyNotFoundException>(() => _service.ConvertAsync(999, 1, 1m));
+            await Assert.ThrowsAsync<NotFoundException>(() => _service.ConvertAsync(999, 1, 1m));
         }
 
         [Fact]

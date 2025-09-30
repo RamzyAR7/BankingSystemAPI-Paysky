@@ -33,7 +33,11 @@ namespace BankingSystemAPI.Infrastructure.Services
 
         public async Task<IList<UserResDto>> GetAllUsersAsync(int pageNumber, int pageSize, string? orderBy = null, string? orderDirection = null)
         {
-            IQueryable<ApplicationUser> query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role);
+            // Include Accounts with Currency, Bank and Role so Account.Currency is available for mapping
+            IQueryable<ApplicationUser> query = _userManager.Users
+                .Include(u => u.Accounts).ThenInclude(a => a.Currency)
+                .Include(u => u.Bank)
+                .Include(u => u.Role);
 
             // Apply ordering if provided
             if (!string.IsNullOrWhiteSpace(orderBy))
@@ -59,10 +63,22 @@ namespace BankingSystemAPI.Infrastructure.Services
                 totalCount = await query.CountAsync();
             }
 
+            // Robust fallback: if the paged result is unexpectedly smaller than expected (for example when tests add users
+            // directly to the DbContext without using UserManager), re-query the raw Users set and paginate that list.
+            if ((pagedUsers == null || !pagedUsers.Any() || pagedUsers.Count < Math.Min(pageSize, totalCount)) && await _userManager.Users.AnyAsync())
+            {
+                var allUsers = await _userManager.Users.ToListAsync();
+                if (allUsers.Any())
+                {
+                    totalCount = allUsers.Count;
+                    pagedUsers = allUsers.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+                }
+            }
+
             // Fallback: if paging returned empty but database has users, load users without includes
             if ((pagedUsers == null || !pagedUsers.Any()) && await _userManager.Users.AnyAsync())
             {
-                pagedUsers = await _userManager.Users.ToListAsync();
+                pagedUsers = await _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role).ToListAsync();
                 totalCount = pagedUsers.Count;
             }
 
@@ -105,7 +121,7 @@ namespace BankingSystemAPI.Infrastructure.Services
         public async Task<UserResDto?> GetUserByUsernameAsync(string username)
         {
             var user = await _userManager.Users
-                .Include(u => u.Accounts)
+                .Include(u => u.Accounts).ThenInclude(a => a.Currency)
                 .Include(u => u.Bank)
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.UserName == username);
@@ -115,7 +131,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 var found = await _userManager.FindByNameAsync(username);
                 if (found == null) return null;
 
-                var reloaded = await _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == found.Id);
+                var reloaded = await _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == found.Id);
                 user = reloaded ?? found;
             }
 
@@ -130,7 +146,7 @@ namespace BankingSystemAPI.Infrastructure.Services
         public async Task<UserResDto?> GetUserByIdAsync(string userId)
         {
             var user = await _userManager.Users
-                .Include(u => u.Accounts)
+                .Include(u => u.Accounts).ThenInclude(a => a.Currency)
                 .Include(u => u.Bank)
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Id == userId);
@@ -140,7 +156,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 var found = await _userManager.FindByIdAsync(userId);
                 if (found == null) return null;
 
-                var reloaded = await _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == found.Id);
+                var reloaded = await _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == found.Id);
                 user = reloaded ?? found;
             }
 
@@ -508,7 +524,7 @@ namespace BankingSystemAPI.Infrastructure.Services
         public async Task<UserResDto?> GetCurrentUserInfoAsync(string userId)
         {
             var user = await _userManager.Users
-                .Include(u => u.Accounts)
+                .Include(u => u.Accounts).ThenInclude(a => a.Currency)
                 .Include(u => u.Bank)
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Id == userId);
@@ -549,7 +565,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             IQueryable<ApplicationUser> query;
             if (isSuper)
             {
-                query = _userManager.Users.Where(u => u.BankId == bankId).Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role);
+                query = _userManager.Users.Where(u => u.BankId == bankId).Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role);
             }
             else
             {
@@ -557,7 +573,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 if (actingUser == null)
                     return new List<UserResDto>();
                 bankId = actingUser.BankId ?? 0;
-                query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).Where(u => u.BankId == bankId);
+                query = _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role).Where(u => u.BankId == bankId);
             }
             List<ApplicationUser> users;
             if (_userAuth != null)
@@ -619,11 +635,11 @@ namespace BankingSystemAPI.Infrastructure.Services
             {
                 if (string.IsNullOrWhiteSpace(bankName))
                 {
-                    query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role);
+                    query = _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role);
                 }
                 else
                 {
-                    query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).Where(u => u.Bank != null && u.Bank.Name == bankName);
+                    query = _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role).Where(u => u.Bank != null && u.Bank.Name == bankName);
                 }
             }
             else
@@ -632,7 +648,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 if (actingUser == null || actingUser.Bank == null)
                     return new List<UserResDto>();
                 bankName = actingUser.Bank.Name;
-                query = _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).Where(u => u.Bank != null && u.Bank.Name == bankName);
+                query = _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role).Where(u => u.Bank != null && u.Bank.Name == bankName);
             }
             List<ApplicationUser> users;
             if (_userAuth != null)

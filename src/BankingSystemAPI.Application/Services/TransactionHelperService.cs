@@ -25,7 +25,7 @@ namespace BankingSystemAPI.Application.Services
             var toCurrency = await _unitOfWork.CurrencyRepository.GetByIdAsync(toCurrencyId);
 
             if (fromCurrency == null || toCurrency == null)
-                throw new CurrencyNotFoundException("One or both currencies are invalid.");
+                throw new NotFoundException("One or both currencies are invalid.");
 
             if (amount <= 0) throw new BadRequestException("Amount to convert must be greater than zero.");
 
@@ -53,7 +53,7 @@ namespace BankingSystemAPI.Application.Services
             var to = await _unitOfWork.CurrencyRepository.FindAsync(toSpec);
 
             if (from == null || to == null)
-                throw new CurrencyNotFoundException("One or both currencies are invalid.");
+                throw new NotFoundException("One or both currencies are invalid.");
 
             return await ConvertAsync(from.Id, to.Id, amount);
         }

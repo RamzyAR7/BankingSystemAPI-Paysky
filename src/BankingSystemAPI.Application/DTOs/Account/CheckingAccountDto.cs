@@ -11,6 +11,6 @@ namespace BankingSystemAPI.Application.DTOs.Account
     {
         public decimal OverdraftLimit { get; set; }
 
-        public CheckingAccountDto() => AccountType = BankingSystemAPI.Domain.Constant.AccountType.Checking.ToString();
+        public CheckingAccountDto() => Type = AccountType.Checking.ToString();
     }
 }

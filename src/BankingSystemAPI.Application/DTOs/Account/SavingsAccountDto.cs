@@ -14,7 +14,7 @@ namespace BankingSystemAPI.Application.DTOs.Account
 
         public SavingsAccountDto()
         {
-            this.AccountType = Domain.Constant.AccountType.Savings.ToString();
+            this.Type = AccountType.Savings.ToString();
         }
     }
 }

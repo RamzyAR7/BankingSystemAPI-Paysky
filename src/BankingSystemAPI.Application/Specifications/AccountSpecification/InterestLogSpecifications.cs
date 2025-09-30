@@ -2,6 +2,7 @@ using BankingSystemAPI.Domain.Entities;
 using System;
 using System.Linq.Expressions;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace BankingSystemAPI.Application.Specifications.AccountSpecification
 {
@@ -14,6 +15,14 @@ namespace BankingSystemAPI.Application.Specifications.AccountSpecification
             // Default ordering: newest first
             ApplyOrderBy(q => q.OrderByDescending(l => l.Timestamp));
             // include related savings account if needed
+            AddInclude(l => l.SavingsAccount);
+        }
+
+        public InterestLogsPagedSpecification(IEnumerable<int> accountIds, int skip, int take)
+            : base(l => accountIds != null && accountIds.Contains(l.SavingsAccountId))
+        {
+            ApplyPaging(skip, take);
+            ApplyOrderBy(q => q.OrderByDescending(l => l.Timestamp));
             AddInclude(l => l.SavingsAccount);
         }
     }
