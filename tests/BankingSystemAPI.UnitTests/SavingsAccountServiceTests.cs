@@ -22,6 +22,7 @@ using BankingSystemAPI.Application.DTOs.Transactions;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Application.Interfaces.Authorization;
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateSavingsAccount;
 using BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw;
 
@@ -56,7 +57,7 @@ namespace BankingSystemAPI.UnitTests
 
             // create cache service and repositories with explicit DI
             var memoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
-            var cacheService = new BankingSystemAPI.Infrastructure.Services.MemoryCacheService(memoryCache);
+            var cacheService = new BankingSystemAPI.Infrastructure.Cache.MemoryCacheService(memoryCache);
 
             var userRepo = new UserRepository(_context);
             var roleRepo = new RoleRepository(_context, cacheService);
@@ -79,11 +80,13 @@ namespace BankingSystemAPI.UnitTests
 
             _mapper = mapperMock.Object;
 
+            // Setup Result-based authorization service mocks  
             _accountAuthMock = new Mock<IAccountAuthorizationService>();
-            _accountAuthMock.Setup(a => a.CanViewAccountAsync(It.IsAny<int>())).Returns(Task.CompletedTask);
-            _accountAuthMock.Setup(a => a.CanModifyAccountAsync(It.IsAny<int>(), It.IsAny<AccountModificationOperation>())).Returns(Task.CompletedTask);
-            _accountAuthMock.Setup(a => a.FilterAccountsQueryAsync(It.IsAny<IQueryable<Account>>())).ReturnsAsync((IQueryable<Account> q) => q);
-            _accountAuthMock.Setup(a => a.CanCreateAccountForUserAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
+            _accountAuthMock.Setup(a => a.CanViewAccountAsync(It.IsAny<int>())).ReturnsAsync(Result.Success());
+            _accountAuthMock.Setup(a => a.CanModifyAccountAsync(It.IsAny<int>(), It.IsAny<AccountModificationOperation>())).ReturnsAsync(Result.Success());
+            _accountAuthMock.Setup(a => a.FilterAccountsQueryAsync(It.IsAny<IQueryable<Account>>()))
+                .ReturnsAsync((IQueryable<Account> q) => Result<IQueryable<Account>>.Success(q));
+            _accountAuthMock.Setup(a => a.CanCreateAccountForUserAsync(It.IsAny<string>())).ReturnsAsync(Result.Success());
 
             _createHandler = new CreateSavingsAccountCommandHandler(_uow, _mapper, _accountAuthMock.Object);
         }

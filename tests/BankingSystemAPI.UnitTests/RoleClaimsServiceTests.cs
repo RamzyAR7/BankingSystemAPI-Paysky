@@ -20,7 +20,6 @@ namespace BankingSystemAPI.UnitTests
         private readonly ApplicationDbContext _context;
         private readonly RoleClaimsService _service;
         private readonly RoleManager<ApplicationRole> _roleManager;
-        private readonly DefaultHttpContext _httpContext;
 
         public RoleClaimsServiceTests()
         {
@@ -36,10 +35,8 @@ namespace BankingSystemAPI.UnitTests
                 new IRoleValidator<ApplicationRole>[] { new RoleValidator<ApplicationRole>() },
                 new UpperInvariantLookupNormalizer(), new IdentityErrorDescriber(), new NullLogger<RoleManager<ApplicationRole>>());
 
-            _httpContext = new DefaultHttpContext();
-            var httpAccessor = new HttpContextAccessor { HttpContext = _httpContext };
-
-            _service = new RoleClaimsService(_roleManager, httpAccessor);
+            // Updated constructor to match simplified RoleClaimsService
+            _service = new RoleClaimsService(_roleManager);
         }
 
         [Fact]
@@ -53,39 +50,38 @@ namespace BankingSystemAPI.UnitTests
             await _roleManager.AddClaimAsync(role, new System.Security.Claims.Claim("Permission", "P2"));
 
             var dto = new UpdateRoleClaimsDto { RoleName = "Admin", Claims = new List<string> { "C1", "C2" } };
-            var res = await _service.UpdateRoleClaimsAsync(dto);
+            var result = await _service.UpdateRoleClaimsAsync(dto);
 
-            Assert.True(res.Succeeded);
-            Assert.Equal(2, res.RoleClaims.Claims.Count);
+            Assert.True(result.Succeeded);
+            Assert.NotNull(result.Value);
+            Assert.Equal(2, result.Value.RoleClaims.Claims.Count);
             var claims = await _roleManager.GetClaimsAsync(role);
             Assert.Contains(claims, c => c.Value == "C1");
             Assert.Contains(claims, c => c.Value == "C2");
         }
 
         [Fact]
-        public async Task UpdateClaims_SuperAdminRole_Fails()
+        public async Task UpdateClaims_RoleNotFound_Fails()
         {
-            await _roleManager.CreateAsync(new ApplicationRole { Name = "SuperAdmin" });
+            var dto = new UpdateRoleClaimsDto { RoleName = "NonExistent", Claims = new List<string> { "C1" } };
+            var result = await _service.UpdateRoleClaimsAsync(dto);
 
-            var dto = new UpdateRoleClaimsDto { RoleName = "SuperAdmin", Claims = new List<string> { "C1" } };
-            var res = await _service.UpdateRoleClaimsAsync(dto);
-
-            Assert.False(res.Succeeded);
-            Assert.Contains(res.Errors, e => e.Description.Contains("Cannot modify claims for SuperAdmin"));
+            Assert.False(result.Succeeded);
+            Assert.Contains(result.Errors, e => e.Contains("Role not found"));
         }
 
         [Fact]
-        public async Task UpdateClaims_ClientRole_OnlySuperAdminAllowed()
+        public async Task GetAllClaimsByGroup_ReturnsGroupedClaims()
         {
-            await _roleManager.CreateAsync(new ApplicationRole { Name = "Client" });
-            // http context user not in SuperAdmin
-            _httpContext.User = new System.Security.Claims.ClaimsPrincipal();
-
-            var dto = new UpdateRoleClaimsDto { RoleName = "Client", Claims = new List<string> { "C1" } };
-            var res = await _service.UpdateRoleClaimsAsync(dto);
-
-            Assert.False(res.Succeeded);
-            Assert.Contains(res.Errors, e => e.Description.Contains("Only SuperAdmin can modify claims for Client"));
+            var result = await _service.GetAllClaimsByGroup();
+            
+            Assert.True(result.Succeeded);
+            Assert.NotNull(result.Value);
+            Assert.NotEmpty(result.Value);
+            
+            // Should contain groups for different controller types
+            Assert.Contains(result.Value, group => group.Name == "User");
+            Assert.Contains(result.Value, group => group.Name == "Role");
         }
 
         public void Dispose()

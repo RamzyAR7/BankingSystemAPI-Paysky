@@ -1,17 +1,19 @@
-﻿using BankingSystemAPI.Application.Interfaces.Repositories;
+using BankingSystemAPI.Application.Interfaces.Repositories;
 using BankingSystemAPI.Application.Interfaces.Specification;
 using BankingSystemAPI.Infrastructure.Context;
 using BankingSystemAPI.Infrastructure.SpecificationEvaluatorClass;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 using System.Linq.Expressions;
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
-    public class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : class
+    /// <summary>
+    /// Base repository class with specification pattern support
+    /// </summary>
+    public abstract class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : class
     {
-        protected ApplicationDbContext _context;
-        protected DbSet<T> _dbSet;
+        protected readonly ApplicationDbContext _context;
+        protected readonly DbSet<T> _dbSet;
 
         public GenericRepository(ApplicationDbContext context)
         {
@@ -19,14 +21,9 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             _dbSet = context.Set<T>();
         }
 
-        #region Helpers
-        // Specification Pattern methods
-        private IQueryable<T> ApplySpecificationInternal(ISpecification<T> spec, bool evaluatePaging = true)
-        {
-            return SpecificationEvaluator.ApplySpecification(_dbSet.AsQueryable(), spec, evaluatePaging);
-        }
-        #endregion
         public IQueryable<T> Table => _dbSet;
+
+        #region Read Operations
 
         public virtual async Task<T> GetByIdAsync(TKey id)
         {
@@ -35,14 +32,15 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 
         public virtual async Task<T> FindAsync(ISpecification<T> spec)
         {
-            var query = ApplySpecificationInternal(spec, true);
+            var query = SpecificationEvaluator.ApplySpecification(_dbSet.AsQueryable(), spec, true);
             return await query.FirstOrDefaultAsync();
         }
 
         public async Task<bool> AnyAsync(Expression<Func<T, bool>> predicate = null)
         {
-            if (predicate == null) return await _dbSet.AnyAsync();
-            return await _dbSet.AnyAsync(predicate);
+            return predicate == null 
+                ? await _dbSet.AnyAsync() 
+                : await _dbSet.AnyAsync(predicate);
         }
 
         public async Task<int> CountAsync()
@@ -52,149 +50,145 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 
         public async Task<int> CountAsync(Expression<Func<T, bool>> predicate)
         {
-            if (predicate == null)
-                return await _dbSet.CountAsync();
-
-            return await _dbSet.CountAsync(predicate);
+            return predicate == null 
+                ? await _dbSet.CountAsync()
+                : await _dbSet.CountAsync(predicate);
         }
 
         public async Task<IEnumerable<T>> ListAsync(ISpecification<T> spec)
         {
-            var query = ApplySpecificationInternal(spec, true);
+            var query = SpecificationEvaluator.ApplySpecification(_dbSet.AsQueryable(), spec, true);
             return await query.ToListAsync();
         }
 
         public async Task<(IEnumerable<T> Items, int TotalCount)> GetPagedAsync(ISpecification<T> spec)
         {
-            var baseQuery = ApplySpecificationInternal(spec, false);
-            var total = await baseQuery.CountAsync();
-            var query = ApplySpecificationInternal(spec, true);
-            var items = await query.ToListAsync();
+            // Get count without includes for performance
+            var countQuery = SpecificationEvaluator.ApplySpecification(_dbSet.AsQueryable(), spec, false);
+            var total = await countQuery.CountAsync();
+            
+            // Get paged data with includes
+            var itemsQuery = SpecificationEvaluator.ApplySpecification(_dbSet.AsQueryable(), spec, true);
+            var items = await itemsQuery.ToListAsync();
+            
             return (items, total);
         }
-        #region CRUD
-        public virtual async Task<T> AddAsync(T Entity)
-        {
-            await _dbSet.AddAsync(Entity);
-            await _context.SaveChangesAsync();
-            return Entity;
-        }
 
-        public virtual async Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> Entities)
-        {
-            await _dbSet.AddRangeAsync(Entities);
-            await _context.SaveChangesAsync();
-            return Entities;
-        }
-        public virtual async Task<T> UpdateAsync(T Entity)
-        {
-            // Determine primary key name and value
-            var entityType = _context.Model.FindEntityType(typeof(T));
-            var pk = entityType?.FindPrimaryKey()?.Properties?.FirstOrDefault()?.Name;
-
-            bool handled = false;
-
-            if (!string.IsNullOrEmpty(pk))
-            {
-                var pkProp = typeof(T).GetProperty(pk);
-                if (pkProp != null)
-                {
-                    var keyVal = pkProp.GetValue(Entity);
-
-                    // Look for any tracked entry with same primary key value
-                    var existingEntry = _context.ChangeTracker.Entries()
-                        .FirstOrDefault(e =>
-                        {
-                            try
-                            {
-                                var prop = e.Properties.FirstOrDefault(p => p.Metadata.Name == pk);
-                                if (prop == null) return false;
-                                return Equals(prop.CurrentValue, keyVal);
-                            }
-                            catch
-                            {
-                                return false;
-                            }
-                        });
-
-                    if (existingEntry != null)
-                    {
-                        // If tracked instance is same object, just update values
-                        if (!ReferenceEquals(existingEntry.Entity, Entity))
-                        {
-                            existingEntry.CurrentValues.SetValues(Entity);
-                        }
-
-                        handled = true;
-                    }
-                }
-            }
-
-            if (!handled)
-            {
-                // Attach and mark modified - safer than DbSet.Update which may try to attach graphs
-                _dbSet.Attach(Entity);
-                _context.Entry(Entity).State = EntityState.Modified;
-            }
-
-            await _context.SaveChangesAsync();
-            return Entity;
-        }
-        public virtual async Task DeleteAsync(T Entity)
-        {
-            // Avoid duplicate-tracking issues: if there's an already tracked entry for this key, remove that entry
-            var entityType = _context.Model.FindEntityType(typeof(T));
-            var pk = entityType?.FindPrimaryKey()?.Properties?.FirstOrDefault()?.Name;
-            bool handled = false;
-
-            if (!string.IsNullOrEmpty(pk))
-            {
-                var pkProp = typeof(T).GetProperty(pk);
-                if (pkProp != null)
-                {
-                    var keyVal = pkProp.GetValue(Entity);
-
-                    var existingEntry = _context.ChangeTracker.Entries()
-                        .FirstOrDefault(e =>
-                        {
-                            try
-                            {
-                                var prop = e.Properties.FirstOrDefault(p => p.Metadata.Name == pk);
-                                if (prop == null) return false;
-                                return Equals(prop.CurrentValue, keyVal);
-                            }
-                            catch
-                            {
-                                return false;
-                            }
-                        });
-
-                    if (existingEntry != null)
-                    {
-                        // Remove the tracked entity instance
-                        _dbSet.Remove((T)existingEntry.Entity);
-                        handled = true;
-                    }
-                }
-            }
-
-            if (!handled)
-            {
-                // Attach if necessary and remove
-                if (_context.Entry(Entity).State == EntityState.Detached)
-                    _dbSet.Attach(Entity);
-
-                _dbSet.Remove(Entity);
-            }
-
-            await _context.SaveChangesAsync();
-        }
-        public virtual async Task DeleteRangeAsync(IEnumerable<T> Entities)
-        {
-            _dbSet.RemoveRange(Entities);
-            await _context.SaveChangesAsync();
-        }
         #endregion
 
+        #region Write Operations
+
+        public virtual async Task<T> AddAsync(T entity)
+        {
+            var entry = await _dbSet.AddAsync(entity);
+            
+            // Auto-save if not in transaction
+            if (!UnitOfWork.UnitOfWork.TransactionActive.Value)
+                await _context.SaveChangesAsync();
+                
+            return entry.Entity;
+        }
+
+        public virtual async Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> entities)
+        {
+            var entityList = entities.ToList();
+            if (!entityList.Any()) return entityList;
+
+            await _dbSet.AddRangeAsync(entityList);
+            
+            // Auto-save if not in transaction
+            if (!UnitOfWork.UnitOfWork.TransactionActive.Value)
+                await _context.SaveChangesAsync();
+                
+            return entityList;
+        }
+
+        public virtual Task<T> UpdateAsync(T entity)
+        {
+            var entry = _context.Entry(entity);
+            
+            // Check if entity is already being tracked
+            if (entry.State == EntityState.Detached)
+            {
+                // Try to find if another instance is already tracked
+                var keyValues = entry.Metadata.FindPrimaryKey()?.Properties
+                    .ToDictionary(p => p.Name, p => entry.Property(p.Name).CurrentValue);
+                
+                if (keyValues?.Values.All(v => v != null) == true)
+                {
+                    // Check if entity with same key is already tracked
+                    var existingEntry = _context.ChangeTracker.Entries<T>()
+                        .FirstOrDefault(e => keyValues.All(kv => 
+                            Equals(e.Property(kv.Key).CurrentValue, kv.Value)));
+                    
+                    if (existingEntry != null)
+                    {
+                        // Update the existing tracked entity
+                        existingEntry.CurrentValues.SetValues(entity);
+                        return Task.FromResult(existingEntry.Entity);
+                    }
+                }
+                
+                // Safe to attach if no conflict
+                _dbSet.Attach(entity);
+                entry.State = EntityState.Modified;
+            }
+            else if (entry.State == EntityState.Unchanged)
+            {
+                entry.State = EntityState.Modified;
+            }
+            
+            // Deferred save - will be handled by UoW
+            return Task.FromResult(entity);
+        }
+
+        public virtual Task DeleteAsync(T entity)
+        {
+            var entry = _context.Entry(entity);
+            
+            // Check if entity is already being tracked
+            if (entry.State == EntityState.Detached)
+            {
+                // Try to find if another instance is already tracked
+                var keyValues = entry.Metadata.FindPrimaryKey()?.Properties
+                    .ToDictionary(p => p.Name, p => entry.Property(p.Name).CurrentValue);
+                
+                if (keyValues?.Values.All(v => v != null) == true)
+                {
+                    // Check if entity with same key is already tracked
+                    var existingEntry = _context.ChangeTracker.Entries<T>()
+                        .FirstOrDefault(e => keyValues.All(kv => 
+                            Equals(e.Property(kv.Key).CurrentValue, kv.Value)));
+                    
+                    if (existingEntry != null)
+                    {
+                        // Delete the existing tracked entity
+                        _dbSet.Remove(existingEntry.Entity);
+                        return Task.CompletedTask;
+                    }
+                }
+                
+                // Safe to attach if no conflict
+                _dbSet.Attach(entity);
+            }
+                
+            _dbSet.Remove(entity);
+            
+            // Deferred save - will be handled by UoW
+            return Task.CompletedTask;
+        }
+
+        public virtual Task DeleteRangeAsync(IEnumerable<T> entities)
+        {
+            var entityList = entities.ToList();
+            if (!entityList.Any()) return Task.CompletedTask;
+
+            _dbSet.RemoveRange(entityList);
+            
+            // Deferred save - will be handled by UoW
+            return Task.CompletedTask;
+        }
+
+        #endregion
     }
 }

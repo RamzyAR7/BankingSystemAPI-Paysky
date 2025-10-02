@@ -1,7 +1,7 @@
 using BankingSystemAPI.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 
-namespace BankingSystemAPI.Infrastructure.Services
+namespace BankingSystemAPI.Infrastructure.Cache
 {
     public class MemoryCacheService : ICacheService
     {

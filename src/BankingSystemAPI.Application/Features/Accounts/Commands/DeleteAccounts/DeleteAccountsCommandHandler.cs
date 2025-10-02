@@ -1,14 +1,17 @@
-using BankingSystemAPI.Application.Common;
+using AutoMapper;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
-using BankingSystemAPI.Application.Specifications.AccountSpecification;
-using System.Linq;
 using BankingSystemAPI.Application.Interfaces.Authorization;
+using BankingSystemAPI.Application.Specifications.AccountSpecification;
 using BankingSystemAPI.Domain.Constant;
+using BankingSystemAPI.Domain.Common;
 
 namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts
 {
-    public class DeleteAccountsCommandHandler : ICommandHandler<DeleteAccountsCommand, bool>
+    /// <summary>
+    /// Simplified bulk delete handler - validation handled by enhanced FluentValidation
+    /// </summary>
+    public class DeleteAccountsCommandHandler : ICommandHandler<DeleteAccountsCommand>
     {
         private readonly IUnitOfWork _uow;
         private readonly IAccountAuthorizationService? _accountAuth;
@@ -19,29 +22,50 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts
             _accountAuth = accountAuth;
         }
 
-        public async Task<Result<bool>> Handle(DeleteAccountsCommand request, CancellationToken cancellationToken)
+        public async Task<Result> Handle(DeleteAccountsCommand request, CancellationToken cancellationToken)
         {
             var distinctIds = request.Ids.Distinct().ToList();
-            var spec = new AccountsByIdsSpecification(distinctIds);
-            var accountsToDelete = await _uow.AccountRepository.ListAsync(spec);
-            if (accountsToDelete.Count() != distinctIds.Count())
-                return Result<bool>.Failure(new[] { "One or more specified accounts could not be found." });
-            if (accountsToDelete.Any(a => a.Balance > 0))
-                return Result<bool>.Failure(new[] { "Cannot delete accounts that have a positive balance." });
+            
+            if (!distinctIds.Any())
+                return Result.Failure(new[] { "At least one account ID must be provided." });
 
-            // authorization per-account
-            if (_accountAuth is not null)
+            // Get accounts that exist
+            var deleteSpec = AccountsByIdsSpecification.WithTracking(distinctIds);
+            var accountsToDelete = await _uow.AccountRepository.ListAsync(deleteSpec);
+            
+            // Check if all requested accounts exist
+            var foundIds = accountsToDelete.Select(a => a.Id).ToList();
+            var missingIds = distinctIds.Except(foundIds).ToList();
+            
+            if (missingIds.Any())
             {
-                foreach (var acc in accountsToDelete)
+                return Result.Failure(new[] { $"Accounts with IDs [{string.Join(", ", missingIds)}] could not be found." });
+            }
+
+            // Authorization
+            if (_accountAuth != null)
+            {
+                // Authorize each account
+                foreach (var account in accountsToDelete)
                 {
-                    await _accountAuth.CanModifyAccountAsync(acc.Id, AccountModificationOperation.Delete);
+                    await _accountAuth.CanModifyAccountAsync(account.Id, AccountModificationOperation.Delete);
                 }
             }
 
+            // Validate accounts can be deleted (no positive balance)
+            foreach (var account in accountsToDelete)
+            {
+                if (account.Balance > 0)
+                {
+                    return Result.Failure(new[] { $"Cannot delete account {account.AccountNumber} with positive balance of {account.Balance}." });
+                }
+            }
+
+            // Use bulk delete for better performance
             await _uow.AccountRepository.DeleteRangeAsync(accountsToDelete);
             await _uow.SaveAsync();
 
-            return Result<bool>.Success(true);
+            return Result.Success();
         }
     }
 }

@@ -1,5 +1,5 @@
-﻿using AutoMapper;
-using BankingSystemAPI.Application.Common;
+using AutoMapper;
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Bank;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
@@ -40,15 +40,8 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
             entity.Name = normalized;
             entity.CreatedAt = DateTime.UtcNow;
 
-            try
-            {
-                await _uow.BankRepository.AddAsync(entity);
-                await _uow.SaveAsync();
-            }
-            catch (DbUpdateException)
-            {
-                return Result<BankResDto>.Failure(new[] { "A bank with the same name already exists." });
-            }
+            await _uow.BankRepository.AddAsync(entity);
+            await _uow.SaveAsync();
 
             return Result<BankResDto>.Success(_mapper.Map<BankResDto>(entity));
         }

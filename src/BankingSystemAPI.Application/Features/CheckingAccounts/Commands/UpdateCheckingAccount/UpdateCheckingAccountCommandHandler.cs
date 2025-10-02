@@ -1,5 +1,5 @@
 using AutoMapper;
-using BankingSystemAPI.Application.Common;
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;

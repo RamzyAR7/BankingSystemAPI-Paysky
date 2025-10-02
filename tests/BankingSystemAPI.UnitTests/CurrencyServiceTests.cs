@@ -67,7 +67,7 @@ namespace BankingSystemAPI.UnitTests
 
             // create cache service for repositories that require caching
             var memoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
-            var cacheService = new BankingSystemAPI.Infrastructure.Services.MemoryCacheService(memoryCache);
+            var cacheService = new BankingSystemAPI.Infrastructure.Cache.MemoryCacheService(memoryCache);
 
             // create repositories directly
             var userRepo = new UserRepository(_context);

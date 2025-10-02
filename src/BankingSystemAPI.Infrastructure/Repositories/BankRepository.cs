@@ -10,10 +10,8 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class BankRepository : GenericRepository<Bank, int>, IBankRepository
     {
-        private readonly ApplicationDbContext _context;
         public BankRepository(ApplicationDbContext context) : base(context)
         {
-            _context = context;
         }
 
         public async Task<Dictionary<int, string>> GetBankNamesByIdsAsync(IEnumerable<int> ids)
@@ -21,8 +19,9 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             var idList = ids?.Where(i => i > 0).Distinct().ToList();
             if (idList == null || !idList.Any()) return new Dictionary<int, string>();
 
-            return await _context.Banks
+            return await Table
                 .Where(b => idList.Contains(b.Id))
+                .AsNoTracking()
                 .ToDictionaryAsync(b => b.Id, b => b.Name);
         }
     }

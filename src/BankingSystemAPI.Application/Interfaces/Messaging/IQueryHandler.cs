@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using MediatR;
-using BankingSystemAPI.Application.Common;
+using BankingSystemAPI.Domain.Common;
 
 namespace BankingSystemAPI.Application.Interfaces.Messaging
 {

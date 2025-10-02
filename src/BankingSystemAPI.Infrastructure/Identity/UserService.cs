@@ -1,125 +1,44 @@
 ﻿using BankingSystemAPI.Application.DTOs.User;
+using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.Interfaces.Identity;
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Entities;
+using BankingSystemAPI.Application.Exceptions;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
-using BankingSystemAPI.Domain.Constant;
 using Microsoft.EntityFrameworkCore;
-using BankingSystemAPI.Application.Exceptions;
-using BankingSystemAPI.Application.Interfaces.UnitOfWork;
-using BankingSystemAPI.Application.Interfaces.Authorization;
-using BankingSystemAPI.Application.Authorization.Helpers;
-
 
 namespace BankingSystemAPI.Infrastructure.Services
 {
     public class UserService : IUserService
     {
+        #region Fields and Constructor
+
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IMapper _mapper;
-        private readonly ICurrentUserService _currentUserService;
         private readonly RoleManager<ApplicationRole> _roleManager;
-        private readonly IUserAuthorizationService? _userAuth;
-        private readonly IUnitOfWork? _uow;
-        public UserService(UserManager<ApplicationUser> userManager, IMapper mapper, ICurrentUserService currentUserService, RoleManager<ApplicationRole> roleManager, IUnitOfWork? uow = null, IUserAuthorizationService? userAuth = null)
+        private readonly IMapper _mapper;
+
+        public UserService(
+            UserManager<ApplicationUser> userManager, 
+            RoleManager<ApplicationRole> roleManager,
+            IMapper mapper)
         {
             _userManager = userManager;
-            _mapper = mapper;
-            _currentUserService = currentUserService;
             _roleManager = roleManager;
-            _userAuth = userAuth;
-            _uow = uow;
+            _mapper = mapper;
         }
 
-        public async Task<IList<UserResDto>> GetAllUsersAsync(int pageNumber, int pageSize, string? orderBy = null, string? orderDirection = null)
+        #endregion
+
+        #region User Retrieval Methods
+
+        public async Task<Result<UserResDto>> GetUserByUsernameAsync(string username)
         {
-            // Include Accounts with Currency, Bank and Role so Account.Currency is available for mapping
-            IQueryable<ApplicationUser> query = _userManager.Users
-                .Include(u => u.Accounts).ThenInclude(a => a.Currency)
-                .Include(u => u.Bank)
-                .Include(u => u.Role);
-
-            // Apply ordering if provided
-            if (!string.IsNullOrWhiteSpace(orderBy))
+            if (string.IsNullOrWhiteSpace(username))
             {
-                var dir = (orderDirection ?? "ASC").ToUpperInvariant();
-                if (dir == "ASC")
-                    query = query.OrderBy(u => EF.Property<object>(u, orderBy));
-                else
-                    query = query.OrderByDescending(u => EF.Property<object>(u, orderBy));
+                return Result<UserResDto>.Failure(new[] { "Username cannot be null or empty." });
             }
 
-            List<ApplicationUser> pagedUsers;
-            int totalCount;
-            if (_userAuth != null)
-            {
-                var result = await _userAuth.FilterUsersAsync(query, pageNumber, pageSize);
-                pagedUsers = result.Users.ToList();
-                totalCount = result.TotalCount;
-            }
-            else
-            {
-                pagedUsers = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
-                totalCount = await query.CountAsync();
-            }
-
-            // Robust fallback: if the paged result is unexpectedly smaller than expected (for example when tests add users
-            // directly to the DbContext without using UserManager), re-query the raw Users set and paginate that list.
-            if ((pagedUsers == null || !pagedUsers.Any() || pagedUsers.Count < Math.Min(pageSize, totalCount)) && await _userManager.Users.AnyAsync())
-            {
-                var allUsers = await _userManager.Users.ToListAsync();
-                if (allUsers.Any())
-                {
-                    totalCount = allUsers.Count;
-                    pagedUsers = allUsers.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
-                }
-            }
-
-            // Fallback: if paging returned empty but database has users, load users without includes
-            if ((pagedUsers == null || !pagedUsers.Any()) && await _userManager.Users.AnyAsync())
-            {
-                pagedUsers = await _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role).ToListAsync();
-                totalCount = pagedUsers.Count;
-            }
-
-            var userDtos = new List<UserResDto>();
-
-            // Batch-fetch roles and banks when UnitOfWork is available
-            if (_uow != null && pagedUsers.Any())
-            {
-                var userIds = pagedUsers.Select(u => u.Id).ToList();
-                var rolesByUser = await _uow.RoleRepository.GetRolesByUserIdsAsync(userIds);
-                var bankIds = pagedUsers.Where(u => u.BankId.HasValue).Select(u => u.BankId!.Value).Distinct().ToList();
-                var banksById = await _uow.BankRepository.GetBankNamesByIdsAsync(bankIds);
-
-                foreach (var user in pagedUsers)
-                {
-                    rolesByUser.TryGetValue(user.Id, out var roleName);
-                    string? bankName = null;
-                    if (user.BankId.HasValue)
-                        banksById.TryGetValue(user.BankId.Value, out bankName);
-
-                    var dto = _mapper.Map<UserResDto>(user);
-                    dto.Role = roleName;
-                    if (!string.IsNullOrEmpty(bankName))
-                        dto.BankName = bankName;
-
-                    userDtos.Add(dto);
-                }
-            }
-            else
-            {
-                foreach (var user in pagedUsers)
-                {
-                    var dto = _mapper.Map<UserResDto>(user);
-                    userDtos.Add(dto);
-                }
-            }
-
-            return userDtos;
-        }
-        public async Task<UserResDto?> GetUserByUsernameAsync(string username)
-        {
             var user = await _userManager.Users
                 .Include(u => u.Accounts).ThenInclude(a => a.Currency)
                 .Include(u => u.Bank)
@@ -128,23 +47,20 @@ namespace BankingSystemAPI.Infrastructure.Services
 
             if (user == null)
             {
-                var found = await _userManager.FindByNameAsync(username);
-                if (found == null) return null;
-
-                var reloaded = await _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == found.Id);
-                user = reloaded ?? found;
+                return Result<UserResDto>.Failure(new[] { "User not found." });
             }
 
-            if (user == null) return null;
-
-            if (_userAuth != null)
-                await _userAuth.CanViewUserAsync(user.Id);
-
-            var dto = _mapper.Map<UserResDto>(user);
-            return dto;
+            var userDto = _mapper.Map<UserResDto>(user);
+            return Result<UserResDto>.Success(userDto);
         }
-        public async Task<UserResDto?> GetUserByIdAsync(string userId)
+
+        public async Task<Result<UserResDto>> GetUserByIdAsync(string userId)
         {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Result<UserResDto>.Failure(new[] { "User ID cannot be null or empty." });
+            }
+
             var user = await _userManager.Users
                 .Include(u => u.Accounts).ThenInclude(a => a.Currency)
                 .Include(u => u.Bank)
@@ -153,211 +69,207 @@ namespace BankingSystemAPI.Infrastructure.Services
 
             if (user == null)
             {
-                var found = await _userManager.FindByIdAsync(userId);
-                if (found == null) return null;
-
-                var reloaded = await _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == found.Id);
-                user = reloaded ?? found;
+                return Result<UserResDto>.Failure(new[] { "User not found." });
             }
 
-            if (user == null) return null;
-
-            if (_userAuth != null)
-                await _userAuth.CanViewUserAsync(userId);
-
-            var dto = _mapper.Map<UserResDto>(user);
-            return dto;
+            var userDto = _mapper.Map<UserResDto>(user);
+            return Result<UserResDto>.Success(userDto);
         }
-        public async Task<UserUpdateResultDto> CreateUserAsync(UserReqDto user)
+
+        public async Task<Result<UserResDto>> GetUserByEmailAsync(string email)
         {
-            var result = new UserUpdateResultDto();
-            // Acting user info
-            var actingUserId = _currentUserService.UserId;
-            var actingRole = await _currentUserService.GetRoleFromStoreAsync();
-            var isSuperAdmin = string.Equals(actingRole.Name, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase);
-            var isClient = string.Equals(actingRole.Name, UserRole.Client.ToString(), StringComparison.OrdinalIgnoreCase);
-
-            int? targetBankId = null;
-            string targetRole = UserRole.Client.ToString();
-
-            if (isSuperAdmin)
+            if (string.IsNullOrWhiteSpace(email))
             {
-                // SuperAdmin-created users must specify a bank and a role (cannot create another SuperAdmin)
-                if (user.BankId == 0 || user.BankId == null)
-                {
-                    result.Errors.Add(new IdentityError { Description = "BankId is required for Super Admin created users." });
-                    result.Succeeded = false;
-                    return result;
-                }
-                if (string.IsNullOrWhiteSpace(user.Role))
-                {
-                    result.Errors.Add(new IdentityError { Description = "Role is required for Super Admin created users." });
-                    result.Succeeded = false;
-                    return result;
-                }
-                var validRole = await _roleManager.RoleExistsAsync(user.Role);
-                if (!validRole || user.Role.Equals(UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase))
-                {
-                    result.Errors.Add(new IdentityError { Description = "Invalid or forbidden role specified." });
-                    result.Succeeded = false;
-                    return result;
-                }
-                targetBankId = user.BankId;
-                targetRole = user.Role;
+                return Result<UserResDto>.Failure(new[] { "Email cannot be null or empty." });
             }
-            else if (!isClient)
+
+            var user = await _userManager.Users
+                .Include(u => u.Accounts).ThenInclude(a => a.Currency)
+                .Include(u => u.Bank)
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Email == email);
+
+            if (user == null)
             {
-                var actingUser = await _userManager.FindByIdAsync(actingUserId);
-                if (actingUser == null)
+                return Result<UserResDto>.Failure(new[] { "User not found." });
+            }
+
+            var userDto = _mapper.Map<UserResDto>(user);
+            return Result<UserResDto>.Success(userDto);
+        }
+
+        #endregion
+
+        #region User Bank and Role Methods
+
+        public async Task<Result<string?>> GetUserRoleAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Result<string?>.Failure(new[] { "User ID cannot be null or empty." });
+            }
+
+            var user = await _userManager.Users
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+            
+            if (user == null)
+            {
+                return Result<string?>.Failure(new[] { "User not found." });
+            }
+
+            // First try to get role from the Role navigation property
+            if (user.Role != null && !string.IsNullOrEmpty(user.Role.Name))
+            {
+                return Result<string?>.Success(user.Role.Name);
+            }
+
+            // Fallback to ASP.NET Identity role system if navigation property is not available
+            var roles = await _userManager.GetRolesAsync(user);
+            var firstRole = roles.FirstOrDefault();
+            return Result<string?>.Success(firstRole);
+        }
+
+        public async Task<Result<IList<UserResDto>>> GetUsersByBankIdAsync(int bankId)
+        {
+            if (bankId <= 0)
+            {
+                return Result<IList<UserResDto>>.Failure(new[] { "Bank ID must be greater than zero." });
+            }
+
+            var users = await _userManager.Users
+                .Include(u => u.Accounts).ThenInclude(a => a.Currency)
+                .Include(u => u.Bank)
+                .Include(u => u.Role)
+                .Where(u => u.BankId == bankId)
+                .ToListAsync();
+
+            var userDtos = _mapper.Map<List<UserResDto>>(users);
+            return Result<IList<UserResDto>>.Success(userDtos);
+        }
+
+        public async Task<Result<IList<UserResDto>>> GetUsersByBankNameAsync(string bankName)
+        {
+            if (string.IsNullOrWhiteSpace(bankName))
+            {
+                return Result<IList<UserResDto>>.Failure(new[] { "Bank name cannot be null or empty." });
+            }
+
+            var users = await _userManager.Users
+                .Include(u => u.Accounts).ThenInclude(a => a.Currency)
+                .Include(u => u.Bank)
+                .Include(u => u.Role)
+                .Where(u => u.Bank != null && u.Bank.Name == bankName)
+                .ToListAsync();
+
+            var userDtos = _mapper.Map<List<UserResDto>>(users);
+            return Result<IList<UserResDto>>.Success(userDtos);
+        }
+
+        public async Task<Result<bool>> IsBankActiveAsync(int bankId)
+        {
+            if (bankId <= 0)
+            {
+                return Result<bool>.Failure(new[] { "Bank ID must be greater than zero." });
+            }
+
+            var contextBank = await _userManager.Users
+                .Where(u => u.BankId == bankId)
+                .Select(u => u.Bank)
+                .FirstOrDefaultAsync();
+            
+            var isActive = contextBank?.IsActive ?? false;
+            return Result<bool>.Success(isActive);
+        }
+
+        #endregion
+
+        #region User Management Operations
+
+        public async Task<Result<UserResDto>> CreateUserAsync(UserReqDto user)
+        {
+            // Check for existing user first - return failure results instead of throwing exceptions
+            var existingUser = await _userManager.FindByNameAsync(user.Username);
+            if (existingUser != null)
+            {
+                return Result<UserResDto>.Failure(new[] { "Username already exists." });
+            }
+
+            existingUser = await _userManager.FindByEmailAsync(user.Email);
+            if (existingUser != null)
+            {
+                return Result<UserResDto>.Failure(new[] { "Email already exists." });
+            }
+
+            // Map to entity using AutoMapper
+            var entity = _mapper.Map<ApplicationUser>(user);
+            
+            // Set additional properties that might not be mapped
+            entity.BankId = user.BankId;
+            entity.IsActive = true;
+            
+            // Get and set role BEFORE creating user
+            ApplicationRole? targetRole = null;
+            if (!string.IsNullOrEmpty(user.Role))
+            {
+                targetRole = await _roleManager.FindByNameAsync(user.Role);
+                if (targetRole == null)
                 {
-                    result.Errors.Add(new IdentityError { Description = "Acting user not found." });
-                    result.Succeeded = false;
-                    return result;
+                    return Result<UserResDto>.Failure(new[] { $"Role '{user.Role}' does not exist." });
                 }
-
-                // If acting user has no bank, perform a global duplicate check and return duplicate error if found
-                if (!actingUser.BankId.HasValue || actingUser.BankId.Value == 0)
-                {
-                    var existsGlobal = await _userManager.Users.AnyAsync(u =>
-                        u.UserName == user.Username ||
-                        u.Email == user.Email ||
-                        u.NationalId == user.NationalId ||
-                        u.PhoneNumber == user.PhoneNumber);
-
-                    if (existsGlobal)
-                    {
-                        result.Errors.Add(new IdentityError { Description = "User with same details already exists." });
-                        result.Succeeded = false;
-                        return result;
-                    }
-
-                    // Acting user isn't associated with a bank, cannot determine target bank for creation
-                    result.Errors.Add(new IdentityError { Description = "Acting user is not associated with a bank." });
-                    result.Succeeded = false;
-                    return result;
-                }
-
-                targetBankId = actingUser.BankId;
-                targetRole = UserRole.Client.ToString();
+                
+                // Set the RoleId foreign key BEFORE creating the user
+                entity.RoleId = targetRole.Id;
             }
             else
             {
-                result.Errors.Add(new IdentityError { Description = "Clients are not allowed to create users." });
-                result.Succeeded = false;
-                return result;
+                // If no role specified, set RoleId to empty string (satisfies required FK constraint)
+                entity.RoleId = string.Empty;
             }
 
-            // At this point we must have a valid bank
-            if (!targetBankId.HasValue || targetBankId.Value == 0)
-            {
-                result.Errors.Add(new IdentityError { Description = "A valid BankId is required." });
-                result.Succeeded = false;
-                return result;
-            }
-
-            // Ensure bank exists if UnitOfWork available
-            if (_uow != null)
-            {
-                var bank = await _uow.BankRepository.GetByIdAsync(targetBankId.Value);
-                if (bank == null)
-                {
-                    result.Errors.Add(new IdentityError { Description = "Specified bank does not exist." });
-                    result.Succeeded = false;
-                    return result;
-                }
-
-                // Prevent assigning inactive bank to new users
-                if (!bank.IsActive)
-                {
-                    result.Errors.Add(new IdentityError { Description = "Cannot assign an inactive bank to a new user." });
-                    result.Succeeded = false;
-                    return result;
-                }
-            }
-
-            // Scoped duplicate checks within the target bank
-            var exists = await _userManager.Users.AnyAsync(u =>
-                u.BankId.HasValue && u.BankId.Value == targetBankId.Value &&
-                (u.UserName == user.Username ||
-                 u.Email == user.Email ||
-                 u.NationalId == user.NationalId ||
-                 u.PhoneNumber == user.PhoneNumber));
-
-            if (exists)
-            {
-                result.Errors.Add(new IdentityError { Description = "User with same details already exists in this bank." });
-                result.Succeeded = false;
-                return result;
-            }
-
-            var entity = _mapper.Map<ApplicationUser>(user);
-            entity.BankId = targetBankId.Value;
-
-            var roleForAssign = await _roleManager.FindByNameAsync(targetRole);
-            entity.RoleId = roleForAssign?.Id;
-
-            // Create user
-            var identityResult = await _userManager.CreateAsync(entity, user.Password);
+            // Create user with the RoleId properly set
+            var identityResult = await _userManager.CreateAsync(entity, user.Password!);
             if (!identityResult.Succeeded)
             {
-                result.Errors.AddRange(identityResult.Errors);
-                result.Succeeded = false;
-                return result;
+                var errors = identityResult.Errors.Select(e => e.Description);
+                return Result<UserResDto>.Failure(errors);
             }
 
-            // Assign role using UserManager to keep AspNetUserRoles consistent
-            var roleResult = await _userManager.AddToRoleAsync(entity, targetRole);
-            if (!roleResult.Succeeded)
+            // Add to AspNetUserRoles table for ASP.NET Identity consistency
+            if (targetRole != null && !string.IsNullOrEmpty(targetRole.Name))
             {
-                result.Errors.AddRange(roleResult.Errors);
-                result.Succeeded = false;
-                return result;
+                var roleResult = await _userManager.AddToRoleAsync(entity, targetRole.Name);
+                if (!roleResult.Succeeded)
+                {
+                    // Cleanup: Delete the created user if role assignment fails
+                    await _userManager.DeleteAsync(entity);
+                    var errors = roleResult.Errors.Select(e => e.Description);
+                    return Result<UserResDto>.Failure(errors);
+                }
             }
 
-            // Prepare result: fetch created user with navigations so AutoMapper can map Role and BankName
-            var createdUser = await _userManager.Users.Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == entity.Id);
-            var mapped = _mapper.Map<UserResDto>(createdUser ?? entity);
-            // ensure role name is set consistently (fallback)
-            if (string.IsNullOrEmpty(mapped.Role) && !string.IsNullOrEmpty(targetRole))
-                mapped.Role = targetRole;
-            result.User = mapped;
-            result.Succeeded = true;
-            return result;
+            // Get created user with relations for mapping
+            var createdUser = await _userManager.Users
+                .Include(u => u.Bank)
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Id == entity.Id);
+
+            // Map result using AutoMapper
+            var userDto = _mapper.Map<UserResDto>(createdUser ?? entity);
+            return Result<UserResDto>.Success(userDto);
         }
 
-        public async Task<UserUpdateResultDto> UpdateUserAsync(string userId, UserEditDto user)
+        public async Task<Result<UserResDto>> UpdateUserAsync(string userId, UserEditDto user)
         {
-            var result = new UserUpdateResultDto();
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                result.Errors.Add(new IdentityError { Description = "User ID cannot be null or empty." });
-                result.Succeeded = false;
-                return result;
-            }
-            var existingUser = await _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == userId);
+            var existingUser = await _userManager.Users
+                .Include(u => u.Accounts)
+                .Include(u => u.Bank)
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
             if (existingUser == null)
             {
-                result.Errors.Add(new IdentityError { Description = "User not found." });
-                result.Succeeded = false;
-                return result;
-            }
-
-            if (_userAuth != null)
-                // ensure caller is allowed to edit this user
-                await _userAuth.CanModifyUserAsync(userId, UserModificationOperation.Edit);
-
-            var duplicate = await _userManager.Users.AnyAsync(u =>
-                u.Id != userId &&
-                u.BankId == existingUser.BankId &&
-                (u.UserName == user.Username ||
-                 u.Email == user.Email ||
-                 u.NationalId == user.NationalId ||
-                 u.PhoneNumber == user.PhoneNumber));
-            if (duplicate)
-            {
-                result.Errors.Add(new IdentityError { Description = "Another user with the same details already exists in this bank." });
-                result.Succeeded = false;
-                return result;
+                return Result<UserResDto>.Failure(new[] { "User not found." });
             }
 
             // Map changes
@@ -366,330 +278,124 @@ namespace BankingSystemAPI.Infrastructure.Services
             var identityResult = await _userManager.UpdateAsync(existingUser);
             if (!identityResult.Succeeded)
             {
-                result.Errors.AddRange(identityResult.Errors);
-                result.Succeeded = false;
-                return result;
-            }
-            result.User = _mapper.Map<UserResDto>(existingUser);
-             result.Succeeded = true;
-             return result;
-         }
-         public async Task<UserUpdateResultDto> ChangeUserPasswordAsync(string userId, ChangePasswordReqDto dto)
-        {
-            var result = new UserUpdateResultDto();
-            var existingUser = await _userManager.Users.Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == userId);
-            if (existingUser == null)
-            {
-                result.Errors.Add(new IdentityError { Description = "User not found." });
-                result.Succeeded = false;
-                return result;
+                var errors = identityResult.Errors.Select(e => e.Description);
+                return Result<UserResDto>.Failure(errors);
             }
 
-            if (_userAuth != null)
-                await _userAuth.CanModifyUserAsync(userId, UserModificationOperation.ChangePassword);
-
-            // Acting user info
-            var actingUserId = _currentUserService.UserId;
-            var actingRole = await _currentUserService.GetRoleFromStoreAsync();
-            var isSuperAdmin = string.Equals(actingRole.Name, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase);
-            var isClient = string.Equals(actingRole.Name, UserRole.Client.ToString(), StringComparison.OrdinalIgnoreCase);
-            var isSelf = !string.IsNullOrEmpty(actingUserId) && string.Equals(actingUserId, userId, StringComparison.OrdinalIgnoreCase);
-
-            // Get target user's roles
-            var targetRoles = await _userManager.GetRolesAsync(existingUser);
-            var isTargetClient = targetRoles.Contains(UserRole.Client.ToString());
-
-            if (isSuperAdmin)
-            {
-                // SuperAdmin can reset any password
-                var token = await _userManager.GeneratePasswordResetTokenAsync(existingUser);
-                var resetRes = await _userManager.ResetPasswordAsync(existingUser, token, dto.NewPassword);
-                if (!resetRes.Succeeded)
-                {
-                    result.Errors.AddRange(resetRes.Errors);
-                    result.Succeeded = false;
-                    return result;
-                }
-                result.User = _mapper.Map<UserResDto>(existingUser);
-                result.Succeeded = true;
-                return result;
-            }
-
-            if (!isClient && !isSuperAdmin && isTargetClient && !isSelf)
-            {
-                // Admin or any non-client/non-superadmin role can reset password of a client without current password
-                var token = await _userManager.GeneratePasswordResetTokenAsync(existingUser);
-                var resetRes = await _userManager.ResetPasswordAsync(existingUser, token, dto.NewPassword);
-                if (!resetRes.Succeeded)
-                {
-                    result.Errors.AddRange(resetRes.Errors);
-                    result.Succeeded = false;
-                    return result;
-                }
-                result.User = _mapper.Map<UserResDto>(existingUser);
-                result.Succeeded = true;
-                return result;
-            }
-
-            if (isSelf)
-            {
-                // Self-change requires current password
-                if (string.IsNullOrWhiteSpace(dto.CurrentPassword))
-                {
-                    result.Errors.Add(new IdentityError { Description = "Current password is required." });
-                    result.Succeeded = false;
-                    return result;
-                }
-                var changeResult = await _userManager.ChangePasswordAsync(existingUser, dto.CurrentPassword, dto.NewPassword);
-                if (!changeResult.Succeeded)
-                {
-                    result.Errors.AddRange(changeResult.Errors);
-                    result.Succeeded = false;
-                    return result;
-                }
-                result.User = _mapper.Map<UserResDto>(existingUser);
-                result.Succeeded = true;
-                return result;
-            }
-
-            // Only SuperAdmin, self, or admin/non-client for client can change password
-            result.Errors.Add(new IdentityError { Description = "You are not authorized to change this user's password." });
-            result.Succeeded = false;
-            return result;
+            var userDto = _mapper.Map<UserResDto>(existingUser);
+            return Result<UserResDto>.Success(userDto);
         }
-        public async Task<UserUpdateResultDto> DeleteUserAsync(string userId)
+
+        public async Task<Result<UserResDto>> ChangeUserPasswordAsync(string userId, ChangePasswordReqDto dto)
         {
-            var result = new UserUpdateResultDto();
-            var existingUser = await _userManager.Users.Include(u => u.Accounts).Include(u => u.Bank).Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == userId);
+            var existingUser = await _userManager.Users
+                .Include(u => u.Bank)
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
             if (existingUser == null)
             {
-                result.Errors.Add(new IdentityError { Description = "User not found." });
-                result.Succeeded = false;
-                return result;
+                return Result<UserResDto>.Failure(new[] { "User not found." });
             }
 
-            if (_userAuth != null)
-                await _userAuth.CanModifyUserAsync(userId, UserModificationOperation.Delete);
+            IdentityResult changeResult;
 
-            var actingUserId = _currentUserService.UserId;
-            if (!string.IsNullOrEmpty(actingUserId) && string.Equals(actingUserId, userId, StringComparison.OrdinalIgnoreCase))
+            // If current password is provided, use change password, otherwise reset
+            if (!string.IsNullOrWhiteSpace(dto.CurrentPassword))
             {
-                result.Errors.Add(new IdentityError { Description = "Cannot delete yourself." });
-                result.Succeeded = false;
-                return result;
+                changeResult = await _userManager.ChangePasswordAsync(existingUser, dto.CurrentPassword, dto.NewPassword!);
+            }
+            else
+            {
+                var token = await _userManager.GeneratePasswordResetTokenAsync(existingUser);
+                changeResult = await _userManager.ResetPasswordAsync(existingUser, token, dto.NewPassword!);
             }
 
-            // Prevent deleting user with accounts
-            if (existingUser.Accounts != null && existingUser.Accounts.Any())
+            if (!changeResult.Succeeded)
             {
-                result.Errors.Add(new IdentityError { Description = "Cannot delete user with existing accounts." });
-                result.Succeeded = false;
-                return result;
+                var errors = changeResult.Errors.Select(e => e.Description);
+                return Result<UserResDto>.Failure(errors);
             }
+
+            var userDto = _mapper.Map<UserResDto>(existingUser);
+            return Result<UserResDto>.Success(userDto);
+        }
+
+        public async Task<Result<UserResDto>> DeleteUserAsync(string userId)
+        {
+            var existingUser = await _userManager.Users
+                .Include(u => u.Accounts)
+                .Include(u => u.Bank)
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (existingUser == null)
+            {
+                return Result<UserResDto>.Failure(new[] { "User not found." });
+            }
+
+            var userDto = _mapper.Map<UserResDto>(existingUser); // Map before deletion
 
             var identityResult = await _userManager.DeleteAsync(existingUser);
             if (!identityResult.Succeeded)
             {
-                result.Errors.AddRange(identityResult.Errors);
-                result.Succeeded = false;
-                return result;
+                var errors = identityResult.Errors.Select(e => e.Description);
+                return Result<UserResDto>.Failure(errors);
             }
-            result.User = _mapper.Map<UserResDto>(existingUser);
-             result.Succeeded = true;
-             return result;
+
+            return Result<UserResDto>.Success(userDto);
         }
-        public async Task<UserUpdateResultDto> DeleteRangeOfUsersAsync(IEnumerable<string> userIds)
+
+        public async Task<Result<bool>> DeleteRangeOfUsersAsync(IEnumerable<string> userIds)
         {
-            var result = new UserUpdateResultDto();
-            foreach (var userId in userIds)
+            var userIdsList = userIds.ToList();
+            if (!userIdsList.Any())
+            {
+                return Result<bool>.Failure(new[] { "No user IDs provided." });
+            }
+
+            foreach (var userId in userIdsList)
             {
                 var existingUser = await _userManager.FindByIdAsync(userId);
                 if (existingUser != null)
                 {
-                    if (_userAuth != null)
-                        await _userAuth.CanModifyUserAsync(userId, UserModificationOperation.Delete);
-
                     var identityResult = await _userManager.DeleteAsync(existingUser);
                     if (!identityResult.Succeeded)
                     {
-                        result.Errors.AddRange(identityResult.Errors);
-                        result.Succeeded = false;
-                        return result;
+                        var errors = identityResult.Errors.Select(e => e.Description);
+                        return Result<bool>.Failure(errors);
                     }
                 }
             }
-            result.Succeeded = true;
-            return result;
-        }
-        public async Task<UserResDto?> GetCurrentUserInfoAsync(string userId)
-        {
-            var user = await _userManager.Users
-                .Include(u => u.Accounts).ThenInclude(a => a.Currency)
-                .Include(u => u.Bank)
-                .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Id == userId);
-            if (user == null) return null;
 
-            if (_userAuth != null)
-                await _userAuth.CanViewUserAsync(userId);
-
-            var dto = _mapper.Map<UserResDto>(user);
-            return dto;
+            return Result<bool>.Success(true);
         }
 
-        public async Task SetUserActiveStatusAsync(string userId, bool isActive)
+        public async Task<Result> SetUserActiveStatusAsync(string userId, bool isActive)
         {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Result.Failure(new[] { "User ID cannot be null or empty." });
+            }
+
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) throw new NotFoundException($"User with ID '{userId}' not found.");
-
-            if (_userAuth != null)
-                await _userAuth.CanModifyUserAsync(userId, UserModificationOperation.Edit);
+            if (user == null)
+            {
+                return Result.Failure(new[] { "User not found." });
+            }
 
             user.IsActive = isActive;
-            await _userManager.UpdateAsync(user);
+            var result = await _userManager.UpdateAsync(user);
+            
+            if (!result.Succeeded)
+            {
+                var errors = result.Errors.Select(e => e.Description);
+                return Result.Failure(errors);
+            }
+
+            return Result.Success();
         }
 
-        public async Task<IList<UserResDto>> GetUsersByBankIdAsync(int bankId)
-        {
-            if (_userAuth != null)
-            {
-                var role = await _currentUserService.GetRoleFromStoreAsync();
-                if (RoleHelper.IsClient(role.Name))
-                    return new List<UserResDto>();
-            }
-            if(bankId <= 0 || bankId == null)
-                throw new ArgumentException("Invalid bank ID.");
-
-            var roleForSuper = await _currentUserService.GetRoleFromStoreAsync();
-            var isSuper = RoleHelper.IsSuperAdmin(roleForSuper.Name);
-            IQueryable<ApplicationUser> query;
-            if (isSuper)
-            {
-                query = _userManager.Users.Where(u => u.BankId == bankId).Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role);
-            }
-            else
-            {
-                var actingUser = await _userManager.FindByIdAsync(_currentUserService.UserId);
-                if (actingUser == null)
-                    return new List<UserResDto>();
-                bankId = actingUser.BankId ?? 0;
-                query = _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role).Where(u => u.BankId == bankId);
-            }
-            List<ApplicationUser> users;
-            if (_userAuth != null)
-            {
-                var result = await _userAuth.FilterUsersAsync(query);
-                users = result.Users.ToList();
-            }
-            else
-            {
-                users = await query.ToListAsync();
-            }
-
-            var userDtos = new List<UserResDto>();
-            if (_uow != null && users.Any())
-            {
-                var userIds = users.Select(u => u.Id).ToList();
-                var rolesByUser = await _uow.RoleRepository.GetRolesByUserIdsAsync(userIds);
-                var bankIds = users.Where(u => u.BankId.HasValue).Select(u => u.BankId!.Value).Distinct().ToList();
-                var banksById = await _uow.BankRepository.GetBankNamesByIdsAsync(bankIds);
-
-                foreach (var user in users)
-                {
-                    rolesByUser.TryGetValue(user.Id, out var roleName);
-                    string? bankName = null;
-                    if (user.BankId.HasValue)
-                        banksById.TryGetValue(user.BankId.Value, out bankName);
-
-                    var dto = _mapper.Map<UserResDto>(user);
-                    dto.Role = roleName;
-                    if (!string.IsNullOrEmpty(bankName))
-                        dto.BankName = bankName;
-
-                    userDtos.Add(dto);
-                }
-            }
-            else
-            {
-                foreach (var user in users)
-                {
-                    var dto = _mapper.Map<UserResDto>(user);
-                    userDtos.Add(dto);
-                }
-            }
-            return userDtos;
-        }
-
-         public async Task<IList<UserResDto>> GetUsersByBankNameAsync(string bankName)
-        {
-            if (_userAuth != null)
-            {
-                var role = await _currentUserService.GetRoleFromStoreAsync();
-                if (RoleHelper.IsClient(role.Name))
-                    return new List<UserResDto>();
-            }
-            var roleForSuper2 = await _currentUserService.GetRoleFromStoreAsync();
-            var isSuper2 = RoleHelper.IsSuperAdmin(roleForSuper2.Name);
-            IQueryable<ApplicationUser> query;
-            if (isSuper2)
-            {
-                if (string.IsNullOrWhiteSpace(bankName))
-                {
-                    query = _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role);
-                }
-                else
-                {
-                    query = _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role).Where(u => u.Bank != null && u.Bank.Name == bankName);
-                }
-            }
-            else
-            {
-                var actingUser = _userAuth == null ? null : await _userManager.FindByIdAsync(_currentUserService.UserId);
-                if (actingUser == null || actingUser.Bank == null)
-                    return new List<UserResDto>();
-                bankName = actingUser.Bank.Name;
-                query = _userManager.Users.Include(u => u.Accounts).ThenInclude(a => a.Currency).Include(u => u.Bank).Include(u => u.Role).Where(u => u.Bank != null && u.Bank.Name == bankName);
-            }
-            List<ApplicationUser> users;
-            if (_userAuth != null)
-            {
-                var result = await _userAuth.FilterUsersAsync(query);
-                users = result.Users.ToList();
-            }
-            else
-            {
-                users = await query.ToListAsync();
-            }
-            var userDtos = new List<UserResDto>();
-            if (_uow != null && users.Any())
-            {
-                var userIds = users.Select(u => u.Id).ToList();
-                var rolesByUser = await _uow.RoleRepository.GetRolesByUserIdsAsync(userIds);
-                var bankIds = users.Where(u => u.BankId.HasValue).Select(u => u.BankId!.Value).Distinct().ToList();
-                var banksById = await _uow.BankRepository.GetBankNamesByIdsAsync(bankIds);
-
-                foreach (var user in users)
-                {
-                    rolesByUser.TryGetValue(user.Id, out var roleName);
-                    string? bName = null;
-                    if (user.BankId.HasValue)
-                        banksById.TryGetValue(user.BankId.Value, out bName);
-                    var dto = _mapper.Map<UserResDto>(user);
-                    dto.Role = roleName;
-                    if (!string.IsNullOrEmpty(bName))
-                        dto.BankName = bName;
-                    userDtos.Add(dto);
-                }
-            }
-            else
-            {
-                foreach (var user in users)
-                {
-                    var dto = _mapper.Map<UserResDto>(user);
-                    userDtos.Add(dto);
-                }
-            }
-            return userDtos;
-         }
-     }
- }
+        #endregion
+    }
+}

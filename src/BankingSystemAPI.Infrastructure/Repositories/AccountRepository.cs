@@ -23,7 +23,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
         {
             return Table.Where(a => a.UserId == userId)
                 .Include(a => a.Currency)
-                .AsQueryable();
+                .AsSplitQuery();
         }
 
         public IQueryable<Account> QueryByNationalId(string nationalId)
@@ -31,7 +31,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             return Table.Where(a => a.User.NationalId == nationalId)
                 .Include(a => a.User)
                 .Include(a => a.Currency)
-                .AsQueryable();
+                .AsSplitQuery();
         }
 
         public async Task<IEnumerable<T>> GetAccountsByTypeAsync<T>(int pageNumber = 1, int pageSize = 10) where T : Account
@@ -41,27 +41,39 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 
             var skip = (pageNumber - 1) * pageSize;
 
-            // Use generic PagedSpecification to handle includes/paging
-            var spec = new PagedSpecification<Account>(a => a is T, skip, pageSize, orderByProperty: null, orderDirection: null, includes: (a => a.Currency));
-            var (items, total) = await GetPagedAsync(spec);
-
-            return items.OfType<T>();
+            return await _context.Set<T>()
+                .OrderBy(a => a.Id)  // Add explicit ordering before Skip/Take to fix split query issue
+                .Include(a => a.Currency)
+                .Skip(skip)
+                .Take(pageSize)
+                .AsNoTracking() 
+                .ToListAsync();
         }
 
-        public async Task<(IEnumerable<Account> Accounts, int TotalCount)> GetFilteredAccountsAsync(IQueryable<Account> query, int pageNumber, int pageSize)
+        public async Task<(IEnumerable<Account> Accounts, int TotalCount)> GetFilteredAccountsAsync(
+            IQueryable<Account> query, 
+            int pageNumber, 
+            int pageSize)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
             var skip = (pageNumber - 1) * pageSize;
 
-            // Make sure we operate on an IQueryable that can execute against EF
-            var baseQuery = query;
+            var countTask = query.CountAsync();
+            
+            var itemsTask = query
+                .OrderBy(a => a.Id)  // Add explicit ordering before Skip/Take to fix split query issue
+                .Skip(skip)
+                .Take(pageSize)
+                .Include(a => a.Currency)
+                .Include(a => a.User)
+                .AsSplitQuery()
+                .ToListAsync();
 
-            var total = await baseQuery.CountAsync();
-            var items = await baseQuery.Skip(skip).Take(pageSize).ToListAsync();
+            await Task.WhenAll(countTask, itemsTask);
 
-            return (items, total);
+            return (itemsTask.Result, countTask.Result);
         }
     }
 }

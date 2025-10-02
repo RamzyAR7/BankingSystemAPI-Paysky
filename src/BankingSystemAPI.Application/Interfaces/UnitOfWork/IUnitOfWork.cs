@@ -19,14 +19,11 @@ namespace BankingSystemAPI.Application.Interfaces.UnitOfWork
         IBankRepository BankRepository { get; }
 
         Task SaveAsync();
-
         Task CommitAsync();
-
         Task RollbackAsync();
-
         Task BeginTransactionAsync();
-
         Task ReloadTrackedEntitiesAsync();
+        void DetachEntity<T>(T entity) where T : class;
 
         void Dispose();
     }

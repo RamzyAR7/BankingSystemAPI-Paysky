@@ -24,6 +24,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
                     .ThenInclude(at => at.Account).ThenInclude(a => a.User)
                 .Include(t => t.AccountTransactions)
                     .ThenInclude(at => at.Account).ThenInclude(a => a.Currency)
+                .AsSplitQuery()
                 .AsQueryable();
         }
 
@@ -33,6 +34,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
                 .Where(t => t.AccountTransactions.Any(at => at.AccountId == accountId))
                 .Include(t => t.AccountTransactions).ThenInclude(at => at.Account).ThenInclude(a => a.User)
                 .Include(t => t.AccountTransactions).ThenInclude(at => at.Account).ThenInclude(a => a.Currency)
+                .AsSplitQuery()
                 .AsQueryable();
         }
     }

@@ -1,5 +1,3 @@
-using BankingSystemAPI.Application.Exceptions;
-using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -11,6 +9,10 @@ using BankingSystemAPI.Presentation.Helpers;
 
 namespace BankingSystemAPI.Presentation.Middlewares
 {
+    /// <summary>
+    /// Middleware to handle infrastructure and system-level exceptions.
+    /// Business logic errors should be handled via Result pattern.
+    /// </summary>
     public class ExceptionHandlingMiddleware
     {
         private readonly RequestDelegate _next;
@@ -42,66 +44,84 @@ namespace BankingSystemAPI.Presentation.Middlewares
         {
             context.Response.ContentType = "application/json";
 
-            // Unwrap AggregateException / inner exceptions so wrapped custom exceptions are handled properly
+            // Unwrap AggregateException / inner exceptions
             var realException = GetInnermostException(exception);
 
-            int statusCode;
+            // Log the exception for debugging
+            _logger.LogError(realException, 
+                "Unhandled exception occurred. RequestId: {RequestId}, Path: {Path}", 
+                requestId, context.Request.Path);
 
-            switch (realException)
-            {
-                case ValidationException valEx:
-                    statusCode = (int)HttpStatusCode.BadRequest;
-                    break;
-                case NotFoundException:
-                    statusCode = (int)HttpStatusCode.NotFound;
-                    break;
-                case BadRequestException:
-                case ArgumentNullException:
-                case ArgumentException:
-                    statusCode = (int)HttpStatusCode.BadRequest;
-                    break;
-                case UnauthorizedException:
-                case UnauthorizedAccessException:
-                    statusCode = (int)HttpStatusCode.Unauthorized;
-                    break;
-                case ForbiddenException:
-                    statusCode = (int)HttpStatusCode.Forbidden;
-                    break;
-                case DbUpdateConcurrencyException:
-                    statusCode = (int)HttpStatusCode.Conflict;
-                    break;
-                case DbUpdateException:
-                    statusCode = (int)HttpStatusCode.BadRequest;
-                    break;
-                default:
-                    statusCode = (int)HttpStatusCode.InternalServerError;
-                    break;
-            }
+            // Only handle infrastructure and system exceptions
+            var (statusCode, message, logLevel) = MapException(realException);
+
+            // Log with appropriate level
+            if (logLevel == LogLevel.Error)
+                _logger.LogError(realException, "Infrastructure error: {Message}", message);
+            else
+                _logger.LogWarning(realException, "Client error: {Message}", message);
 
             context.Response.StatusCode = statusCode;
 
             var error = new ErrorDetails
             {
                 Code = statusCode.ToString(),
-                Message = realException.Message,
-                RequestId = requestId
+                Message = message,
+                RequestId = requestId,
+                Timestamp = DateTime.UtcNow
             };
 
-            // If validation exception include errors collection
-            if (realException is ValidationException vEx)
+            var options = new JsonSerializerOptions
             {
-                var failures = vEx.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = false
+            };
 
-                error.Details = failures;
-            }
-
-            var payload = JsonSerializer.Serialize(error);
+            var payload = JsonSerializer.Serialize(error, options);
             await context.Response.WriteAsync(payload);
         }
 
-        private Exception GetInnermostException(Exception ex)
+        private static (int StatusCode, string Message, LogLevel LogLevel) MapException(Exception exception)
+        {
+            return exception switch
+            {
+                // Infrastructure exceptions
+                DbUpdateConcurrencyException => ((int)HttpStatusCode.Conflict, 
+                    "A concurrency conflict occurred. Please refresh and try again.", LogLevel.Warning),
+                
+                DbUpdateException => ((int)HttpStatusCode.BadRequest, 
+                    "A database error occurred while processing your request.", LogLevel.Error),
+                
+                TimeoutException => ((int)HttpStatusCode.RequestTimeout, 
+                    "The request timed out. Please try again.", LogLevel.Warning),
+                
+                // System/Programming exceptions  
+                ArgumentNullException => ((int)HttpStatusCode.BadRequest, 
+                    "Invalid request parameters.", LogLevel.Warning),
+                
+                ArgumentException => ((int)HttpStatusCode.BadRequest, 
+                    "Invalid request parameters.", LogLevel.Warning),
+                
+                InvalidOperationException => ((int)HttpStatusCode.BadRequest, 
+                    "The requested operation is not valid in the current state.", LogLevel.Warning),
+                
+                UnauthorizedAccessException => ((int)HttpStatusCode.Unauthorized, 
+                    "Access denied. Please authenticate and try again.", LogLevel.Warning),
+                
+                // Generic system errors
+                OutOfMemoryException => ((int)HttpStatusCode.InternalServerError, 
+                    "The system is experiencing high load. Please try again later.", LogLevel.Error),
+                
+                StackOverflowException => ((int)HttpStatusCode.InternalServerError, 
+                    "A system error occurred. Please contact support.", LogLevel.Error),
+                
+                // Default for unhandled exceptions
+                _ => ((int)HttpStatusCode.InternalServerError, 
+                    "An unexpected error occurred. Please try again or contact support if the problem persists.", LogLevel.Error)
+            };
+        }
+
+        private static Exception GetInnermostException(Exception ex)
         {
             if (ex is AggregateException aex && aex.InnerExceptions != null && aex.InnerExceptions.Count > 0)
                 return GetInnermostException(aex.InnerExceptions.First());

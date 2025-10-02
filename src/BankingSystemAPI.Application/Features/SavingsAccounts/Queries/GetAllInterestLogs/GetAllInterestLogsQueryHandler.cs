@@ -1,5 +1,5 @@
 using AutoMapper;
-using BankingSystemAPI.Application.Common;
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.InterestLog;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
@@ -39,10 +39,14 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetAllIn
                     .AsQueryable();
 
                 // Let the authorization service filter the query
-                accountQuery = await _accountAuth.FilterAccountsQueryAsync(accountQuery);
+                var filterResult = await _accountAuth.FilterAccountsQueryAsync(accountQuery);
+                if (filterResult.IsFailure)
+                    return Result<InterestLogsPagedDto>.Failure(filterResult.Errors);
+
+                var filteredAccountQuery = filterResult.Value!;
 
                 // Materialize allowed account ids
-                var accountIds = await accountQuery.Select(a => a.Id).ToListAsync(cancellationToken);
+                var accountIds = await filteredAccountQuery.Select(a => a.Id).ToListAsync(cancellationToken);
 
                 if (accountIds == null || accountIds.Count == 0)
                 {

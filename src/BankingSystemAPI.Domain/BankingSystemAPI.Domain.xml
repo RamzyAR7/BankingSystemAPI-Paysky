@@ -4,6 +4,16 @@
         <name>BankingSystemAPI.Domain</name>
     </assembly>
     <members>
+        <member name="T:BankingSystemAPI.Domain.Common.Result">
+            <summary>
+            Enhanced operation result without a value following best practices.
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Common.Result`1">
+            <summary>
+            Enhanced operation result with a value following best practices.
+            </summary>
+        </member>
         <member name="T:BankingSystemAPI.Domain.Constant.InterestType">
             <summary>
             Interest payment frequency for savings accounts.
@@ -28,6 +38,225 @@
             <summary>
             For testing purposes: interest applied every 5 minutes (value = 4).
             </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Entities.Account">
+            <summary>
+            Abstract base class for all account types in the banking system.
+            Implements optimistic concurrency control via RowVersion.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.Account.Id">
+            <summary>
+            Primary key identifier for the account.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.Account.AccountNumber">
+            <summary>
+            Unique account number for identification.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.Account.Balance">
+            <summary>
+            Current account balance with precision for financial calculations.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.Account.CreatedDate">
+            <summary>
+            UTC timestamp when the account was created.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.Account.UserId">
+            <summary>
+            Foreign key reference to the account owner.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.Account.CurrencyId">
+            <summary>
+            Foreign key reference to the account currency.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.Account.IsActive">
+            <summary>
+            Indicates whether the account is active and can perform transactions.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.Account.User">
+            <summary>
+            Navigation property to the account owner.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.Account.Currency">
+            <summary>
+            Navigation property to the account currency.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.Account.AccountTransactions">
+            <summary>
+            Navigation property to all transactions involving this account.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.Account.RowVersion">
+            <summary>
+            Row version for optimistic concurrency control.
+            Automatically managed by Entity Framework.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.Account.AccountType">
+            <summary>
+            Gets the account type for polymorphic identification.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.Account.Deposit(System.Decimal)">
+            <summary>
+            Performs a deposit operation on the account.
+            </summary>
+            <param name="amount">Amount to deposit (must be positive)</param>
+            <exception cref="T:System.InvalidOperationException">Thrown when amount is not positive</exception>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.Account.Withdraw(System.Decimal)">
+            <summary>
+            Abstract method for withdrawal operations.
+            Concrete account types must implement specific withdrawal rules.
+            </summary>
+            <param name="amount">Amount to withdraw</param>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.Account.WithdrawForTransfer(System.Decimal)">
+            <summary>
+            Performs withdrawal for transfer operations.
+            Default implementation prevents overdraft (no negative balance allowed).
+            </summary>
+            <param name="amount">Amount to withdraw for transfer</param>
+            <exception cref="T:System.InvalidOperationException">Thrown when amount is invalid or insufficient funds</exception>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.Account.CanPerformTransactions">
+            <summary>
+            Validates if the account can perform transactions.
+            </summary>
+            <returns>True if account is active and ready for transactions</returns>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.Account.GetAvailableBalance">
+            <summary>
+            Gets available balance for withdrawal operations.
+            Base implementation returns current balance.
+            Override in derived classes for accounts with overdraft facilities.
+            </summary>
+            <returns>Available balance including any overdraft facility</returns>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Entities.CheckingAccount">
+            <summary>
+            Checking account with overdraft facility.
+            Allows negative balance up to the overdraft limit.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.CheckingAccount.OverdraftLimit">
+            <summary>
+            Maximum overdraft amount allowed for this checking account.
+            Must be non-negative.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.CheckingAccount.AccountType">
+            <summary>
+            Gets the account type identifier.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.CheckingAccount.Withdraw(System.Decimal)">
+            <summary>
+            Performs withdrawal with overdraft facility.
+            Allows withdrawal up to balance + overdraft limit.
+            </summary>
+            <param name="amount">Amount to withdraw</param>
+            <exception cref="T:System.InvalidOperationException">Thrown when amount exceeds available funds including overdraft</exception>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.CheckingAccount.IsOverdrawn">
+            <summary>
+            Checks if account is using overdraft facility.
+            </summary>
+            <returns>True if balance is negative</returns>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.CheckingAccount.GetOverdraftUsed">
+            <summary>
+            Gets the current overdraft amount being used.
+            </summary>
+            <returns>Overdraft amount in use (0 if not overdrawn)</returns>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.CheckingAccount.GetRemainingOverdraft">
+            <summary>
+            Gets remaining overdraft facility available.
+            </summary>
+            <returns>Remaining overdraft that can be used</returns>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Entities.SavingsAccount">
+            <summary>
+            Savings account with interest calculation.
+            Does not allow overdraft - balance must remain non-negative.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.SavingsAccount.InterestRate">
+            <summary>
+            Annual interest rate as a decimal (e.g., 0.05 for 5%).
+            Must be between 0% and 100%.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.SavingsAccount.InterestType">
+            <summary>
+            Type of interest calculation frequency (Monthly, Quarterly, Annually).
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.SavingsAccount.InterestLogs">
+            <summary>
+            Navigation property to interest calculation history.
+            </summary>
+        </member>
+        <member name="P:BankingSystemAPI.Domain.Entities.SavingsAccount.AccountType">
+            <summary>
+            Gets the account type identifier.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.SavingsAccount.Withdraw(System.Decimal)">
+            <summary>
+            Performs withdrawal from savings account.
+            Does not allow overdraft - balance must remain non-negative.
+            </summary>
+            <param name="amount">Amount to withdraw</param>
+            <exception cref="T:System.InvalidOperationException">Thrown when insufficient funds or invalid amount</exception>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.SavingsAccount.CalculateInterest(System.Int32)">
+            <summary>
+            Calculates interest based on current balance, interest rate and frequency.
+            </summary>
+            <param name="days">Number of days to calculate interest for</param>
+            <returns>Interest amount calculated</returns>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.SavingsAccount.GetPeriodsPerYear">
+            <summary>
+            Gets the number of interest periods per year based on InterestType.
+            </summary>
+            <returns>Number of periods per year</returns>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.SavingsAccount.ApplyInterest(System.Decimal,System.DateTime)">
+            <summary>
+            Applies calculated interest to the account balance.
+            </summary>
+            <param name="interestAmount">Amount of interest to apply</param>
+            <param name="calculationDate">Date when interest was calculated</param>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.SavingsAccount.GetLastInterestDate">
+            <summary>
+            Gets the last interest calculation date.
+            </summary>
+            <returns>Date of last interest calculation, or account creation date if no interest applied</returns>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.SavingsAccount.ShouldApplyInterest">
+            <summary>
+            Checks if interest should be applied based on the interest type and last calculation.
+            </summary>
+            <returns>True if interest should be calculated and applied</returns>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Entities.SavingsAccount.GetTotalInterestEarned">
+            <summary>
+            Gets total interest earned on this account.
+            </summary>
+            <returns>Sum of all interest amounts applied</returns>
         </member>
     </members>
 </doc>

@@ -1,4 +1,4 @@
-﻿using BankingSystemAPI.Application.Common;
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.BankSpecification;
@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace BankingSystemAPI.Application.Features.Banks.Commands.SetBankActiveStatus
 {
     public class SetBankActiveStatusCommandHandler
-            : ICommandHandler<SetBankActiveStatusCommand, bool>
+            : ICommandHandler<SetBankActiveStatusCommand>
     {
         private readonly IUnitOfWork _uow;
 
@@ -20,20 +20,20 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.SetBankActiveStat
             _uow = uow;
         }
 
-        public async Task<Result<bool>> Handle(SetBankActiveStatusCommand request, CancellationToken cancellationToken)
+        public async Task<Result> Handle(SetBankActiveStatusCommand request, CancellationToken cancellationToken)
         {
             var spec = new BankByIdSpecification(request.id);
             var bank = await _uow.BankRepository.FindAsync(spec);
 
             if (bank == null)
-                return Result<bool>.Failure(new[] { $"Bank with ID '{request.id}' not found." });
+                return Result.Failure(new[] { $"Bank with ID '{request.id}' not found." });
 
             bank.IsActive = request.isActive;
 
             await _uow.BankRepository.UpdateAsync(bank);
             await _uow.SaveAsync();
 
-            return Result<bool>.Success(true);
+            return Result.Success();
         }
     }
 }

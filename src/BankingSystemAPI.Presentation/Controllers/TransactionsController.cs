@@ -8,7 +8,6 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Linq;
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -16,10 +15,9 @@ namespace BankingSystemAPI.Presentation.Controllers
     /// Operations to read transaction history and list transactions.
     /// </summary>
     [Route("api/transactions")]
-    [ApiController]
     [Authorize]
     [ApiExplorerSettings(GroupName = "Transactions")]
-    public class TransactionsController : ControllerBase
+    public class TransactionsController : BaseApiController
     {
         private readonly IMediator _mediator;
 
@@ -35,18 +33,19 @@ namespace BankingSystemAPI.Presentation.Controllers
         [HttpGet("{accountId}/history")]
         [PermissionFilterFactory(Permission.Transaction.ReadById)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetTransactionHistory(int accountId, int pageNumber = 1, int pageSize = 20, string? orderBy = null, string? orderDirection = null)
         {
             var allowed = new[] { "Timestamp", "Amount", "Id" };
             if (!OrderByValidator.IsValid(orderBy, allowed))
-                return BadRequest($"Invalid orderBy value. Allowed: {string.Join(',', allowed)}");
+                return BadRequest(new { 
+                    success = false, 
+                    errors = new[] { $"Invalid orderBy value. Allowed: {string.Join(',', allowed)}" },
+                    message = $"Invalid orderBy value. Allowed: {string.Join(',', allowed)}"
+                });
 
-            var res = await _mediator.Send(new GetTransactionsByAccountQuery(accountId, pageNumber, pageSize, orderBy, orderDirection));
-            if (!res.Succeeded) return BadRequest(res.Errors);
-            return Ok(new { message = "Transaction history retrieved successfully.", history = res.Value });
+            var result = await _mediator.Send(new GetTransactionsByAccountQuery(accountId, pageNumber, pageSize, orderBy, orderDirection));
+            return HandleResult(result);
         }
 
         /// <summary>
@@ -55,13 +54,11 @@ namespace BankingSystemAPI.Presentation.Controllers
         [HttpGet("{transactionId:int}")]
         [PermissionFilterFactory(Permission.Transaction.ReadById)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetById(int transactionId)
         {
-            var res = await _mediator.Send(new GetTransactionByIdQuery(transactionId));
-            if (!res.Succeeded) return NotFound(new { message = res.Errors.FirstOrDefault() ?? "Transaction not found.", transaction = (object?)null });
-            return Ok(new { message = "Transaction retrieved successfully.", transaction = res.Value });
+            var result = await _mediator.Send(new GetTransactionByIdQuery(transactionId));
+            return HandleResult(result);
         }
 
         /// <summary>
@@ -71,12 +68,10 @@ namespace BankingSystemAPI.Presentation.Controllers
         [PermissionFilterFactory(Permission.Transaction.ReadAllHistory)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 20, string? orderBy = null, string? orderDirection = null)
         {
-            var res = await _mediator.Send(new GetAllTransactionsQuery(pageNumber, pageSize, orderBy, orderDirection));
-            if (!res.Succeeded) return BadRequest(res.Errors);
-            return Ok(new { message = "Transactions retrieved successfully.", transactions = res.Value });
+            var result = await _mediator.Send(new GetAllTransactionsQuery(pageNumber, pageSize, orderBy, orderDirection));
+            return HandleResult(result);
         }
     }
 }

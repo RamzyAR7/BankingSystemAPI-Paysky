@@ -1,12 +1,21 @@
 using BankingSystemAPI.Application.DTOs.User;
-using BankingSystemAPI.Application.Interfaces.Identity;
+using BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUser;
+using BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUser;
+using BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUser;
+using BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUsers;
+using BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUserPassword;
+using BankingSystemAPI.Application.Features.Identity.Users.Commands.SetUserActiveStatus;
+using BankingSystemAPI.Application.Features.Identity.Users.Queries.GetAllUsers;
+using BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserById;
+using BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserByUsername;
+using BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUsersByBankId;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
 using BankingSystemAPI.Presentation.Helpers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Linq;
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -14,303 +23,185 @@ namespace BankingSystemAPI.Presentation.Controllers
     /// User management endpoints.
     /// </summary>
     [Route("api/users")]
-    [ApiController]
     [Authorize]
     [ApiExplorerSettings(GroupName = "Users")]
-    public class UserController : ControllerBase
+    public class UserController : BaseApiController
     {
-        private readonly IUserService _userService;
-        public UserController(IUserService userService)
+        private readonly IMediator _mediator;
+
+        public UserController(IMediator mediator)
         {
-            _userService = userService;
+            _mediator = mediator;
         }
 
         /// <summary>
-        /// Get all users.
+        /// Get all users with pagination.
         /// </summary>
-        /// <response code="200">Returns list of users.</response>
-        /// <response code="401">Unauthorized.</response>
         [HttpGet]
         [PermissionFilterFactory(Permission.User.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetAllUsers(int pageNumber = 1, int pageSize = 10, string? orderBy = null, string? orderDirection = null)
         {
             var allowed = new[] { "Id", "UserName", "Email", "FullName", "CreatedDate" };
             if (!OrderByValidator.IsValid(orderBy, allowed))
-                return BadRequest($"Invalid orderBy value. Allowed: {string.Join(',', allowed)}");
+                return BadRequest(new { 
+                    success = false, 
+                    errors = new[] { $"Invalid orderBy value. Allowed: {string.Join(',', allowed)}" },
+                    message = $"Invalid orderBy value. Allowed: {string.Join(',', allowed)}"
+                });
 
-            var users = await _userService.GetAllUsersAsync(pageNumber, pageSize, orderBy, orderDirection);
-            if (users == null || !users.Any())
-            {
-                return NotFound("No users found.");
-            }
-            return Ok(users);
+            var query = new GetAllUsersQuery(pageNumber, pageSize, orderBy, orderDirection);
+            var result = await _mediator.Send(query);
+            return HandleResult(result);
         }
 
         /// <summary>
         /// Get users by bank id.
-        /// SuperAdmin can view all users regardless of bankId; non-super-admins are restricted to their own bank; clients get empty list.
         /// </summary>
         [HttpGet("by-bank/{bankId:int}")]
         [PermissionFilterFactory(Permission.User.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetUsersByBankId(int bankId)
         {
-            var users = await _userService.GetUsersByBankIdAsync(bankId);
-            if (users == null || !users.Any())
-                return NotFound("No users found for the specified bank.");
-            return Ok(users);
-        }
-
-        /// <summary>
-        /// Get users by bank name.
-        /// SuperAdmin can view all users or filter by bank name; non-super-admins are restricted to their own bank; clients get empty list.
-        /// </summary>
-        [HttpGet("by-bank-name/{bankName}")]
-        [PermissionFilterFactory(Permission.User.ReadAll)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetUsersByBankName(string bankName)
-        {
-            var users = await _userService.GetUsersByBankNameAsync(bankName);
-            if (users == null || !users.Any())
-                return NotFound("No users found for the specified bank name.");
-            return Ok(users);
+            var query = new GetUsersByBankIdQuery(bankId);
+            var result = await _mediator.Send(query);
+            return HandleResult(result);
         }
 
         /// <summary>
         /// Get user by username.
         /// </summary>
-        /// <response code="200">Returns the user.</response>
-        /// <response code="404">User not found.</response>
-        /// <response code="401">Unauthorized.</response>
         [HttpGet("by-username/{username}")]
         [PermissionFilterFactory(Permission.User.ReadByUsername)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetUserByUsername(string username)
         {
-            var user = await _userService.GetUserByUsernameAsync(username);
-            if (user == null)
-            {
-                return NotFound($"User with username '{username}' not found.");
-            }
-            return Ok(user);
+            var query = new GetUserByUsernameQuery(username);
+            var result = await _mediator.Send(query);
+            return HandleResult(result);
         }
 
         /// <summary>
         /// Get user by id.
         /// </summary>
-        /// <response code="200">Returns the user.</response>
-        /// <response code="404">User not found.</response>
-        /// <response code="401">Unauthorized.</response>
         [HttpGet("{userId}")]
         [PermissionFilterFactory(Permission.User.ReadById)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetUserById(string userId)
         {
-            var user = await _userService.GetUserByIdAsync(userId);
-            if (user == null)
-            {
-                return NotFound($"User with ID '{userId}' not found.");
-            }
-            return Ok(user);
+            var query = new GetUserByIdQuery(userId);
+            var result = await _mediator.Send(query);
+            return HandleResult(result);
         }
 
         /// <summary>
         /// Create a new user.
         /// </summary>
-        /// <remarks>
-        /// Creates a new user in the system. Behavior differs based on the role of the acting user:
-        /// - SuperAdmin: must provide BankId and Role and can create users across banks.
-        /// - Admin: will create users scoped to the admin's bank.
-        /// - Client: forbidden from creating users.
-        /// 
-        /// The controller validates the request body before delegating to the user service. The service
-        /// performs additional checks: bank existence and active status, duplicate detection, and role assignment.
-        /// </remarks>
-        /// <response code="201">User created.</response>
-        /// <response code="400">Invalid user data.</response>
-        /// <response code="401">Unauthorized.</response>
         [HttpPost]
         [PermissionFilterFactory(Permission.User.Create)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> CreateUser([FromBody] UserReqDto user)
         {
-            if (user == null || string.IsNullOrWhiteSpace(user.Password))
-            {
-                return BadRequest("User data and password are required.");
-            }
-
-            var result = await _userService.CreateUserAsync(user);
-            if (!result.Succeeded)
-            {
-                var errors = result.Errors.Select(e => e.Description).ToList();
-                return BadRequest(errors);
-            }
-
-            var createdUser = result.User;
-            return CreatedAtAction(
-                nameof(GetUserById),
-                new { userId = createdUser?.Id },
-                new { message = "User created successfully.", user = createdUser }
-            );
+            var command = new CreateUserCommand(user);
+            var result = await _mediator.Send(command);
+            return HandleCreatedResult(result, nameof(GetUserById), new { userId = result.Value?.Id });
         }
 
         /// <summary>
         /// Update an existing user.
         /// </summary>
-        /// <remarks>
-        /// Updates user profile fields and performs duplicate detection within the same bank. Role changes
-        /// should be performed through the dedicated user-roles endpoints. The controller delegates
-        /// authorization checks to the user service which enforces role-based scoping rules.
-        /// </remarks>
-        /// <response code="200">User updated.</response>
-        /// <response code="400">Invalid request.</response>
-        /// <response code="401">Unauthorized.</response>
         [HttpPut("{userId}")]
         [PermissionFilterFactory(Permission.User.Update)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> UpdateUser([FromRoute]string userId, [FromBody] UserEditDto user)
+        public async Task<IActionResult> UpdateUser([FromRoute] string userId, [FromBody] UserEditDto user)
         {
-            if (string.IsNullOrWhiteSpace(userId) || user == null)
-            {
-                return BadRequest("User ID and user data are required.");
-            }
-            var result = await _userService.UpdateUserAsync(userId, user);
-            if (!result.Succeeded)
-            {
-                var errors = result.Errors.Select(e => e.Description).ToList();
-                return BadRequest(errors);
-            }
-            return Ok(result.User);
+            var command = new UpdateUserCommand(userId, user);
+            var result = await _mediator.Send(command);
+            return HandleUpdateResult(result);
         }
-        
+
         /// <summary>
         /// Change a user's password.
         /// </summary>
-        /// <response code="200">Password changed.</response>
-        /// <response code="400">Invalid request.</response>
-        /// <response code="401">Unauthorized.</response>
         [HttpPut("{userId}/password")]
         [PermissionFilterFactory(Permission.User.ChangePassword)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult>ChangeUserPassword([FromRoute]string userId, [FromBody] ChangePasswordReqDto dto)
+        public async Task<IActionResult> ChangeUserPassword([FromRoute] string userId, [FromBody] ChangePasswordReqDto dto)
         {
-            if (string.IsNullOrWhiteSpace(userId) || dto == null || string.IsNullOrWhiteSpace(dto.NewPassword))
-            {
-                return BadRequest("User ID and new password are required.");
-            }
-            var result = await _userService.ChangeUserPasswordAsync(userId, dto);
-            if (!result.Succeeded)
-            {
-                var errors = result.Errors.Select(e => e.Description).ToList();
-                return BadRequest(errors);
-            }
-            return Ok(result.User);
+            var command = new ChangeUserPasswordCommand(userId, dto);
+            var result = await _mediator.Send(command);
+            return HandleResult(result);
         }
 
         /// <summary>
         /// Delete a user by id.
         /// </summary>
-        /// <response code="200">User deleted.</response>
-        /// <response code="400">Invalid request.</response>
-        /// <response code="401">Unauthorized.</response>
         [HttpDelete("{userId}")]
         [PermissionFilterFactory(Permission.User.Delete)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> DeleteUser(string userId)
         {
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                return BadRequest("User ID is required.");
-            }
-            var result = await _userService.DeleteUserAsync(userId);
-            if (!result.Succeeded)
-            {
-                var errors = result.Errors.Select(e => e.Description).ToList();
-                return BadRequest(errors);
-            }
-            return Ok(new { success = true, message = "User deleted successfully." });
+            var command = new DeleteUserCommand(userId);
+            var result = await _mediator.Send(command);
+            return HandleDeleteResult(result);
         }
 
         /// <summary>
-        /// Delete range of users.
+        /// Delete multiple users.
         /// </summary>
-        /// <response code="200">Users deleted.</response>
-        /// <response code="400">Invalid request.</response>
-        /// <response code="401">Unauthorized.</response>
         [HttpDelete("bulk")]
         [PermissionFilterFactory(Permission.User.DeleteRange)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> DeleteRangeOfUsers([FromBody] IEnumerable<string> userIds)
+        public async Task<IActionResult> DeleteUsers([FromBody] IEnumerable<string> userIds)
         {
-            if (userIds == null || !userIds.Any())
-            {
-                return BadRequest("User IDs are required.");
-            }
-            var result = await _userService.DeleteRangeOfUsersAsync(userIds);
-            if (!result.Succeeded)
-            {
-                var errors = result.Errors.Select(e => e.Description).ToList();
-                return BadRequest(errors);
-            }
-            return Ok(new { success = true, message = "Users deleted successfully." });
+            var command = new DeleteUsersCommand(userIds);
+            var result = await _mediator.Send(command);
+            return HandleDeleteResult(result);
         }
 
         /// <summary>
         /// Get current authenticated user's info.
         /// </summary>
-        /// <response code="200">Returns the current user's info.</response>
-        /// <response code="401">Unauthorized.</response>
-        /// <response code="404">User not found.</response>
         [HttpGet("me")]
         [PermissionFilterFactory(Permission.User.ReadSelf)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetMyInfo()
         {
             var userId = User.FindFirst("uid")?.Value;
             if (string.IsNullOrWhiteSpace(userId))
-                return Forbid();
+                return BadRequest(new { 
+                    success = false, 
+                    errors = new[] { "User is not authenticated." },
+                    message = "User is not authenticated."
+                });
 
-            var user = await _userService.GetCurrentUserInfoAsync(userId);
-            if (user == null)
-                return NotFound("User not found.");
-
-            return Ok(user);
+            var query = new GetUserByIdQuery(userId);
+            var result = await _mediator.Send(query);
+            return HandleResult(result);
         }
 
         /// <summary>
-        /// Set user active/inactive.
+        /// Set user active/inactive status.
         /// </summary>
         [HttpPut("{userId}/active")]
         [PermissionFilterFactory(Permission.User.UpdateActiveStatus)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> SetActive(string userId, [FromQuery] bool isActive)
         {
-            await _userService.SetUserActiveStatusAsync(userId, isActive);
-            return Ok(new { message = $"User active status changed to {isActive}." });
+            var command = new SetUserActiveStatusCommand(userId, isActive);
+            var result = await _mediator.Send(command);
+            return HandleResult(result);
         }
     }
 }

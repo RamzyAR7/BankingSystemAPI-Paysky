@@ -1,5 +1,5 @@
 using AutoMapper;
-using BankingSystemAPI.Application.Common;
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Currency;
 using BankingSystemAPI.Application.Exceptions;
 using BankingSystemAPI.Application.Interfaces.Messaging;

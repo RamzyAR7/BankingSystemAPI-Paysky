@@ -1,11 +1,10 @@
-﻿using BankingSystemAPI.Application.Exceptions;
-using BankingSystemAPI.Application.Interfaces.Authorization;
+﻿using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Authorization.Helpers;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
-using System.Linq.Expressions;
+using BankingSystemAPI.Domain.Common;
 using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
@@ -31,80 +30,86 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             _scopeResolver = scopeResolver;
         }
 
-        public async Task CanViewAccountAsync(int accountId)
+        public async Task<Result> CanViewAccountAsync(int accountId)
         {
             var scope = await _scopeResolver.GetScopeAsync();
 
             if (scope == AccessScope.Global)
-                return;
+                return Result.Success();
 
             var spec = new AccountByIdSpecification(accountId);
-            var account = await _uow.AccountRepository.FindAsync(spec)
-                ?? throw new NotFoundException("Account not found.");
+            var account = await _uow.AccountRepository.FindAsync(spec);
+            if (account == null)
+                return Result.NotFound("Account", accountId);
 
             if (scope == AccessScope.Self)
             {
                 if (!_currentUser.UserId.Equals(account.UserId, StringComparison.OrdinalIgnoreCase))
-                    throw new ForbiddenException("Clients can only view their own accounts.");
-                return;
+                    return Result.Forbidden("Clients can only view their own accounts.");
+                return Result.Success();
             }
 
-            // BankLevel
-            BankGuard.EnsureSameBank(_currentUser.BankId, account.User.BankId);
+            // BankLevel - Use new Result-based guard method
+            var bankAccessResult = BankGuard.ValidateSameBank(_currentUser.BankId, account.User.BankId);
+            if (bankAccessResult.IsFailure)
+                return bankAccessResult;
+
+            return Result.Success();
         }
 
-        public async Task CanModifyAccountAsync(int accountId, AccountModificationOperation operation)
+        public async Task<Result> CanModifyAccountAsync(int accountId, AccountModificationOperation operation)
         {
             var scope = await _scopeResolver.GetScopeAsync();
 
             var actingUserSpec = new UserByIdSpecification(_currentUser.UserId);
-            var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec)
-                ?? throw new ForbiddenException("Acting user not found.");
+            var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec);
+            if (actingUser == null)
+                return Result.Forbidden("Acting user not found.");
 
             var accountSpec = new AccountByIdSpecification(accountId);
-            var account = await _uow.AccountRepository.FindAsync(accountSpec)
-                ?? throw new NotFoundException("Account not found.");
+            var account = await _uow.AccountRepository.FindAsync(accountSpec);
+            if (account == null)
+                return Result.NotFound("Account", accountId);
 
             // Self-modification rules
             if (actingUser.Id == account.UserId)
             {
-                switch (operation)
+                return operation switch
                 {
-                    case AccountModificationOperation.Edit:
-                        throw new ForbiddenException("Users cannot edit their own accounts.");
-                    case AccountModificationOperation.Delete:
-                        throw new ForbiddenException("Users cannot delete their own accounts.");
-                    case AccountModificationOperation.Freeze:
-                    case AccountModificationOperation.Unfreeze:
-                        throw new ForbiddenException("Users cannot freeze or unfreeze their own accounts.");
-                    case AccountModificationOperation.Deposit:
-                    case AccountModificationOperation.Withdraw:
-                        // Allow deposit/withdraw on own account
-                        return;
-                    default:
-                        throw new ForbiddenException("Operation not permitted on own account.");
-                }
+                    AccountModificationOperation.Edit => Result.Forbidden("Users cannot edit their own accounts."),
+                    AccountModificationOperation.Delete => Result.Forbidden("Users cannot delete their own accounts."),
+                    AccountModificationOperation.Freeze or AccountModificationOperation.Unfreeze => 
+                        Result.Forbidden("Users cannot freeze or unfreeze their own accounts."),
+                    AccountModificationOperation.Deposit or AccountModificationOperation.Withdraw => Result.Success(),
+                    _ => Result.Forbidden("Operation not permitted on own account.")
+                };
             }
 
             switch (scope)
             {
                 case AccessScope.Global:
-                    return;
+                    return Result.Success();
 
                 case AccessScope.Self:
-                    throw new ForbiddenException("Clients cannot modify other users' accounts.");
+                    return Result.Forbidden("Clients cannot modify other users' accounts.");
 
                 case AccessScope.BankLevel:
                     var ownerRole = await _uow.RoleRepository.GetRoleByUserIdAsync(account.UserId);
                     if (!RoleHelper.IsClient(ownerRole?.Name))
-                        throw new ForbiddenException("Only Client accounts can be modified.");
+                        return Result.Forbidden("Only Client accounts can be modified.");
 
-                    BankGuard.EnsureSameBank(actingUser.BankId, account.User.BankId);
-                    break;
+                    var bankAccessResult = BankGuard.ValidateSameBank(actingUser.BankId, account.User.BankId);
+                    if (bankAccessResult.IsFailure)
+                        return bankAccessResult;
+
+                    return Result.Success();
+
+                default:
+                    return Result.Forbidden("Unknown access scope.");
             }
         }
 
-        public async Task<(IEnumerable<Account> Accounts, int TotalCount)> FilterAccountsAsync(
+        public async Task<Result<(IEnumerable<Account> Accounts, int TotalCount)>> FilterAccountsAsync(
             IQueryable<Account> query,
             int pageNumber = 1,
             int pageSize = 10)
@@ -113,68 +118,77 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             if (RoleHelper.IsSuperAdmin(role.Name))
             {
                 query = query.OrderBy(a => a.Id);
-                return await _uow.AccountRepository.GetFilteredAccountsAsync(query, pageNumber, pageSize);
+                var result = await _uow.AccountRepository.GetFilteredAccountsAsync(query, pageNumber, pageSize);
+                return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Success(result);
             }
 
             if (RoleHelper.IsClient(role.Name))
             {
                 query = query.Where(a => a.UserId == _currentUser.UserId).OrderBy(a => a.Id);
-                return await _uow.AccountRepository.GetFilteredAccountsAsync(query, pageNumber, pageSize);
+                var result = await _uow.AccountRepository.GetFilteredAccountsAsync(query, pageNumber, pageSize);
+                return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Success(result);
             }
 
             var actingUserSpec = new UserByIdSpecification(_currentUser.UserId);
             var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec);
             if (actingUser == null)
-                return (Enumerable.Empty<Account>(), 0);
+                return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Success((Enumerable.Empty<Account>(), 0));
 
             var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery(UserRole.Client.ToString());
             query = query.Where(a => clientUserIds.Contains(a.UserId) && a.User.BankId == actingUser.BankId).OrderBy(a => a.Id);
-            return await _uow.AccountRepository.GetFilteredAccountsAsync(query, pageNumber, pageSize);
+            var finalResult = await _uow.AccountRepository.GetFilteredAccountsAsync(query, pageNumber, pageSize);
+            return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Success(finalResult);
         }
 
-        public async Task CanCreateAccountForUserAsync(string targetUserId)
+        public async Task<Result> CanCreateAccountForUserAsync(string targetUserId)
         {
             var scope = await _scopeResolver.GetScopeAsync();
 
             if (scope == AccessScope.Global)
-                return;
+                return Result.Success();
 
             if (scope == AccessScope.Self)
-                throw new ForbiddenException("Clients cannot create accounts for other users.");
+                return Result.Forbidden("Clients cannot create accounts for other users.");
 
             // BankLevel
             var actingUserSpec = new UserByIdSpecification(_currentUser.UserId);
-            var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec)
-                ?? throw new ForbiddenException("Acting user not found.");
+            var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec);
+            if (actingUser == null)
+                return Result.Forbidden("Acting user not found.");
 
             var targetUserSpec = new UserByIdSpecification(targetUserId);
-            var targetUser = await _uow.UserRepository.FindAsync(targetUserSpec)
-                ?? throw new NotFoundException("Target user not found.");
+            var targetUser = await _uow.UserRepository.FindAsync(targetUserSpec);
+            if (targetUser == null)
+                return Result.NotFound("Target user", targetUserId);
 
             var targetRole = await _uow.RoleRepository.GetRoleByUserIdAsync(targetUserId);
             if (!RoleHelper.IsClient(targetRole?.Name))
-                throw new ForbiddenException("Can only create accounts for Client users.");
+                return Result.Forbidden("Can only create accounts for Client users.");
 
-            BankGuard.EnsureSameBank(actingUser.BankId, targetUser.BankId);
+            var bankAccessResult = BankGuard.ValidateSameBank(actingUser.BankId, targetUser.BankId);
+            if (bankAccessResult.IsFailure)
+                return bankAccessResult;
+
+            return Result.Success();
         }
 
-        public async Task<IQueryable<Account>> FilterAccountsQueryAsync(IQueryable<Account> query)
+        public async Task<Result<IQueryable<Account>>> FilterAccountsQueryAsync(IQueryable<Account> query)
         {
             var role = await _currentUser.GetRoleFromStoreAsync();
             if (RoleHelper.IsSuperAdmin(role.Name))
-                return query.OrderBy(a => a.Id);
+                return Result<IQueryable<Account>>.Success(query.OrderBy(a => a.Id));
 
             if (RoleHelper.IsClient(role.Name))
-                return query.Where(a => a.UserId == _currentUser.UserId).OrderBy(a => a.Id);
+                return Result<IQueryable<Account>>.Success(query.Where(a => a.UserId == _currentUser.UserId).OrderBy(a => a.Id));
 
             var actingUserSpec = new UserByIdSpecification(_currentUser.UserId);
             var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec);
             if (actingUser == null)
-                return Enumerable.Empty<Account>().AsQueryable();
+                return Result<IQueryable<Account>>.Success(Enumerable.Empty<Account>().AsQueryable());
 
             var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery(UserRole.Client.ToString());
-            query = query.Where(a => clientUserIds.Contains(a.UserId) && a.User.BankId == actingUser.BankId).OrderBy(a => a.Id);
-            return query;
+            var filteredQuery = query.Where(a => clientUserIds.Contains(a.UserId) && a.User.BankId == actingUser.BankId).OrderBy(a => a.Id);
+            return Result<IQueryable<Account>>.Success(filteredQuery);
         }
     }
 }

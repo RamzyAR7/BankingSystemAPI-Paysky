@@ -1,13 +1,12 @@
 ﻿using AutoMapper;
 using BankingSystemAPI.Application.DTOs.Role;
 using BankingSystemAPI.Application.Interfaces.Identity;
+using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using BankingSystemAPI.Domain.Entities;
-using BankingSystemAPI.Infrastructure.Context;
-using Microsoft.EntityFrameworkCore;
 
 namespace BankingSystemAPI.Infrastructure.Services
 {
@@ -15,48 +14,52 @@ namespace BankingSystemAPI.Infrastructure.Services
     {
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly IMapper _mapper;
-        private readonly ApplicationDbContext _db;
-        public RoleService(RoleManager<ApplicationRole> roleManager, IMapper mapper, ApplicationDbContext db)
+
+        public RoleService(RoleManager<ApplicationRole> roleManager, IMapper mapper)
         {
             _roleManager = roleManager;
             _mapper = mapper;
-            _db = db;
         }
 
-        public async Task<List<RoleResDto>> GetAllRolesAsync()
+        public async Task<Result<List<RoleResDto>>> GetAllRolesAsync()
         {
-            var roles = await Task.FromResult(_roleManager.Roles.ToList());
-            var roleDtos = _mapper.Map<List<RoleResDto>>(roles);
-
-            // Populate claims for each role
-            for (int i = 0; i < roleDtos.Count; i++)
+            try
             {
-                var dto = roleDtos[i];
-                var role = await _roleManager.FindByNameAsync(dto.Name);
-                if (role == null) continue;
-                var claims = await _roleManager.GetClaimsAsync(role);
-                dto.Claims = claims.Where(c => c.Type == "Permission").Select(c => c.Value).Distinct().ToList();
-            }
+                var roles = await Task.FromResult(_roleManager.Roles.ToList());
+                var roleDtos = _mapper.Map<List<RoleResDto>>(roles);
 
-            return roleDtos;
+                // Populate claims for each role
+                for (int i = 0; i < roleDtos.Count; i++)
+                {
+                    var dto = roleDtos[i];
+                    var role = await _roleManager.FindByNameAsync(dto.Name);
+                    if (role == null) continue;
+                    
+                    var claims = await _roleManager.GetClaimsAsync(role);
+                    dto.Claims = claims.Where(c => c.Type == "Permission").Select(c => c.Value).Distinct().ToList();
+                }
+
+                return Result<List<RoleResDto>>.Success(roleDtos);
+            }
+            catch (System.Exception ex)
+            {
+                return Result<List<RoleResDto>>.Failure(new[] { $"Failed to retrieve roles: {ex.Message}" });
+            }
         }
 
-        public async Task<RoleUpdateResultDto> CreateRoleAsync(RoleReqDto dto)
+        public async Task<Result<RoleUpdateResultDto>> CreateRoleAsync(RoleReqDto dto)
         {
-            var result = new RoleUpdateResultDto();
-            if (string.IsNullOrWhiteSpace(dto.Name))
+            // Input validation
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Name))
             {
-                result.Errors.Add(new IdentityError { Description = "Role name cannot be null or empty." });
-                result.Succeeded = false;
-                return result;
+                return Result<RoleUpdateResultDto>.Failure(new[] { "Role name cannot be null or empty." });
             }
 
-            var roleExists = await _roleManager.RoleExistsAsync(dto.Name);
-            if (roleExists)
+            // Check if role already exists
+            var existingRole = await _roleManager.FindByNameAsync(dto.Name);
+            if (existingRole != null)
             {
-                result.Errors.Add(new IdentityError { Description = $"Role '{dto.Name}' already exists." });
-                result.Succeeded = false;
-                return result;
+                return Result<RoleUpdateResultDto>.Failure(new[] { $"Role '{dto.Name}' already exists." });
             }
 
             var role = new ApplicationRole { Name = dto.Name };
@@ -64,42 +67,50 @@ namespace BankingSystemAPI.Infrastructure.Services
 
             if (!identityResult.Succeeded)
             {
-                result.Errors.AddRange(identityResult.Errors);
-                result.Succeeded = false;
-                return result;
+                var errors = identityResult.Errors.Select(e => e.Description);
+                return Result<RoleUpdateResultDto>.Failure(errors);
             }
 
-            result.Role = _mapper.Map<RoleResDto>(role);
-            result.Succeeded = true;
-            return result;
+            var result = new RoleUpdateResultDto
+            {
+                Role = _mapper.Map<RoleResDto>(role),
+                Succeeded = true,
+                Errors = new List<IdentityError>()
+            };
+
+            return Result<RoleUpdateResultDto>.Success(result);
         }
 
-
-        public async Task<RoleUpdateResultDto> DeleteRoleAsync(string roleId)
+        public async Task<Result<RoleUpdateResultDto>> DeleteRoleAsync(string roleId)
         {
-            var result = new RoleUpdateResultDto();
+            // Input validation
+            if (string.IsNullOrWhiteSpace(roleId))
+            {
+                return Result<RoleUpdateResultDto>.Failure(new[] { "Role ID cannot be null or empty." });
+            }
+
             var role = await _roleManager.FindByIdAsync(roleId);
             if (role == null)
             {
-                result.Errors.Add(new IdentityError { Description = "Role not found." });
-                result.Succeeded = false;
-                return result;
-            }
-
-            // Prevent deletion if any users are assigned to this role (check Users.RoleId OR UserRoles join table)
-            var hasUsersViaFk = await _db.Users.AnyAsync(u => u.RoleId == roleId);
-            var hasUsersViaJoin = await _db.UserRoles.AnyAsync(ur => ur.RoleId == roleId);
-            if (hasUsersViaFk || hasUsersViaJoin)
-            {
-                result.Errors.Add(new IdentityError { Description = "Cannot delete role because it is assigned to one or more users." });
-                result.Succeeded = false;
-                return result;
+                return Result<RoleUpdateResultDto>.Failure(new[] { "Role not found." });
             }
 
             var identityResult = await _roleManager.DeleteAsync(role);
-            result.Succeeded = identityResult.Succeeded;
-            result.Errors.AddRange(identityResult.Errors);
-            return result;
+            
+            if (!identityResult.Succeeded)
+            {
+                var errors = identityResult.Errors.Select(e => e.Description);
+                return Result<RoleUpdateResultDto>.Failure(errors);
+            }
+
+            var result = new RoleUpdateResultDto
+            {
+                Role = _mapper.Map<RoleResDto>(role),
+                Succeeded = true,
+                Errors = new List<IdentityError>()
+            };
+            
+            return Result<RoleUpdateResultDto>.Success(result);
         }
     }
 }

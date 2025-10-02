@@ -1,5 +1,4 @@
 ﻿using BankingSystemAPI.Application.DTOs.Account;
-using BankingSystemAPI.Application.DTOs.InterestLog;
 using BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateSavingsAccount;
 using BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateSavingsAccount;
 using BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetAllSavingsAccounts;
@@ -12,19 +11,16 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Linq;
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
     /// <summary>
     /// Endpoints to manage savings accounts.
-    /// Only: GetAll, Create, Update, GetAllInterestLogs, GetInterestLogsByAccountId
     /// </summary>
     [Route("api/savings-accounts")]
-    [ApiController]
     [Authorize]
     [ApiExplorerSettings(GroupName = "SavingsAccounts")]
-    public class SavingsAccountController : ControllerBase
+    public class SavingsAccountController : BaseApiController
     {
         private readonly IMediator _mediator;
 
@@ -39,18 +35,19 @@ namespace BankingSystemAPI.Presentation.Controllers
         [HttpGet]
         [PermissionFilterFactory(Permission.SavingsAccount.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10, string? orderBy = null, string? orderDirection = null)
         {
             var allowed = new[] { "Id", "AccountNumber", "Balance", "CreatedDate" };
             if (!OrderByValidator.IsValid(orderBy, allowed))
-                return BadRequest($"Invalid orderBy value. Allowed: {string.Join(',', allowed)}");
+                return BadRequest(new { 
+                    success = false, 
+                    errors = new[] { $"Invalid orderBy value. Allowed: {string.Join(',', allowed)}" },
+                    message = $"Invalid orderBy value. Allowed: {string.Join(',', allowed)}"
+                });
 
             var result = await _mediator.Send(new GetAllSavingsAccountsQuery(pageNumber, pageSize, orderBy, orderDirection));
-            if (!result.Succeeded) return BadRequest(result.Errors);
-            return Ok(new { message = "Savings accounts retrieved successfully.", accounts = result.Value });
+            return HandleResult(result);
         }
 
         /// <summary>
@@ -72,14 +69,10 @@ namespace BankingSystemAPI.Presentation.Controllers
         [PermissionFilterFactory(Permission.SavingsAccount.Create)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Create([FromBody] SavingsAccountReqDto req)
         {
             var result = await _mediator.Send(new CreateSavingsAccountCommand(req));
-            if (!result.Succeeded) return BadRequest(result.Errors);
-            return CreatedAtAction(nameof(GetAll), new { id = result.Value!.Id }, new { message = "Savings account created successfully.", account = result.Value });
+            return HandleCreatedResult(result, nameof(GetAll), new { id = result.Value?.Id });
         }
 
         /// <summary>
@@ -92,16 +85,12 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </remarks>
         [HttpPut("{id:int}")]
         [PermissionFilterFactory(Permission.SavingsAccount.Update)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update(int id, [FromBody] SavingsAccountEditDto req)
         {
             var result = await _mediator.Send(new UpdateSavingsAccountCommand(id, req));
-            if (!result.Succeeded) return BadRequest(result.Errors);
-            return Ok(new { message = "Savings account updated successfully.", account = result.Value });
+            return HandleUpdateResult(result);
         }
 
         /// <summary>
@@ -109,11 +98,12 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         [HttpGet("interest-logs")]
         [PermissionFilterFactory(Permission.SavingsAccount.ReadAllInterestRate)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetAllInterestLogs(int pageNumber = 1, int pageSize = 10)
         {
             var result = await _mediator.Send(new GetAllInterestLogsQuery(pageNumber, pageSize));
-            if (!result.Succeeded) return BadRequest(result.Errors);
-            return Ok(new { message = "Interest logs retrieved successfully.", totalCount = result.Value!.TotalCount, logs = result.Value.Logs });
+            return HandleResult(result);
         }
 
         /// <summary>
@@ -122,11 +112,11 @@ namespace BankingSystemAPI.Presentation.Controllers
         [HttpGet("{accountId:int}/interest-logs")]
         [PermissionFilterFactory(Permission.SavingsAccount.ReadInterestRateById)]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetInterestLogsByAccountId(int accountId, int pageNumber = 1, int pageSize = 10)
         {
             var result = await _mediator.Send(new GetInterestLogsByAccountIdQuery(accountId, pageNumber, pageSize));
-            if (!result.Succeeded) return BadRequest(result.Errors);
-            return Ok(new { message = "Interest logs for account retrieved successfully.", totalCount = result.Value!.TotalCount, logs = result.Value.Logs });
+            return HandleResult(result);
         }
     }
 }

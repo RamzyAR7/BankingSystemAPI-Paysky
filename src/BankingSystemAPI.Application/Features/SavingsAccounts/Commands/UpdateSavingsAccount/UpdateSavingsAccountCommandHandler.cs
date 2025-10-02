@@ -1,12 +1,12 @@
-using AutoMapper;
-using BankingSystemAPI.Application.Common;
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.AccountSpecification;
-using BankingSystemAPI.Domain.Entities;
+using AutoMapper;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Domain.Constant;
+using BankingSystemAPI.Domain.Entities;
 
 namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateSavingsAccount
 {

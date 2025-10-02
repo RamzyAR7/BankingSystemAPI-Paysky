@@ -15,7 +15,6 @@ using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Context;
 using BankingSystemAPI.Infrastructure.Identity;
 using BankingSystemAPI.Infrastructure.Jobs;
-using BankingSystemAPI.Infrastructure.Mapping;
 using BankingSystemAPI.Infrastructure.Repositories;
 using BankingSystemAPI.Infrastructure.Seeding;
 using BankingSystemAPI.Infrastructure.Services;
@@ -208,7 +207,7 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(option =>
 builder.Services.AddMemoryCache();
 
 // Register ICacheService wrapper around IMemoryCache
-builder.Services.AddSingleton<ICacheService, MemoryCacheService>();
+builder.Services.AddSingleton<ICacheService, BankingSystemAPI.Infrastructure.Cache.MemoryCacheService>();
 
 // Register MediatR (use Application assembly where handlers live)
 builder.Services.AddMediatR(typeof(MappingProfile).Assembly);
@@ -220,9 +219,10 @@ builder.Services.AddValidatorsFromAssembly(typeof(MappingProfile).Assembly);
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
 #region Register Repositories and Unit of Work
-// Register Unit of Work
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-// Register Repositories via UnitOfWork in the UnitOfWork
+// Register Optimized Unit of Work
+builder.Services.AddScoped<IUnitOfWork, BankingSystemAPI.Infrastructure.UnitOfWork.UnitOfWork>();
+
+// Register High-Performance Repositories
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
@@ -240,16 +240,21 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserRolesService, UserRolesService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IRoleClaimsService, RoleClaimsService>();
+
 // Register IHttpContextAccessor for services that need access to the current user
 builder.Services.AddHttpContextAccessor();
-// Register AuthorizationService
+
+// Register Authorization Services (they already use ICurrentUserService which extracts JWT claims)
 builder.Services.AddScoped<IAccountAuthorizationService, AccountAuthorizationService>();
 builder.Services.AddScoped<IUserAuthorizationService, UserAuthorizationService>();
 builder.Services.AddScoped<ITransactionAuthorizationService, TransactionAuthorizationService>();
-// Register CurrentUserService helper
+
+// Register CurrentUserService helper (extracts JWT claims)
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 // Register TransactionHelperService
 builder.Services.AddScoped<ITransactionHelperService, TransactionHelperService>();
+// Register ValidationService for common validations
+builder.Services.AddScoped<IValidationService, ValidationService>();
 // Register ScopeResolver
 builder.Services.AddScoped<IScopeResolver, ScopeResolver>();
 #endregion
@@ -260,11 +265,10 @@ builder.Services.AddHostedService<AddInterestJob>();
 #endregion
 
 #region Register AutoMapper
-// Register mapping profiles explicitly to match the available AddAutoMapper overload
+// Register only the unified mapping profile from Application layer
 builder.Services.AddAutoMapper(cfg =>
 {
     cfg.AddProfile<MappingProfile>();
-    cfg.AddProfile<IdentityMappingProfile>();
 });
 #endregion
 

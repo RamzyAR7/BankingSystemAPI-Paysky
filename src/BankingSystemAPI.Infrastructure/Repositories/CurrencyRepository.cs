@@ -3,10 +3,8 @@ using BankingSystemAPI.Application.Interfaces;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
-using System;
-using System.Threading.Tasks;
-using BankingSystemAPI.Infrastructure.Services;
+using System.Linq.Expressions;
+using BankingSystemAPI.Application.Specifications;
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
@@ -14,49 +12,69 @@ namespace BankingSystemAPI.Infrastructure.Repositories
     {
         private readonly ICacheService _cache;
 
-        // Compiled query for GetById
-        // EF.CompileQuery precompiles the LINQ expression into a delegate so EF Core doesn't have to re-translate the expression tree to SQL on every call.
-        private static readonly Func<ApplicationDbContext, int, Currency> _compiledGetById =
-            EF.CompileQuery((ApplicationDbContext ctx, int id) => ctx.Currencies.AsNoTracking().FirstOrDefault(c => c.Id == id));
-
         public CurrencyRepository(ApplicationDbContext context, ICacheService cache) : base(context)
         {
             _cache = cache;
         }
 
-        public override async Task<Currency> GetByIdAsync(int id)
+        public async Task<Currency> GetBaseCurrencyAsync()
         {
-            if (id <= 0) return null;
-            if (_cache.TryGetValue($"currency_id_{id}", out Currency cached))
+            // Try cache first
+            if (_cache.TryGetValue<Currency>("base_currency", out var cachedCurrency))
+                return cachedCurrency;
+
+            var baseCurrency = await Table
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.IsBase);
+
+            if (baseCurrency != null)
             {
-                return cached;
+                _cache.Set("base_currency", baseCurrency, TimeSpan.FromHours(1));
             }
 
-            var curr = _compiledGetById(_context, id);
-            if (curr != null)
-            {
-                // lazy cache: only cache when read via GetByIdAsync
-                _cache.Set($"currency_id_{id}", curr, TimeSpan.FromHours(1));
-            }
-            return curr;
+            return baseCurrency;
         }
 
-        public override async Task<Currency> UpdateAsync(Currency Entity)
+        public async Task<Dictionary<int, decimal>> GetExchangeRatesAsync(IEnumerable<int> currencyIds)
         {
-            var result = await base.UpdateAsync(Entity);
+            var ids = currencyIds.ToList();
+            if (!ids.Any()) return new Dictionary<int, decimal>();
 
-            if (result != null)
-            {
-                // evict id cache so next GetByIdAsync will refresh (lazy reload)
-                _cache.Remove($"currency_id_{result.Id}");
-            }
+            return await Table
+                .Where(c => ids.Contains(c.Id))
+                .AsNoTracking()
+                .ToDictionaryAsync(c => c.Id, c => c.ExchangeRate);
+        }
+
+        public override async Task<Currency> UpdateAsync(Currency entity)
+        {
+            var result = await base.UpdateAsync(entity);
+            
+            // Clear relevant cache entries
+            if (entity.IsBase)
+                _cache.Remove("base_currency");
+                
             return result;
         }
 
-        public override Task DeleteAsync(Currency Entity)
+        public override async Task DeleteAsync(Currency entity)
         {
-            _cache.Remove($"currency_id_{Entity.Id}");
-            return base.DeleteAsync(Entity);
+            if (entity.IsBase)
+            {
+                _cache.Remove("base_currency");
+            }
+
+            await base.DeleteAsync(entity);
+        }
+
+        public override async Task DeleteRangeAsync(IEnumerable<Currency> entities)
+        {
+            if (entities.Any(e => e.IsBase))
+            {
+                _cache.Remove("base_currency");
+            }
+
+            await base.DeleteRangeAsync(entities);
         }
     }
 }

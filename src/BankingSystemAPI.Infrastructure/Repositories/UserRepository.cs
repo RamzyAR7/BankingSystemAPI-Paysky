@@ -16,5 +16,18 @@ namespace BankingSystemAPI.Infrastructure.Repositories
         public UserRepository(ApplicationDbContext context) : base(context)
         {
         }
+
+        public async Task<IEnumerable<ApplicationUser>> GetUsersByBankIdAsync(int bankId)
+        {
+            return await Table
+                .Where(u => u.BankId == bankId)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        public IQueryable<ApplicationUser> QueryByBankId(int bankId)
+        {
+            return Table.Where(u => u.BankId == bankId);
+        }
     }
 }

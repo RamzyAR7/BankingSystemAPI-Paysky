@@ -51,6 +51,11 @@ namespace BankingSystemAPI.Application.DTOs.User
         public string Role { get; set; }
 
         /// <summary>
+        /// Bank identifier the user is associated with.
+        /// </summary>
+        public int? BankId { get; set; }
+
+        /// <summary>
         /// Bank name the user is associated with.
         /// </summary>
         public string BankName { get; set; }

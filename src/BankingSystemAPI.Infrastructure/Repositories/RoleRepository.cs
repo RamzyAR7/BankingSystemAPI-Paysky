@@ -16,6 +16,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
                 ctx.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.RoleId).FirstOrDefault());
 
         private readonly ICacheService _cache;
+        
         public RoleRepository(ApplicationDbContext context, ICacheService cache) : base(context)
         {
             _cache = cache;
@@ -65,6 +66,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 
             return userRoles;
         }
+        
         public IQueryable<string> UsersWithRoleQuery(string roleName)
         {
             if (string.IsNullOrWhiteSpace(roleName))
@@ -75,9 +77,10 @@ namespace BankingSystemAPI.Infrastructure.Repositories
                 .Where(u => u.Role != null && u.Role.Name == roleName)
                 .Select(u => u.Id);
         }
-        public override async Task<ApplicationRole> UpdateAsync(ApplicationRole Entity)
+        
+        public override async Task<ApplicationRole> UpdateAsync(ApplicationRole entity)
         {
-            var result = await base.UpdateAsync(Entity);
+            var result = await base.UpdateAsync(entity);
             if (result != null)
             {
                 var userIds = await _context.Users.Where(u => u.RoleId == result.Id).Select(u => u.Id).ToListAsync();
@@ -89,19 +92,18 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             return result;
         }
 
-        public override async Task DeleteAsync(ApplicationRole Entity)
+        public override async Task DeleteAsync(ApplicationRole entity)
         {
-            var usersWithRole = await _context.Users.Where(u => u.RoleId == Entity.Id).ToListAsync();
+            var usersWithRole = await _context.Users.Where(u => u.RoleId == entity.Id).ToListAsync();
             if (usersWithRole.Any())
             {
                 foreach (var u in usersWithRole)
                 {
                     u.RoleId = string.Empty;
                 }
-                await _context.SaveChangesAsync();
             }
 
-            await base.DeleteAsync(Entity);
+            await base.DeleteAsync(entity);
 
             // Remove cached entries
             foreach (var uid in usersWithRole.Select(u => u.Id))

@@ -1,14 +1,17 @@
-﻿using BankingSystemAPI.Application.Exceptions;
-using BankingSystemAPI.Application.Interfaces.Authorization;
+﻿using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Authorization.Helpers;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.Specifications;
-using System.Linq.Expressions;
-using System.Linq;
 using BankingSystemAPI.Application.Specifications.UserSpecifications;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.AuthorizationServices
 {
@@ -28,77 +31,91 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             _scopeResolver = scopeResolver;
         }
 
-        public async Task CanViewUserAsync(string targetUserId)
+        public async Task<Result> CanViewUserAsync(string targetUserId)
         {
             var scope = await _scopeResolver.GetScopeAsync();
 
             if (scope == AccessScope.Global)
-                return;
+                return Result.Success();
 
             if (scope == AccessScope.Self)
             {
                 if (!_currentUser.UserId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase))
-                    throw new ForbiddenException("Clients can only view their own data.");
-                return;
+                    return Result.Forbidden("Clients can only view their own data.");
+                return Result.Success();
             }
 
             // BankLevel
             var actingBankId = _currentUser.BankId;
             var spec = new UserByIdSpecification(targetUserId);
-            var targetUser = await _uow.UserRepository.FindAsync(spec)
-                ?? throw new NotFoundException("Target user not found.");
+            var targetUser = await _uow.UserRepository.FindAsync(spec);
+            if (targetUser == null)
+                return Result.NotFound("Target user", targetUserId);
 
-            BankGuard.EnsureSameBank(actingBankId, targetUser.BankId);
+            var bankAccessResult = BankGuard.ValidateSameBank(actingBankId, targetUser.BankId);
+            if (bankAccessResult.IsFailure)
+                return bankAccessResult;
+
+            return Result.Success();
         }
 
-        public async Task CanModifyUserAsync(string targetUserId, UserModificationOperation operation)
+        public async Task<Result> CanModifyUserAsync(string targetUserId, UserModificationOperation operation)
         {
             var scope = await _scopeResolver.GetScopeAsync();
 
             var actingSpec = new UserByIdSpecification(_currentUser.UserId);
-            var actingUser = await _uow.UserRepository.FindAsync(actingSpec)
-                ?? throw new ForbiddenException("Acting user not found.");
+            var actingUser = await _uow.UserRepository.FindAsync(actingSpec);
+            if (actingUser == null)
+                return Result.Forbidden("Acting user not found.");
 
             // Prevent self-modification
             if (actingUser.Id.Equals(targetUserId, StringComparison.OrdinalIgnoreCase))
             {
-                if (operation == UserModificationOperation.Delete)
-                    throw new ForbiddenException("Users cannot delete themselves.");
-
-                if (operation == UserModificationOperation.Edit)
-                    throw new ForbiddenException("Users cannot edit their own profile details (only password).\u00A0");
-
-                if (operation == UserModificationOperation.ChangePassword)
-                    return;
+                return operation switch
+                {
+                    UserModificationOperation.Delete => Result.Forbidden("Users cannot delete themselves."),
+                    UserModificationOperation.Edit => Result.Forbidden("Users cannot edit their own profile details (only password)."),
+                    UserModificationOperation.ChangePassword => Result.Success(),
+                    _ => Result.Forbidden("Operation not permitted on own account.")
+                };
             }
 
             switch (scope)
             {
                 case AccessScope.Global:
-                    return;
+                    return Result.Success();
 
                 case AccessScope.Self:
-                    throw new ForbiddenException("Clients cannot modify other users.");
+                    return Result.Forbidden("Clients cannot modify other users.");
 
                 case AccessScope.BankLevel:
                     var targetSpec = new UserByIdSpecification(targetUserId);
-                    var targetUser = await _uow.UserRepository.FindAsync(targetSpec)
-                        ?? throw new NotFoundException("Target user not found.");
+                    var targetUser = await _uow.UserRepository.FindAsync(targetSpec);
+                    if (targetUser == null)
+                        return Result.NotFound("Target user", targetUserId);
 
                     var targetRole = await _uow.RoleRepository.GetRoleByUserIdAsync(targetUserId);
 
                     if (!RoleHelper.IsClient(targetRole?.Name))
-                        throw new ForbiddenException("Only Client users can be modified.");
+                        return Result.Forbidden("Only Client users can be modified.");
 
-                    BankGuard.EnsureSameBank(actingUser.BankId, targetUser.BankId);
-                    break;
+                    var bankAccessResult = BankGuard.ValidateSameBank(actingUser.BankId, targetUser.BankId);
+                    if (bankAccessResult.IsFailure)
+                        return bankAccessResult;
+
+                    return Result.Success();
+
+                default:
+                    return Result.Forbidden("Unknown access scope.");
             }
         }
 
-        public async Task<(IEnumerable<ApplicationUser> Users, int TotalCount)> FilterUsersAsync(
+        public async Task<Result<(IEnumerable<ApplicationUser> Users, int TotalCount)>> FilterUsersAsync(
             IQueryable<ApplicationUser> query,
             int pageNumber = 1,
-            int pageSize = 10)
+            int pageSize = 10,
+            string? orderBy = null,
+            string? orderDirection = null)
         {
             var scope = await _scopeResolver.GetScopeAsync();
 
@@ -106,31 +123,31 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             switch (scope)
             {
                 case AccessScope.Global:
-                    // Paging and filtering in DB via spec
-                    var globalSpec = new PagedSpecification<ApplicationUser>(u => true, skip, pageSize, null, null, u => u.Accounts, u => u.Bank, u => u.Role);
+                    // Paging and filtering in DB via spec with ordering
+                    var globalSpec = new PagedSpecification<ApplicationUser>(u => true, skip, pageSize, orderBy, orderDirection, u => u.Accounts, u => u.Bank, u => u.Role);
                     var globalRes = await _uow.UserRepository.GetPagedAsync(globalSpec);
                     await PopulateAccountCurrenciesAsync(globalRes.Items);
-                    return (globalRes.Items, globalRes.TotalCount);
+                    return Result<(IEnumerable<ApplicationUser> Users, int TotalCount)>.Success((globalRes.Items, globalRes.TotalCount));
 
                 case AccessScope.Self:
-                    var selfSpec = new PagedSpecification<ApplicationUser>(u => u.Id == _currentUser.UserId, skip, pageSize, null, null, u => u.Accounts, u => u.Bank, u => u.Role);
+                    var selfSpec = new PagedSpecification<ApplicationUser>(u => u.Id == _currentUser.UserId, skip, pageSize, orderBy, orderDirection, u => u.Accounts, u => u.Bank, u => u.Role);
                     var selfRes = await _uow.UserRepository.GetPagedAsync(selfSpec);
                     await PopulateAccountCurrenciesAsync(selfRes.Items);
-                    return (selfRes.Items, selfRes.TotalCount);
+                    return Result<(IEnumerable<ApplicationUser> Users, int TotalCount)>.Success((selfRes.Items, selfRes.TotalCount));
 
                 case AccessScope.BankLevel:
-                    // Filter by BankId and role Client in DB
+                    // Filter by BankId and role Client in DB with ordering
                     var bankId = _currentUser.BankId;
                     // Subquery for Client users
                     var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery("Client"); // IQueryable<string> of userIds
                     Expression<Func<ApplicationUser, bool>> criteria = u => u.BankId == bankId && clientUserIds.Contains(u.Id);
-                    var bankSpec = new PagedSpecification<ApplicationUser>(criteria, skip, pageSize, null, null, u => u.Accounts, u => u.Bank, u => u.Role);
+                    var bankSpec = new PagedSpecification<ApplicationUser>(criteria, skip, pageSize, orderBy, orderDirection, u => u.Accounts, u => u.Bank, u => u.Role);
                     var bankRes = await _uow.UserRepository.GetPagedAsync(bankSpec);
                     await PopulateAccountCurrenciesAsync(bankRes.Items);
-                    return (bankRes.Items, bankRes.TotalCount);
+                    return Result<(IEnumerable<ApplicationUser> Users, int TotalCount)>.Success((bankRes.Items, bankRes.TotalCount));
 
                 default:
-                    return (Enumerable.Empty<ApplicationUser>(), 0);
+                    return Result<(IEnumerable<ApplicationUser> Users, int TotalCount)>.Success((Enumerable.Empty<ApplicationUser>(), 0));
             }
         }
 
@@ -168,15 +185,17 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             }
         }
 
-        public async Task CanCreateUserAsync()
+        public async Task<Result> CanCreateUserAsync()
         {
             var scope = await _scopeResolver.GetScopeAsync();
 
             if (scope == AccessScope.Global)
-                return;
+                return Result.Success();
 
             if (scope == AccessScope.Self)
-                throw new ForbiddenException("Clients cannot create users.");
+                return Result.Forbidden("Clients cannot create users.");
+
+            return Result.Success();
         }
     }
 }

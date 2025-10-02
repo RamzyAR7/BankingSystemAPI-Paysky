@@ -1,5 +1,5 @@
 using AutoMapper;
-using BankingSystemAPI.Application.Common;
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
@@ -38,7 +38,11 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Queries.GetAllC
                     .Include(a => a.Currency)
                     .AsQueryable();
 
-                var (items, total) = await _accountAuth.FilterAccountsAsync(query, pageNumber, pageSize);
+                var filterResult = await _accountAuth.FilterAccountsAsync(query, pageNumber, pageSize);
+                if (filterResult.IsFailure)
+                    return Result<List<CheckingAccountDto>>.Failure(filterResult.Errors);
+
+                var (items, total) = filterResult.Value!;
                 var mapped = items.OfType<CheckingAccount>().Select(a => _mapper.Map<CheckingAccountDto>(a)).ToList();
                 return Result<List<CheckingAccountDto>>.Success(mapped);
             }

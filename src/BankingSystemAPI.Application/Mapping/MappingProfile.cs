@@ -26,6 +26,7 @@ namespace BankingSystemAPI.Application.Mapping
             ConfigureInterestLogMappings();
             ConfigureTransactionMappings();
             ConfigureBankMappings();
+            ConfigureRoleMappings();
         }
 
         private void ConfigureUserMappings()
@@ -52,12 +53,18 @@ namespace BankingSystemAPI.Application.Mapping
                 .ForMember(dest => dest.RefreshTokens, opt => opt.Ignore());
 
             CreateMap<ApplicationUser, UserResDto>()
-                .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.UserName))
-                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role != null ? src.Role.Name : string.Empty))
-                .ForMember(dest => dest.BankName, opt => opt.MapFrom(src => src.Bank != null ? src.Bank.Name : string.Empty))
+                .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.UserName ?? string.Empty))
+                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role != null ? src.Role.Name ?? string.Empty : string.Empty))
+                .ForMember(dest => dest.BankName, opt => opt.MapFrom(src => src.Bank != null ? src.Bank.Name ?? string.Empty : string.Empty))
                 .ForMember(dest => dest.DateOfBirth, opt => opt.MapFrom(src => src.DateOfBirth))
-                // Map accounts navigation to DTO list
-                .ForMember(dest => dest.Accounts, opt => opt.MapFrom(src => src.Accounts ?? new List<Account>()));
+                // Map accounts navigation to DTO list with null handling
+                .ForMember(dest => dest.Accounts, opt => opt.MapFrom(src => src.Accounts != null ? src.Accounts : new List<Account>()))
+                // Ensure all string properties handle nulls
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email ?? string.Empty))
+                .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FullName ?? string.Empty))
+                .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.PhoneNumber ?? string.Empty))
+                .ForMember(dest => dest.NationalId, opt => opt.MapFrom(src => src.NationalId ?? string.Empty))
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id ?? string.Empty));
             #endregion
         }
 
@@ -178,12 +185,27 @@ namespace BankingSystemAPI.Application.Mapping
 
         private void ConfigureBankMappings()
         {
+            #region Bank
             CreateMap<Bank, BankResDto>()
                 .ForMember(dest => dest.Users, opt => opt.Ignore());
             CreateMap<Bank, BankSimpleResDto>();
             CreateMap<BankReqDto, Bank>();
             CreateMap<BankEditDto, Bank>()
-                .ForMember(dest => dest.IsActive, opt => opt.Ignore()); // Prevent IsActive from being mapped in edit
+                .ForMember(dest => dest.IsActive, opt => opt.Ignore());
+            #endregion
+        }
+
+        private void ConfigureRoleMappings()
+        {
+            #region Role Mappings
+            CreateMap<ApplicationRole, RoleResDto>()
+                .ForMember(dest => dest.Claims, opt => opt.Ignore()); // Claims will be populated by the service
+            
+            CreateMap<RoleReqDto, ApplicationRole>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.NormalizedName, opt => opt.Ignore())
+                .ForMember(dest => dest.ConcurrencyStamp, opt => opt.Ignore());
+            #endregion
         }
     }
 }

@@ -1,11 +1,11 @@
-using BankingSystemAPI.Application.Common;
+using AutoMapper;
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Transactions;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
-using BankingSystemAPI.Application.Specifications.TransactionSpecification;
-using AutoMapper;
-using System.Linq;
 using BankingSystemAPI.Application.Interfaces.Authorization;
+using BankingSystemAPI.Application.Specifications.TransactionSpecification;
+using BankingSystemAPI.Domain.Entities;
 
 namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetByAccountId
 {
@@ -29,7 +29,9 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetByAccoun
             // Ensure caller can view the account first
             if (_accountAuth is not null)
             {
-                await _accountAuth.CanViewAccountAsync(request.AccountId);
+                var authResult = await _accountAuth.CanViewAccountAsync(request.AccountId);
+                if (authResult.IsFailure)
+                    return Result<IEnumerable<TransactionResDto>>.Failure(authResult.Errors);
             }
 
             var spec = new TransactionsByAccountPagedSpecification(request.AccountId, (request.PageNumber - 1) * request.PageSize, request.PageSize);
@@ -38,7 +40,12 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetByAccoun
             {
                 // use authorization service to filter transactions
                 var query = _uow.TransactionRepository.QueryByAccountId(request.AccountId);
-                var (items, total) = await _transactionAuth.FilterTransactionsAsync(query, request.PageNumber, request.PageSize);
+                var filterResult = await _transactionAuth.FilterTransactionsAsync(query, request.PageNumber, request.PageSize);
+
+                if (filterResult.IsFailure)
+                    return Result<IEnumerable<TransactionResDto>>.Failure(filterResult.Errors);
+
+                var (items, total) = filterResult.Value!;
 
                 // Extra safety: ensure transactions reference the requested account id
                 var filtered = items.Where(t => t.AccountTransactions != null && t.AccountTransactions.Any(at => at.AccountId == request.AccountId)).ToList();

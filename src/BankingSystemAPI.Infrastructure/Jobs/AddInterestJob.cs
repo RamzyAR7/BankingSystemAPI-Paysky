@@ -80,24 +80,21 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                         {
                             try
                             {
-                                if (ShouldAddInterest(accountBase))
+                                if (accountBase.ShouldApplyInterest())
                                 {
-                                    var amount = accountBase.Balance * accountBase.InterestRate / 100;
-                                    accountBase.Balance += amount;
-                                    var log = new InterestLog
+                                    var lastInterestDate = accountBase.GetLastInterestDate();
+                                    var days = (DateTime.UtcNow - lastInterestDate).Days;
+                                    var interestAmount = accountBase.CalculateInterest(days);
+                                    if (interestAmount > 0)
                                     {
-                                        Amount = amount,
-                                        Timestamp = DateTime.UtcNow,
-                                        SavingsAccountId = accountBase.Id,
-                                        SavingsAccountNumber = accountBase.AccountNumber
-                                    };
-                                    await uow.InterestLogRepository.AddAsync(log);
-                                    await uow.AccountRepository.UpdateAsync(accountBase);
-                                    batchApplied++;
-                                    _logger.LogInformation("Applied interest {Amount} to Savings Id={AccountId}, Number={AccountNumber}", amount, accountBase.Id, accountBase.AccountNumber);
-                                    Console.ForegroundColor = ConsoleColor.Green;
-                                    Console.WriteLine($"[AddInterestJob] Applied interest {amount:C} to Savings Id={accountBase.Id}, Number={accountBase.AccountNumber} at {DateTime.UtcNow:u}");
-                                    Console.ForegroundColor = originalColor;
+                                        accountBase.ApplyInterest(interestAmount, DateTime.UtcNow);
+                                        await uow.AccountRepository.UpdateAsync(accountBase);
+                                        batchApplied++;
+                                        _logger.LogInformation("Applied interest {Amount} to Savings Id={AccountId}, Number={AccountNumber}", interestAmount, accountBase.Id, accountBase.AccountNumber);
+                                        Console.ForegroundColor = ConsoleColor.Green;
+                                        Console.WriteLine($"[AddInterestJob] Applied interest {interestAmount:C} to Savings Id={accountBase.Id}, Number={accountBase.AccountNumber} at {DateTime.UtcNow:u}");
+                                        Console.ForegroundColor = originalColor;
+                                    }
                                 }
                             }
                             catch (DbUpdateConcurrencyException exAccount)
@@ -111,21 +108,18 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                                     try
                                     {
                                         await Task.Delay(100 * retries, stoppingToken); // Exponential backoff
-                                        if (ShouldAddInterest(accountBase))
+                                        if (accountBase.ShouldApplyInterest())
                                         {
-                                            var amount = accountBase.Balance * accountBase.InterestRate / 100;
-                                            accountBase.Balance += amount;
-                                            var log = new InterestLog
+                                            var lastInterestDate = accountBase.GetLastInterestDate();
+                                            var days = (DateTime.UtcNow - lastInterestDate).Days;
+                                            var interestAmount = accountBase.CalculateInterest(days);
+                                            if (interestAmount > 0)
                                             {
-                                                Amount = amount,
-                                                Timestamp = DateTime.UtcNow,
-                                                SavingsAccountId = accountBase.Id,
-                                                SavingsAccountNumber = accountBase.AccountNumber
-                                            };
-                                            await uow.InterestLogRepository.AddAsync(log);
-                                            await uow.AccountRepository.UpdateAsync(accountBase);
-                                            batchApplied++;
-                                            success = true;
+                                                accountBase.ApplyInterest(interestAmount, DateTime.UtcNow);
+                                                await uow.AccountRepository.UpdateAsync(accountBase);
+                                                batchApplied++;
+                                                success = true;
+                                            }
                                         }
                                     }
                                     catch (DbUpdateConcurrencyException)
@@ -195,32 +189,5 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                 }
             }
         }
-
-        private bool ShouldAddInterest(SavingsAccount account)
-        {
-            var lastLog = account.InterestLogs?
-                .OrderByDescending(l => l.Timestamp)
-                .FirstOrDefault();
-
-            var referenceDate = lastLog?.Timestamp ?? account.CreatedDate;
-
-            return account.InterestType switch
-            {
-                InterestType.Monthly =>
-                    referenceDate.AddMonths(1) <= DateTime.UtcNow,
-
-                InterestType.Quarterly =>
-                    referenceDate.AddMonths(3) <= DateTime.UtcNow,
-
-                InterestType.Annually =>
-                    referenceDate.AddYears(1) <= DateTime.UtcNow,
-
-                InterestType.every5minutes =>
-                    referenceDate.AddMinutes(5) <= DateTime.UtcNow,
-
-                _ => false
-            };
-        }
-
     }
 }

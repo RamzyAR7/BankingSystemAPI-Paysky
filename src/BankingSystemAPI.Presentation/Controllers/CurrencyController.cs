@@ -18,10 +18,9 @@ namespace BankingSystemAPI.Presentation.Controllers
     /// Currency management endpoints.
     /// </summary>
     [Route("api/currency")]
-    [ApiController]
     [Authorize]
     [ApiExplorerSettings(GroupName = "Currency")]
-    public class CurrencyController : ControllerBase
+    public class CurrencyController : BaseApiController
     {
         private readonly IMediator _mediator;
 
@@ -36,13 +35,11 @@ namespace BankingSystemAPI.Presentation.Controllers
         [HttpGet]
         [PermissionFilterFactory(Permission.Currency.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetAll()
         {
             var result = await _mediator.Send(new GetAllCurrenciesQuery());
-            if (!result.Succeeded) return BadRequest(result.Errors);
-            return Ok(new { message = "Currencies retrieved successfully.", currencies = result.Value });
+            return HandleResult(result);
         }
 
         /// <summary>
@@ -51,13 +48,11 @@ namespace BankingSystemAPI.Presentation.Controllers
         [HttpGet("{id:int}")]
         [PermissionFilterFactory(Permission.Currency.ReadById)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetById(int id)
         {
             var result = await _mediator.Send(new GetCurrencyByIdQuery(id));
-            if (!result.Succeeded) return NotFound(new { message = result.Errors.FirstOrDefault() ?? "Currency not found.", currency = (CurrencyDto?)null });
-            return Ok(new { message = "Currency retrieved successfully.", currency = result.Value });
+            return HandleResult(result);
         }
 
         /// <summary>
@@ -67,13 +62,10 @@ namespace BankingSystemAPI.Presentation.Controllers
         [PermissionFilterFactory(Permission.Currency.Create)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Create([FromBody] CurrencyReqDto reqDto)
         {
             var result = await _mediator.Send(new CreateCurrencyCommand(reqDto));
-            if (!result.Succeeded) return BadRequest(result.Errors);
-            var created = result.Value!;
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, new { message = "Currency created successfully.", currency = created });
+            return HandleCreatedResult(result, nameof(GetById), new { id = result.Value?.Id });
         }
 
         /// <summary>
@@ -81,14 +73,12 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         [HttpPut("{id:int}")]
         [PermissionFilterFactory(Permission.Currency.Update)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Update(int id, [FromBody] CurrencyReqDto reqDto)
         {
             var result = await _mediator.Send(new UpdateCurrencyCommand(id, reqDto));
-            if (!result.Succeeded) return BadRequest(result.Errors);
-            return Ok(new { message = "Currency updated successfully.", currency = result.Value });
+            return HandleUpdateResult(result);
         }
 
         /// <summary>
@@ -97,27 +87,24 @@ namespace BankingSystemAPI.Presentation.Controllers
         [HttpDelete("{id:int}")]
         [PermissionFilterFactory(Permission.Currency.Delete)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
         {
             var result = await _mediator.Send(new DeleteCurrencyCommand(id));
-            if (!result.Succeeded) return BadRequest(result.Errors);
-            return Ok(new { message = "Currency deleted successfully." });
+            return HandleDeleteResult(result);
         }
 
         /// <summary>
-        /// Set currency active/inactive.
+        /// Set currency active/inactive status.
         /// </summary>
         [HttpPut("{id:int}/active")]
         [PermissionFilterFactory(Permission.Currency.Update)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> SetActive(int id, [FromQuery] bool isActive)
         {
             var result = await _mediator.Send(new SetCurrencyActiveStatusCommand(id, isActive));
-            if (!result.Succeeded) return BadRequest(result.Errors);
-            return Ok(new { message = $"Currency active status changed to {isActive}." });
+            return HandleResult(result);
         }
     }
 }

@@ -25,8 +25,6 @@ namespace BankingSystemAPI.Infrastructure.SpecificationEvaluatorClass
 
             if (evaluatePaging)
             {
-                // If paging is requested but the specification didn't provide an OrderBy,
-                // apply a deterministic default ordering by the "Id" property to ensure stable paging.
                 if ((spec.Skip.HasValue || spec.Take.HasValue) && spec.OrderBy == null)
                 {
                     query = query.OrderBy(x => EF.Property<object>(x, "Id"));

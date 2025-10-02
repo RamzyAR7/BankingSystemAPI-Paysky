@@ -1,10 +1,11 @@
 ﻿using BankingSystemAPI.Application.DTOs.User;
+using BankingSystemAPI.Domain.Common;
 using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Interfaces.Identity
 {
     public interface IUserRolesService
     {
-        Task<UserRoleUpdateResultDto> UpdateUserRolesAsync(UpdateUserRolesDto dto);
+        Task<Result<UserRoleUpdateResultDto>> UpdateUserRolesAsync(UpdateUserRolesDto dto);
     }
 }

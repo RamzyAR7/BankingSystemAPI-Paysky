@@ -1,5 +1,5 @@
 using AutoMapper;
-using BankingSystemAPI.Application.Common;
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
@@ -37,16 +37,23 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByUs
             // Explicit user-level authorization: if a user authorization service is available, validate access to the target user
             if (_userAuth is not null)
             {
-                await _userAuth.CanViewUserAsync(request.UserId);
+                var userAuthResult = await _userAuth.CanViewUserAsync(request.UserId);
+                if (userAuthResult.IsFailure)
+                    return Result<List<AccountDto>>.Failure(userAuthResult.Errors);
             }
 
             if (_accountAuth is not null)
             {
                 var accountQuery = _uow.AccountRepository.QueryByUserId(request.UserId).AsQueryable();
-                accountQuery = await _accountAuth.FilterAccountsQueryAsync(accountQuery);
+                var filterResult = await _accountAuth.FilterAccountsQueryAsync(accountQuery);
+                
+                if (filterResult.IsFailure)
+                    return Result<List<AccountDto>>.Failure(filterResult.Errors);
+                
+                var filteredQuery = filterResult.Value!;
 
                 // Fetch all matching accounts via repository paging helper
-                var (accounts, total) = await _uow.AccountRepository.GetFilteredAccountsAsync(accountQuery, 1, int.MaxValue);
+                var (accounts, total) = await _uow.AccountRepository.GetFilteredAccountsAsync(filteredQuery, 1, int.MaxValue);
                 var mapped = accounts.Select(a => _mapper.Map<AccountDto>(a)).ToList();
                 return Result<List<AccountDto>>.Success(mapped);
             }

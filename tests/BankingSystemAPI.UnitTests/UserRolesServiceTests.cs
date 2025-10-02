@@ -22,7 +22,6 @@ namespace BankingSystemAPI.UnitTests
         private readonly UserRolesService _service;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<ApplicationRole> _roleManager;
-        private readonly Mock<ICurrentUserService> _currentUserMock;
 
         public UserRolesServiceTests()
         {
@@ -41,27 +40,23 @@ namespace BankingSystemAPI.UnitTests
             var userStore = new UserStore<ApplicationUser, ApplicationRole, ApplicationDbContext, string, IdentityUserClaim<string>, IdentityUserRole<string>, IdentityUserLogin<string>, IdentityUserToken<string>, IdentityRoleClaim<string>>(_context);
             _userManager = new UserManager<ApplicationUser>(userStore, null, new PasswordHasher<ApplicationUser>(), new IUserValidator<ApplicationUser>[0], new IPasswordValidator<ApplicationUser>[0], new UpperInvariantLookupNormalizer(), new IdentityErrorDescriber(), null, new NullLogger<UserManager<ApplicationUser>>());
 
-            _currentUserMock = new Mock<ICurrentUserService>();
-
-            _service = new UserRolesService(_userManager, _roleManager, _currentUserMock.Object);
+            _service = new UserRolesService(_userManager, _roleManager);
         }
 
         [Fact]
-        public async Task AssignRole_SuperAdmin_Succeeds()
+        public async Task AssignRole_Succeeds()
         {
             // create role and user
             await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin" });
             var user = new ApplicationUser { UserName = "u1", Email = "u1@example.com", PhoneNumber = "5000000001", FullName = "User One", NationalId = Guid.NewGuid().ToString().Substring(0,10), DateOfBirth = DateTime.UtcNow.AddYears(-30) };
             await _userManager.CreateAsync(user, "Password123!");
 
-            // act as superadmin
-            _currentUserMock.Setup(c => c.IsInRoleAsync(It.IsAny<string>())).ReturnsAsync(true);
-
             var dto = new UpdateUserRolesDto { UserId = user.Id, Role = "Admin" };
-            var res = await _service.UpdateUserRolesAsync(dto);
+            var result = await _service.UpdateUserRolesAsync(dto);
 
-            Assert.True(res.Succeeded);
-            Assert.Equal("Admin", res.UserRole.Role);
+            Assert.True(result.Succeeded);
+            Assert.NotNull(result.Value);
+            Assert.Equal("Admin", result.Value.UserRole.Role);
 
             var roles = await _userManager.GetRolesAsync(user);
             Assert.Contains("Admin", roles);
@@ -75,12 +70,10 @@ namespace BankingSystemAPI.UnitTests
             await _userManager.CreateAsync(user, "Password123!");
             await _userManager.AddToRoleAsync(user, "Client");
 
-            _currentUserMock.Setup(c => c.IsInRoleAsync(It.IsAny<string>())).ReturnsAsync(true);
-
             var dto = new UpdateUserRolesDto { UserId = user.Id, Role = null };
-            var res = await _service.UpdateUserRolesAsync(dto);
+            var result = await _service.UpdateUserRolesAsync(dto);
 
-            Assert.True(res.Succeeded);
+            Assert.True(result.Succeeded);
             var roles = await _userManager.GetRolesAsync(user);
             Assert.Empty(roles);
         }
