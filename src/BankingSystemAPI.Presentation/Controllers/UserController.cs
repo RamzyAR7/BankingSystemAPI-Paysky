@@ -108,13 +108,13 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         [HttpPut("{userId}")]
         [PermissionFilterFactory(Permission.User.Update)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UpdateUser([FromRoute] string userId, [FromBody] UserEditDto user)
         {
             var command = new UpdateUserCommand(userId, user);
             var result = await _mediator.Send(command);
-            return HandleUpdateResult(result);
+            return HandleResult(result);
         }
 
         /// <summary>

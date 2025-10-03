@@ -69,6 +69,7 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
                 var entity = _mapper.Map<Domain.Entities.Bank>(dto);
                 entity.Name = dto.Name.Trim();
                 entity.CreatedAt = DateTime.UtcNow;
+                entity.IsActive = true; // Set to true by default for new banks
                 
                 await _uow.BankRepository.AddAsync(entity);
                 await _uow.SaveAsync();
@@ -78,7 +79,7 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
             }
             catch (Exception ex)
             {
-                return Result<BankResDto>.BadRequest($"Failed to create bank: {ex.Message}");
+                return Result<BankResDto>.Failure(new[] { $"Failed to create bank: {ex.Message}" });
             }
         }
     }

@@ -1,13 +1,20 @@
-using Microsoft.AspNetCore.Identity;
 using System.Collections.Generic;
-using BankingSystemAPI.Application.DTOs.Role;
 
 namespace BankingSystemAPI.Application.DTOs.Role
 {
+    /// <summary>
+    /// Result DTO for role claims update operations
+    /// </summary>
     public class RoleClaimsUpdateResultDto
     {
-        public bool Succeeded { get; set; }
-        public List<IdentityError> Errors { get; set; } = new();
-        public RoleClaimsResDto? RoleClaims { get; set; }
+        /// <summary>
+        /// Role name that was updated
+        /// </summary>
+        public string RoleName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Updated claims for the role
+        /// </summary>
+        public List<string> UpdatedClaims { get; set; } = new List<string>();
     }
 }

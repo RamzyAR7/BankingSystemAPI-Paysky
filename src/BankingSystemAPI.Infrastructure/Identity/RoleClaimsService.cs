@@ -128,13 +128,8 @@ namespace BankingSystemAPI.Infrastructure.Services
             
             return new RoleClaimsUpdateResultDto
             {
-                RoleClaims = new RoleClaimsResDto
-                {
-                    Name = role.Name,
-                    Claims = distinctClaims
-                },
-                Succeeded = true,
-                Errors = new List<IdentityError>()
+                RoleName = role.Name ?? string.Empty,
+                UpdatedClaims = distinctClaims
             };
         }
 

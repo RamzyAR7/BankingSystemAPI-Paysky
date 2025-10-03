@@ -5,5 +5,5 @@ namespace BankingSystemAPI.Application.Features.Identity.UserRoles.Commands.Upda
 {
     public sealed record UpdateUserRolesCommand(
         string UserId,
-        ICollection<string> Roles) : ICommand<UserRoleUpdateResultDto>;
+        string Role) : ICommand<UserRoleUpdateResultDto>;
 }

@@ -27,8 +27,11 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.CreateRo
 
         public async Task<Result<RoleUpdateResultDto>> Handle(CreateRoleCommand request, CancellationToken cancellationToken)
         {
-            // Note: Input validation (empty/null) is handled by CreateRoleCommandValidator
-            // This handler focuses on business logic validation and execution
+            // Input validation: Check for empty/null role name
+            if (string.IsNullOrWhiteSpace(request.Name))
+            {
+                return Result<RoleUpdateResultDto>.ValidationFailed("Role name cannot be null or empty.");
+            }
             
             // Business validation: Check if role already exists
             var uniquenessValidation = await ValidateRoleUniquenessAsync(request.Name);
@@ -64,9 +67,8 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.CreateRo
             var roleDto = new RoleReqDto { Name = roleName };
             var result = await _roleService.CreateRoleAsync(roleDto);
 
-            return result.Succeeded
-                ? Result<RoleUpdateResultDto>.Success(result.Value!)
-                : Result<RoleUpdateResultDto>.Failure(result.Errors);
+            // The service now returns Result<RoleUpdateResultDto> directly
+            return result;
         }
     }
 }

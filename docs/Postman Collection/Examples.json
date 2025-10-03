@@ -131,6 +131,7 @@
             "password": "SecurePass!2025"
         },
         {
+            // admin 1
             "email": "alex.jones@example.com",
             "password": "AlexJonesPass#1"
         },
@@ -147,10 +148,12 @@
             "password": "SarahGreen&Pass123"
         },
         {
+            // admin 2
             "email": "kevin.harris@example.com",
             "password": "KevinH_Pass123"
         },
         {
+            // admin 1
             "email": "laura.clark@example.com",
             "password": "LauraClark$Pass123"
         },
@@ -159,6 +162,7 @@
             "password": "BrianLewis#2023"
         },
         {
+            //admin 3
             "email": "nancy.walker@example.com",
             "password": "NancyW@Pass123"
         }

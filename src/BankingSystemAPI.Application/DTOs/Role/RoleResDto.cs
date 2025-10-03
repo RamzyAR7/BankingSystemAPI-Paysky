@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 
 namespace BankingSystemAPI.Application.DTOs.Role
 {
@@ -9,19 +8,17 @@ namespace BankingSystemAPI.Application.DTOs.Role
     public class RoleResDto
     {
         /// <summary>
-        /// Role identifier (string).
+        /// Role identifier
         /// </summary>
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
 
         /// <summary>
-        /// Role name.
+        /// Role name
         /// </summary>
-        [Required]
-        [StringLength(100)]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
-        /// List of claims associated with the role.
+        /// List of claims associated with the role
         /// </summary>
         public List<string> Claims { get; set; } = new List<string>();
     }

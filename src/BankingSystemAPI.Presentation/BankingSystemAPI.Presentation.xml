@@ -443,10 +443,20 @@
             Endpoints to manage user roles assignment.
             </summary>
         </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.UserRolesController.UpdateUserRole(System.String,BankingSystemAPI.Application.DTOs.User.UpdateUserRoleRequestDto)">
+            <summary>
+            Update user role assignment.
+            </summary>
+            <param name="userId">The user ID to update</param>
+            <param name="updateDto">The role update data</param>
+            <returns>Result of the role update operation</returns>
+        </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.UserRolesController.UpdateUserRoles(BankingSystemAPI.Application.DTOs.User.UpdateUserRolesDto)">
             <summary>
             Assign roles to a user.
             </summary>
+            <param name="dto">The user role assignment data</param>
+            <returns>Result of the role assignment operation</returns>
         </member>
         <member name="T:BankingSystemAPI.Presentation.Middlewares.ExceptionHandlingMiddleware">
             <summary>

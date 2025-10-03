@@ -222,9 +222,8 @@ namespace BankingSystemAPI.Infrastructure.Services
 
                 var result = new RoleUpdateResultDto
                 {
-                    Role = _mapper.Map<RoleResDto>(role),
-                    Succeeded = true,
-                    Errors = new List<IdentityError>()
+                    Operation = "Create",
+                    Role = _mapper.Map<RoleResDto>(role)
                 };
 
                 return Result<RoleUpdateResultDto>.Success(result);
@@ -269,9 +268,8 @@ namespace BankingSystemAPI.Infrastructure.Services
 
                 var result = new RoleUpdateResultDto
                 {
-                    Role = _mapper.Map<RoleResDto>(role),
-                    Succeeded = true,
-                    Errors = new List<IdentityError>()
+                    Operation = "Delete",
+                    Role = _mapper.Map<RoleResDto>(role)
                 };
                 
                 return Result<RoleUpdateResultDto>.Success(result);

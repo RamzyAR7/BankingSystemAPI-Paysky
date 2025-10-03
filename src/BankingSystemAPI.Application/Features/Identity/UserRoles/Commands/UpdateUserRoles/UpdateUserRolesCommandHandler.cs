@@ -21,22 +21,19 @@ namespace BankingSystemAPI.Application.Features.Identity.UserRoles.Commands.Upda
 
         public async Task<Result<UserRoleUpdateResultDto>> Handle(UpdateUserRolesCommand request, CancellationToken cancellationToken)
         {
-            // Business validation: Get the role to assign (take first role from collection)
-            var targetRole = request.Roles.FirstOrDefault();
-
             // Business validation: Authorization check for SuperAdmin role assignment
-            if (!string.IsNullOrEmpty(targetRole))
+            if (!string.IsNullOrEmpty(request.Role))
             {
                 var isSuperAdmin = await _currentUserService.IsInRoleAsync(UserRole.SuperAdmin.ToString());
                 
-                if (!isSuperAdmin && string.Equals(targetRole, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase))
+                if (!isSuperAdmin && string.Equals(request.Role, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase))
                 {
                     return Result<UserRoleUpdateResultDto>.Failure(new[] { "Not authorized to assign SuperAdmin role." });
                 }
             }
 
             // Business validation: Ensure role is not just whitespace
-            if (!string.IsNullOrEmpty(targetRole) && string.IsNullOrWhiteSpace(targetRole))
+            if (!string.IsNullOrEmpty(request.Role) && string.IsNullOrWhiteSpace(request.Role))
             {
                 return Result<UserRoleUpdateResultDto>.Failure(new[] { "Role cannot be empty or whitespace." });
             }
@@ -45,7 +42,7 @@ namespace BankingSystemAPI.Application.Features.Identity.UserRoles.Commands.Upda
             var updateDto = new UpdateUserRolesDto
             {
                 UserId = request.UserId,
-                Role = targetRole // Single role assignment
+                Role = request.Role // Single role assignment
             };
 
             var result = await _userRolesService.UpdateUserRolesAsync(updateDto);

@@ -31,13 +31,13 @@ namespace BankingSystemAPI.Application.Features.Identity.RoleClaims.Commands.Upd
             var role = await _roleManager.FindByIdAsync(request.RoleId);
             if (role == null)
             {
-                return Result<RoleClaimsUpdateResultDto>.Failure(new[] { "Role not found" });
+                return Result<RoleClaimsUpdateResultDto>.NotFound("Role", request.RoleId);
             }
 
             // Business validation: Prevent modifying SuperAdmin role claims
             if (role.Name == UserRole.SuperAdmin.ToString())
             {
-                return Result<RoleClaimsUpdateResultDto>.Failure(new[] { "Cannot modify claims for SuperAdmin role" });
+                return Result<RoleClaimsUpdateResultDto>.Forbidden("Cannot modify claims for SuperAdmin role");
             }
 
             // Business validation: For Client role, only allow SuperAdmin to modify its claims
@@ -46,7 +46,7 @@ namespace BankingSystemAPI.Application.Features.Identity.RoleClaims.Commands.Upd
                 var user = _httpContextAccessor.HttpContext?.User;
                 if (user == null || !user.IsInRole(UserRole.SuperAdmin.ToString()))
                 {
-                    return Result<RoleClaimsUpdateResultDto>.Failure(new[] { "Only SuperAdmin can modify claims for Client role" });
+                    return Result<RoleClaimsUpdateResultDto>.Forbidden("Only SuperAdmin can modify claims for Client role");
                 }
             }
 
@@ -59,12 +59,8 @@ namespace BankingSystemAPI.Application.Features.Identity.RoleClaims.Commands.Upd
 
             var result = await _roleClaimsService.UpdateRoleClaimsAsync(updateDto);
 
-            if (!result.Succeeded)
-            {
-                return Result<RoleClaimsUpdateResultDto>.Failure(result.Errors);
-            }
-
-            return Result<RoleClaimsUpdateResultDto>.Success(result.Value!);
+            // The service now returns Result<RoleClaimsUpdateResultDto> directly
+            return result;
         }
     }
 }

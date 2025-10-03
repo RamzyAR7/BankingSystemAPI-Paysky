@@ -146,15 +146,16 @@ namespace BankingSystemAPI.Infrastructure.Services
         {
             return new UserRoleUpdateResultDto
             {
+                UserId = user.Id,
+                PreviousRole = null, // This would need to be tracked if we want to show previous role
+                NewRole = roleName,
                 UserRole = new UserRoleResDto
                 {
                     UserId = user.Id,
                     UserName = user.UserName,
                     Email = user.Email,
                     Role = roleName
-                },
-                Succeeded = true,
-                Errors = new List<IdentityError>()
+                }
             };
         }
     }

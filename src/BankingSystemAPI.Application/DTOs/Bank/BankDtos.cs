@@ -24,12 +24,15 @@ namespace BankingSystemAPI.Application.DTOs.Bank
 
     public class BankReqDto
     {
-        public string Name { get; set; }
-        public bool IsActive { get; set; } = true;
+        [Required(ErrorMessage = "Bank name is required")]
+        [StringLength(100, ErrorMessage = "Bank name cannot exceed 100 characters")]
+        public string Name { get; set; } = string.Empty;
     }
 
     public class BankEditDto
     {
-        public string Name { get; set; }
+        [Required(ErrorMessage = "Bank name is required")]
+        [StringLength(100, ErrorMessage = "Bank name cannot exceed 100 characters")]
+        public string Name { get; set; } = string.Empty;
     }
 }

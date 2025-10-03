@@ -4,10 +4,29 @@ using BankingSystemAPI.Application.DTOs.User;
 
 namespace BankingSystemAPI.Application.DTOs.User
 {
+    /// <summary>
+    /// Result DTO for user role update operations
+    /// </summary>
     public class UserRoleUpdateResultDto
     {
-        public bool Succeeded { get; set; }
-        public List<IdentityError> Errors { get; set; } = new();
+        /// <summary>
+        /// User identifier
+        /// </summary>
+        public string UserId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Previous role name (if tracked)
+        /// </summary>
+        public string? PreviousRole { get; set; }
+
+        /// <summary>
+        /// New role name assigned to user
+        /// </summary>
+        public string? NewRole { get; set; }
+
+        /// <summary>
+        /// The user role data
+        /// </summary>
         public UserRoleResDto? UserRole { get; set; }
     }
 }

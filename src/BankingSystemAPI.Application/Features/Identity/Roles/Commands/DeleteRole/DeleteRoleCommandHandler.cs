@@ -29,8 +29,11 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRo
 
         public async Task<Result<RoleUpdateResultDto>> Handle(DeleteRoleCommand request, CancellationToken cancellationToken)
         {
-            // Note: Input validation is now handled by DeleteRoleCommandValidator via ValidationBehavior pipeline
-            // This handler focuses purely on business logic validation and execution
+            // Input validation: Check for empty/null role ID
+            if (string.IsNullOrWhiteSpace(request.RoleId))
+            {
+                return Result<RoleUpdateResultDto>.ValidationFailed("Role ID cannot be null or empty.");
+            }
             
             _logger.LogDebug("[ROLE_MANAGEMENT] Starting role deletion process: RoleId={RoleId}", request.RoleId);
 
@@ -180,22 +183,17 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRo
             {
                 _logger.LogDebug("[SERVICE_CALL] Initiating role deletion via IRoleService: RoleId={RoleId}", roleId);
 
-                // Use IRoleService with ResultExtensions transformation
+                // Use IRoleService - it now returns Result<RoleUpdateResultDto> directly
                 var serviceResult = await _roleService.DeleteRoleAsync(roleId);
                 
-                // Transform service result to command result using ResultExtensions patterns
-                var transformedResult = serviceResult.Succeeded
-                    ? Result<RoleUpdateResultDto>.Success(serviceResult.Value!)
-                    : Result<RoleUpdateResultDto>.Failure(serviceResult.Errors);
-
                 // Enhanced logging for service interaction
-                transformedResult.OnSuccess(() => 
+                serviceResult.OnSuccess(() => 
                     _logger.LogInformation("[SERVICE_CALL] IRoleService.DeleteRoleAsync succeeded: RoleId={RoleId}", roleId))
                     .OnFailure(errors => 
                     _logger.LogError("[SERVICE_CALL] IRoleService.DeleteRoleAsync failed: RoleId={RoleId}, ServiceErrors={ServiceErrors}",
-                        roleId, string.Join(", ", serviceResult.Errors ?? [])));
+                        roleId, string.Join(", ", errors)));
 
-                return transformedResult;
+                return serviceResult;
             }
             catch (Exception ex)
             {

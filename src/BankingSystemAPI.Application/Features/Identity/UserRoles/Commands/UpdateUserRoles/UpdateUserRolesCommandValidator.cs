@@ -10,9 +10,11 @@ namespace BankingSystemAPI.Application.Features.Identity.UserRoles.Commands.Upda
                 .NotEmpty()
                 .WithMessage("User ID is required.");
 
-            RuleFor(x => x.Roles)
-                .NotNull()
-                .WithMessage("Roles collection cannot be null.");
+            RuleFor(x => x.Role)
+                .NotEmpty()
+                .WithMessage("Role is required.")
+                .MaximumLength(50)
+                .WithMessage("Role name cannot exceed 50 characters.");
         }
     }
 }
