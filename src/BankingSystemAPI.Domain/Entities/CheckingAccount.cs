@@ -29,20 +29,57 @@ namespace BankingSystemAPI.Domain.Entities
         /// </summary>
         public override AccountType AccountType => AccountType.Checking;
 
+
         /// <summary>
-        /// Performs withdrawal with overdraft facility.
-        /// Allows withdrawal up to balance + overdraft limit.
+        /// Gets the maximum amount that can be withdrawn including overdraft facility.
+        /// This is what should be used for withdrawal validation.
+        /// </summary>
+        /// <returns>Balance plus available overdraft credit</returns>
+        public decimal GetMaxWithdrawalAmount()
+        {
+            if (Balance >= 0)
+            {
+                // Positive balance: can withdraw balance + full overdraft
+                return Balance + OverdraftLimit;
+            }
+            else
+            {
+                // Already overdrawn: can only withdraw remaining overdraft credit
+                var usedOverdraft = Math.Abs(Balance);
+                var remainingCredit = OverdraftLimit - usedOverdraft;
+                return Math.Max(0, remainingCredit);
+            }
+        }
+
+        /// <summary>
+        /// Checks if a withdrawal amount is allowed with overdraft facility.
         /// </summary>
         /// <param name="amount">Amount to withdraw</param>
-        /// <exception cref="InvalidOperationException">Thrown when amount exceeds available funds including overdraft</exception>
+        /// <returns>True if withdrawal is within limits</returns>
+        public bool CanWithdraw(decimal amount)
+        {
+            if (amount <= 0) return false;
+            return amount <= GetMaxWithdrawalAmount();
+        }
+
+        /// <summary>
+        /// Performs withdrawal with overdraft facility.
+        /// Validates against maximum withdrawal amount including overdraft.
+        /// </summary>
+        /// <param name="amount">Amount to withdraw</param>
+        /// <exception cref="InvalidOperationException">Thrown when withdrawal exceeds limits</exception>
         public override void Withdraw(decimal amount)
         {
             if (amount <= 0) 
                 throw new InvalidOperationException("Withdrawal amount must be greater than zero.");
 
-            var available = Balance + OverdraftLimit;
-            if (amount > available) 
-                throw new InvalidOperationException("Insufficient funds including overdraft.");
+            if (!CanWithdraw(amount))
+            {
+                var maxAllowed = GetMaxWithdrawalAmount();
+                throw new InvalidOperationException(
+                    $"Insufficient funds. Maximum withdrawal allowed: {maxAllowed:C} " +
+                    $"(Balance: {Balance:C}, Overdraft available: {GetAvailableOverdraftCredit():C})");
+            }
 
             Balance = Math.Round(Balance - amount, 2);
         }
@@ -66,13 +103,29 @@ namespace BankingSystemAPI.Domain.Entities
         }
 
         /// <summary>
-        /// Gets remaining overdraft facility available.
+        /// Gets remaining overdraft credit available for withdrawal.
         /// </summary>
-        /// <returns>Remaining overdraft that can be used</returns>
-        public decimal GetRemainingOverdraft()
+        /// <returns>Remaining overdraft credit that can be used</returns>
+        public decimal GetAvailableOverdraftCredit()
         {
             var used = GetOverdraftUsed();
             return OverdraftLimit - used;
+        }
+
+        /// <summary>
+        /// Gets detailed account status including overdraft information.
+        /// </summary>
+        /// <returns>Formatted string with balance and overdraft details</returns>
+        public string GetAccountStatus()
+        {
+            if (IsOverdrawn())
+            {
+                return $"Overdrawn: {Balance:C} (Using {GetOverdraftUsed():C} of {OverdraftLimit:C} overdraft limit)";
+            }
+            else
+            {
+                return $"Balance: {Balance:C} (Overdraft available: {OverdraftLimit:C})";
+            }
         }
     }
 }

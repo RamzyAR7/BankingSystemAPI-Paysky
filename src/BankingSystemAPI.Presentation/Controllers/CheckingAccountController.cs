@@ -4,7 +4,6 @@ using BankingSystemAPI.Application.Features.CheckingAccounts.Commands.UpdateChec
 using BankingSystemAPI.Application.Features.CheckingAccounts.Queries.GetAllCheckingAccounts;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
-using BankingSystemAPI.Presentation.Helpers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -36,14 +35,6 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10, string? orderBy = null, string? orderDirection = null)
         {
-            var allowed = new[] { "Id", "AccountNumber", "Balance", "CreatedDate" };
-            if (!OrderByValidator.IsValid(orderBy, allowed))
-                return BadRequest(new { 
-                    success = false, 
-                    errors = new[] { $"Invalid orderBy value. Allowed: {string.Join(',', allowed)}" },
-                    message = $"Invalid orderBy value. Allowed: {string.Join(',', allowed)}"
-                });
-
             var result = await _mediator.Send(new GetAllCheckingAccountsQuery(pageNumber, pageSize, orderBy, orderDirection));
             return HandleResult(result);
         }

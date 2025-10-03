@@ -1,4 +1,5 @@
 using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Transactions;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
@@ -8,13 +9,14 @@ using System.Collections.Generic;
 using System;
 using BankingSystemAPI.Domain.Constant;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 
 namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
 {
     /// <summary>
-    /// Optimized transfer command handler with reduced database queries and better performance
+    /// Optimized transfer command handler with ResultExtensions for better error handling and functional patterns
     /// </summary>
     public class TransferCommandHandler : ICommandHandler<TransferCommand, TransactionResDto>
     {
@@ -23,71 +25,203 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
         private readonly ITransactionAuthorizationService? _transactionAuth;
         private readonly IAccountAuthorizationService? _accountAuth;
         private readonly ITransactionHelperService _helper;
+        private readonly ILogger<TransferCommandHandler> _logger;
         private const decimal SameCurrencyFeeRate = 0.005m;
         private const decimal DifferentCurrencyFeeRate = 0.01m;
 
         public TransferCommandHandler(IUnitOfWork uow, IMapper mapper, ITransactionHelperService helper, 
-            ITransactionAuthorizationService? transactionAuth = null, IAccountAuthorizationService? accountAuth = null)
+            ITransactionAuthorizationService? transactionAuth = null, IAccountAuthorizationService? accountAuth = null,
+            ILogger<TransferCommandHandler>? logger = null)
         {
             _uow = uow;
             _mapper = mapper;
             _transactionAuth = transactionAuth;
             _accountAuth = accountAuth;
             _helper = helper;
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<TransferCommandHandler>.Instance;
         }
 
         public async Task<Result<TransactionResDto>> Handle(TransferCommand request, CancellationToken cancellationToken)
         {
             var req = request.Req;
 
-            // Early validation
-            if (req.Amount <= 0m)
-                return Result<TransactionResDto>.Failure(new[] { "Invalid amount." });
+            // Sequential validation using ResultExtensions
+            var basicValidationResult = ValidateBasicInput(req);
+            if (basicValidationResult.IsFailure)
+                return Result<TransactionResDto>.Failure(basicValidationResult.Errors);
 
-            if (req.SourceAccountId == req.TargetAccountId)
-                return Result<TransactionResDto>.Failure(new[] { "Source and target accounts must differ." });
+            var accountsResult = await LoadAccountsAsync(req);
+            if (accountsResult.IsFailure)
+                return Result<TransactionResDto>.Failure(accountsResult.Errors);
 
-            // OPTIMIZATION: Fetch both accounts in a single optimized query
-            var accountIds = new[] { req.SourceAccountId, req.TargetAccountId };
-            var accounts = await _uow.AccountRepository.ListAsync(
-                new BankingSystemAPI.Application.Specifications.AccountSpecification.AccountsByIdsSpecification(accountIds));
+            var accountValidationResult = ValidateAccounts(accountsResult.Value!);
+            if (accountValidationResult.IsFailure)
+                return Result<TransactionResDto>.Failure(accountValidationResult.Errors);
+
+            var bankValidationResult = await ValidateBanksAsync(accountsResult.Value!);
+            if (bankValidationResult.IsFailure)
+                return Result<TransactionResDto>.Failure(bankValidationResult.Errors);
+
+            var authorizationResult = await ValidateAuthorizationAsync(accountsResult.Value!.Source, accountsResult.Value.Target, req);
+            if (authorizationResult.IsFailure)
+                return Result<TransactionResDto>.Failure(authorizationResult.Errors);
+
+            var balanceResult = ValidateBalance(accountsResult.Value!.Source, req.Amount);
+            if (balanceResult.IsFailure)
+                return Result<TransactionResDto>.Failure(balanceResult.Errors);
+
+            var transferResult = await ExecuteTransferAsync(accountsResult.Value!, req);
+
+            // Add side effects using ResultExtensions
+            transferResult.OnSuccess(() => 
+                {
+                    _logger.LogInformation("Transfer successful. Source: {SourceId}, Target: {TargetId}, Amount: {Amount}",
+                        req.SourceAccountId, req.TargetAccountId, req.Amount);
+                })
+                .OnFailure(errors => 
+                {
+                    _logger.LogWarning("Transfer failed. Source: {SourceId}, Target: {TargetId}, Amount: {Amount}, Errors: {Errors}",
+                        req.SourceAccountId, req.TargetAccountId, req.Amount, string.Join(", ", errors));
+                });
+
+            return transferResult;
+        }
+
+        private Result ValidateBasicInput(TransferReqDto req)
+        {
+            var validations = new[]
+            {
+                req.Amount <= 0m ? Result.ValidationFailed("Transfer amount must be greater than zero.") : Result.Success(),
+                req.SourceAccountId == req.TargetAccountId ? Result.ValidationFailed("Source and target accounts must be different.") : Result.Success()
+            };
+
+            return ResultExtensions.ValidateAll(validations);
+        }
+
+        private async Task<Result<AccountPair>> LoadAccountsAsync(TransferReqDto req)
+        {
+            try
+            {
+                // OPTIMIZATION: Fetch both accounts in a single optimized query
+                var accountIds = new[] { req.SourceAccountId, req.TargetAccountId };
+                var accounts = await _uow.AccountRepository.ListAsync(
+                    new BankingSystemAPI.Application.Specifications.AccountSpecification.AccountsByIdsSpecification(accountIds));
+                
+                var accountsList = accounts.ToList();
+                var src = accountsList.FirstOrDefault(a => a.Id == req.SourceAccountId);
+                var tgt = accountsList.FirstOrDefault(a => a.Id == req.TargetAccountId);
+
+                if (src == null)
+                    return Result<AccountPair>.NotFound("Account", req.SourceAccountId); // Maps to 404
+
+                if (tgt == null)
+                    return Result<AccountPair>.NotFound("Account", req.TargetAccountId); // Maps to 404
+
+                return Result<AccountPair>.Success(new AccountPair { Source = src, Target = tgt });
+            }
+            catch (Exception ex)
+            {
+                return Result<AccountPair>.BadRequest($"Failed to load accounts: {ex.Message}");
+            }
+        }
+
+        private Result ValidateAccounts(AccountPair accounts)
+        {
+            var validations = new[]
+            {
+                !accounts.Source.IsActive 
+                    ? Result.AccountInactive(accounts.Source.Id.ToString()) // Maps to 409 Conflict
+                    : Result.Success(),
+                    
+                !accounts.Target.IsActive 
+                    ? Result.AccountInactive(accounts.Target.Id.ToString()) // Maps to 409 Conflict
+                    : Result.Success(),
+                    
+                accounts.Source.User?.IsActive != true 
+                    ? Result.Conflict("Cannot perform transaction: source account holder is inactive.") // Maps to 409
+                    : Result.Success(),
+                    
+                accounts.Target.User?.IsActive != true 
+                    ? Result.Conflict("Cannot perform transaction: target account holder is inactive.") // Maps to 409
+                    : Result.Success()
+            };
+
+            return ResultExtensions.ValidateAll(validations);
+        }
+
+        private async Task<Result> ValidateBanksAsync(AccountPair accounts)
+        {
+            var bankIds = new List<int>();
+            if (accounts.Source.User.BankId.HasValue) bankIds.Add(accounts.Source.User.BankId.Value);
+            if (accounts.Target.User.BankId.HasValue && accounts.Target.User.BankId != accounts.Source.User.BankId) 
+                bankIds.Add(accounts.Target.User.BankId.Value);
+
+            if (!bankIds.Any())
+                return Result.Success();
+
+            var bankValidations = new List<Result>();
+            foreach (var bankId in bankIds.Distinct())
+            {
+                var bank = await _uow.BankRepository.GetByIdAsync(bankId);
+                if (bank != null && !bank.IsActive)
+                {
+                    if (bankId == accounts.Source.User.BankId)
+                        bankValidations.Add(Result.Conflict("Cannot perform transaction: source user's bank is inactive.")); // Maps to 409
+                    if (bankId == accounts.Target.User.BankId)
+                        bankValidations.Add(Result.Conflict("Cannot perform transaction: target user's bank is inactive.")); // Maps to 409
+                }
+                else
+                {
+                    bankValidations.Add(Result.Success());
+                }
+            }
+
+            return ResultExtensions.ValidateAll(bankValidations.ToArray());
+        }
+
+        private async Task<Result> ValidateAuthorizationAsync(Account source, Account target, TransferReqDto req)
+        {
+            try
+            {
+                if (_transactionAuth != null)
+                {
+                    var authResult = await _transactionAuth.CanInitiateTransferAsync(req.SourceAccountId, req.TargetAccountId);
+                    if (authResult.IsFailure)
+                        return Result.Forbidden(string.Join("; ", authResult.Errors)); // Maps to 403
+                }
+
+                if (_accountAuth != null)
+                {
+                    var accountAuthResult = await _accountAuth.CanModifyAccountAsync(req.SourceAccountId, AccountModificationOperation.Withdraw);
+                    if (accountAuthResult.IsFailure)
+                        return Result.Forbidden(string.Join("; ", accountAuthResult.Errors)); // Maps to 403
+                }
+
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                return Result.Forbidden($"Authorization failed: {ex.Message}");
+            }
+        }
+
+        private Result ValidateBalance(Account source, decimal amount)
+        {
+            decimal available = source.Balance;
+            if (source is CheckingAccount sc) available += sc.OverdraftLimit;
             
-            var accountsList = accounts.ToList();
-            var src = accountsList.FirstOrDefault(a => a.Id == req.SourceAccountId);
-            var tgt = accountsList.FirstOrDefault(a => a.Id == req.TargetAccountId);
+            return available >= amount
+                ? Result.Success()
+                : Result.InsufficientFunds(amount, available); // Maps to 409 Conflict
+        }
 
-            if (src == null) return Result<TransactionResDto>.Failure(new[] { "Source account not found." });
-            if (tgt == null) return Result<TransactionResDto>.Failure(new[] { "Target account not found." });
-
-            // OPTIMIZATION: Combined validation in single check
-            var validationErrors = ValidateAccountsAndUsers(src, tgt);
-            if (validationErrors.Any())
-                return Result<TransactionResDto>.Failure(validationErrors);
-
-            // OPTIMIZATION: Batch bank validation if needed
-            var bankValidationErrors = await ValidateBanksAsync(src, tgt);
-            if (bankValidationErrors.Any())
-                return Result<TransactionResDto>.Failure(bankValidationErrors);
-
-            // Authorization checks
-            if (_transactionAuth != null)
-                await _transactionAuth.CanInitiateTransferAsync(req.SourceAccountId, req.TargetAccountId);
-
-            if (_accountAuth != null)
-                await _accountAuth.CanModifyAccountAsync(req.SourceAccountId, AccountModificationOperation.Withdraw);
-
-            // Business logic validation
-            decimal available = src.Balance;
-            if (src is CheckingAccount sc) available += sc.OverdraftLimit;
-            if (available < req.Amount) 
-                return Result<TransactionResDto>.Failure(new[] { "Insufficient funds." });
-
-            // Execute transfer with transaction handling
+        private async Task<Result<TransactionResDto>> ExecuteTransferAsync(AccountPair accounts, TransferReqDto req)
+        {
             await _uow.BeginTransactionAsync();
             
             try
             {
-                var trx = await ExecuteTransferLogicAsync(req, src, tgt);
+                var trx = await ExecuteTransferLogicAsync(req, accounts.Source, accounts.Target);
                 
                 // EF Core automatically:
                 // - Checks RowVersion in WHERE clause for both accounts
@@ -98,55 +232,11 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
                 var dto = _mapper.Map<TransactionResDto>(trx);
                 return Result<TransactionResDto>.Success(dto);
             }
-            catch
+            catch (Exception ex)
             {
                 await _uow.RollbackAsync();
-                throw;
+                return Result<TransactionResDto>.BadRequest($"Transfer execution failed: {ex.Message}");
             }
-        }
-
-        #region Helper Methods
-
-        private List<string> ValidateAccountsAndUsers(Account src, Account tgt)
-        {
-            var errors = new List<string>();
-
-            if (!src.IsActive || !tgt.IsActive)
-                errors.Add("Source or target account is inactive.");
-
-            if (src.User == null || !src.User.IsActive)
-                errors.Add("Cannot perform transaction for inactive source user.");
-
-            if (tgt.User == null || !tgt.User.IsActive)
-                errors.Add("Cannot perform transaction for inactive target user.");
-
-            return errors;
-        }
-
-        private async Task<List<string>> ValidateBanksAsync(Account src, Account tgt)
-        {
-            var errors = new List<string>();
-            var bankIds = new List<int>();
-
-            if (src.User.BankId.HasValue) bankIds.Add(src.User.BankId.Value);
-            if (tgt.User.BankId.HasValue && tgt.User.BankId != src.User.BankId) bankIds.Add(tgt.User.BankId.Value);
-
-            if (bankIds.Any())
-            {
-                foreach (var bankId in bankIds.Distinct())
-                {
-                    var bank = await _uow.BankRepository.GetByIdAsync(bankId);
-                    if (bank != null && !bank.IsActive)
-                    {
-                        if (bankId == src.User.BankId)
-                            errors.Add("Cannot perform transaction: source user's bank is inactive.");
-                        if (bankId == tgt.User.BankId)
-                            errors.Add("Cannot perform transaction: target user's bank is inactive.");
-                    }
-                }
-            }
-
-            return errors;
         }
 
         private async Task<Transaction> ExecuteTransferLogicAsync(TransferReqDto req, Account src, Account tgt)
@@ -210,6 +300,10 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
             return transaction;
         }
 
-        #endregion
+        private class AccountPair
+        {
+            public Account Source { get; set; } = null!;
+            public Account Target { get; set; } = null!;
+        }
     }
 }

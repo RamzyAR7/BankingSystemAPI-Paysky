@@ -1,4 +1,5 @@
 using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Transactions;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
@@ -10,6 +11,7 @@ using System;
 using BankingSystemAPI.Domain.Constant;
 using Microsoft.EntityFrameworkCore;
 using BankingSystemAPI.Application.Interfaces.Authorization;
+using Microsoft.Extensions.Logging;
 
 namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
 {
@@ -22,13 +24,15 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
+        private readonly ILogger<DepositCommandHandler> _logger;
         private const int MaxRetryCount = 3;
         private readonly IAccountAuthorizationService? _accountAuth;
 
-        public DepositCommandHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService? accountAuth = null)
+        public DepositCommandHandler(IUnitOfWork uow, IMapper mapper, ILogger<DepositCommandHandler> logger, IAccountAuthorizationService? accountAuth = null)
         {
             _uow = uow;
             _mapper = mapper;
+            _logger = logger;
             _accountAuth = accountAuth;
         }
 
@@ -55,33 +59,74 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
         }
 
         /// <summary>
-        /// Handles the deposit command.
+        /// Handles the deposit command using ResultExtensions for cleaner validation flow.
         /// </summary>
         public async Task<Result<TransactionResDto>> Handle(DepositCommand request, CancellationToken cancellationToken)
         {
             var req = request.Req;
 
-            // Validate amount (now using enhanced validation)
+            // Validate amount using functional approach
             if (req.Amount <= 0m)
-                return Result<TransactionResDto>.Failure(new[] { "Invalid amount." });
+                return Result<TransactionResDto>.BadRequest("Invalid amount.");
 
-            var spec = new AccountByIdSpecification(req.AccountId);
-            var account = await _uow.AccountRepository.FindAsync(spec);
-            if (account == null) 
-                return Result<TransactionResDto>.Failure(new[] { "Account not found." });
+            // Chain validations using ResultExtensions
+            var accountResult = await ValidateAccountAsync(req.AccountId);
+            if (accountResult.IsFailure)
+                return Result<TransactionResDto>.Failure(accountResult.Errors);
 
-            // Use enhanced validation method
-            if (!account.CanPerformTransactions())
-                return Result<TransactionResDto>.Failure(new[] { "Account or user is inactive." });
+            var stateResult = ValidateAccountState(accountResult.Value!);
+            if (stateResult.IsFailure)
+                return Result<TransactionResDto>.Failure(stateResult.Errors);
 
-            // Bank validation (if applicable)
-            if (account.User.BankId.HasValue)
+            var bankResult = await ValidateBankAsync(stateResult.Value!);
+            if (bankResult.IsFailure)
+                return Result<TransactionResDto>.Failure(bankResult.Errors);
+
+            var account = bankResult.Value!;
+            var executionResult = await ExecuteDepositAsync(account, req);
+
+            // Add side effects without changing the return type
+            if (executionResult.IsSuccess)
             {
-                var bank = await _uow.BankRepository.GetByIdAsync(account.User.BankId.Value);
-                if (bank != null && !bank.IsActive)
-                    return Result<TransactionResDto>.Failure(new[] { "Cannot perform transaction: user's bank is inactive." });
+                _logger.LogInformation("Deposit successful. Account: {AccountId}, Amount: {Amount}", 
+                    req.AccountId, req.Amount);
+            }
+            else
+            {
+                _logger.LogError("Deposit failed. Account: {AccountId}, Amount: {Amount}, Errors: {Errors}",
+                    req.AccountId, req.Amount, string.Join(", ", executionResult.Errors));
             }
 
+            return executionResult;
+        }
+
+        private async Task<Result<Account>> ValidateAccountAsync(int accountId)
+        {
+            var spec = new AccountByIdSpecification(accountId);
+            var account = await _uow.AccountRepository.FindAsync(spec);
+            return account.ToResult($"Account with ID '{accountId}' not found.");
+        }
+
+        private Result<Account> ValidateAccountState(Account account)
+        {
+            return account.CanPerformTransactions()
+                ? Result<Account>.Success(account)
+                : Result<Account>.BadRequest("Account or user is inactive.");
+        }
+
+        private async Task<Result<Account>> ValidateBankAsync(Account account)
+        {
+            if (!account.User.BankId.HasValue)
+                return Result<Account>.Success(account);
+
+            var bank = await _uow.BankRepository.GetByIdAsync(account.User.BankId.Value);
+            return bank == null || bank.IsActive
+                ? Result<Account>.Success(account)
+                : Result<Account>.BadRequest("Cannot perform transaction: user's bank is inactive.");
+        }
+
+        private async Task<Result<TransactionResDto>> ExecuteDepositAsync(Account account, DepositReqDto req)
+        {
             // Authorization
             if (_accountAuth is not null)
                 await _accountAuth.CanModifyAccountAsync(req.AccountId, AccountModificationOperation.Deposit);

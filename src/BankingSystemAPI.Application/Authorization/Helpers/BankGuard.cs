@@ -1,4 +1,5 @@
 ﻿using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,14 +18,21 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
         /// <returns>Result indicating success or failure with error message</returns>
         public static Result ValidateSameBank(int? actingBankId, int? targetBankId)
         {
-            if (actingBankId == null || targetBankId == null || actingBankId != targetBankId)
-                return Result.Forbidden("Access forbidden due to bank isolation policy.");
-            
-            return Result.Success();
+            var actingValidation = ValidateBankId(actingBankId, "Acting user");
+            if (actingValidation.IsFailure)
+                return actingValidation;
+
+            var targetValidation = ValidateBankId(targetBankId, "Target resource");
+            if (targetValidation.IsFailure)
+                return targetValidation;
+
+            return actingBankId != targetBankId 
+                ? Result.Forbidden("Access forbidden due to bank isolation policy.")
+                : Result.Success();
         }
 
         /// <summary>
-        /// Validates bank access for a single entity
+        /// Validates bank access for a single entity using functional composition
         /// </summary>
         /// <param name="userBankId">User's bank ID</param>
         /// <param name="entityBankId">Entity's bank ID</param>
@@ -32,27 +40,67 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
         /// <returns>Result indicating success or failure</returns>
         public static Result ValidateBankAccess(int? userBankId, int? entityBankId, string entityType = "resource")
         {
-            if (userBankId == null)
-                return Result.Unauthorized("User must belong to a bank to access this resource.");
+            var userValidation = ValidateUserBankId(userBankId);
+            if (userValidation.IsFailure)
+                return userValidation;
 
-            if (entityBankId == null)
-                return Result.BadRequest($"The {entityType} does not belong to any bank.");
+            var entityValidation = ValidateEntityBankId(entityBankId, entityType);
+            if (entityValidation.IsFailure)
+                return entityValidation;
 
-            if (userBankId != entityBankId)
-                return Result.Forbidden($"Access to {entityType} from different bank is forbidden.");
-
-            return Result.Success();
+            return userBankId != entityBankId
+                ? Result.Forbidden($"Access to {entityType} from different bank is forbidden.")
+                : Result.Success();
         }
 
         /// <summary>
-        /// Legacy method for backward compatibility - will be removed in future versions
+        /// Validates multiple bank accesses and combines results
         /// </summary>
-        [Obsolete("Use ValidateSameBank method instead. This method will be removed in future versions.")]
-        public static void EnsureSameBank(int? actingBankId, int? targetBankId)
+        /// <param name="userBankId">User's bank ID</param>
+        /// <param name="entityBankIds">Collection of entity bank IDs to validate</param>
+        /// <param name="entityType">Type of entities for error messages</param>
+        /// <returns>Combined result of all validations</returns>
+        public static Result ValidateMultipleBankAccess(int? userBankId, IEnumerable<int?> entityBankIds, string entityType = "resource")
         {
-            var result = ValidateSameBank(actingBankId, targetBankId);
-            if (result.IsFailure)
-                throw new Application.Exceptions.ForbiddenException(result.ErrorMessage);
+            var userValidation = ValidateUserBankId(userBankId);
+            if (userValidation.IsFailure)
+                return userValidation;
+
+            var entityValidations = entityBankIds
+                .Select(entityBankId => ValidateBankAccess(userBankId, entityBankId, entityType))
+                .ToArray();
+
+            return ResultExtensions.ValidateAll(entityValidations);
+        }
+
+        /// <summary>
+        /// Validates that a bank ID is not null with context-specific error message
+        /// </summary>
+        private static Result ValidateBankId(int? bankId, string context)
+        {
+            return bankId.HasValue
+                ? Result.Success()
+                : Result.BadRequest($"{context} must belong to a bank.");
+        }
+
+        /// <summary>
+        /// Validates user bank ID specifically
+        /// </summary>
+        private static Result ValidateUserBankId(int? userBankId)
+        {
+            return userBankId.HasValue
+                ? Result.Success()
+                : Result.Unauthorized("User must belong to a bank to access this resource.");
+        }
+
+        /// <summary>
+        /// Validates entity bank ID specifically
+        /// </summary>
+        private static Result ValidateEntityBankId(int? entityBankId, string entityType)
+        {
+            return entityBankId.HasValue
+                ? Result.Success()
+                : Result.BadRequest($"The {entityType} does not belong to any bank.");
         }
     }
 }

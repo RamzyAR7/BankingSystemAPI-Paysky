@@ -1,14 +1,14 @@
 using BankingSystemAPI.Application.Authorization;
-using BankingSystemAPI.Application.Authorization.Helpers;
 using BankingSystemAPI.Application.AuthorizationServices;
+using BankingSystemAPI.Application.Authorization.Helpers;
 using BankingSystemAPI.Application.Behaviors;
-using BankingSystemAPI.Application.DTOs.Account;
-using BankingSystemAPI.Application.Interfaces;
+using BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUser;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Repositories;
 using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
+using BankingSystemAPI.Application.Interfaces;
 using BankingSystemAPI.Application.Mapping;
 using BankingSystemAPI.Application.Services;
 using BankingSystemAPI.Domain.Entities;
@@ -215,6 +215,10 @@ builder.Services.AddMediatR(typeof(MappingProfile).Assembly);
 // Register FluentValidation (validators live in Application assembly)
 builder.Services.AddValidatorsFromAssembly(typeof(MappingProfile).Assembly);
 
+// Register specific validators with dependencies
+builder.Services.AddScoped<CreateUserCommandValidator>(provider =>
+    new CreateUserCommandValidator(provider.GetService<ICurrentUserService>()));
+
 // Register MediatR validation behavior
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
@@ -234,7 +238,7 @@ builder.Services.AddScoped<IBankRepository, BankRepository>();
 #endregion
 
 #region Register Services
-// Identity
+// Identity Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserRolesService, UserRolesService>();
@@ -253,8 +257,6 @@ builder.Services.AddScoped<ITransactionAuthorizationService, TransactionAuthoriz
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 // Register TransactionHelperService
 builder.Services.AddScoped<ITransactionHelperService, TransactionHelperService>();
-// Register ValidationService for common validations
-builder.Services.AddScoped<IValidationService, ValidationService>();
 // Register ScopeResolver
 builder.Services.AddScoped<IScopeResolver, ScopeResolver>();
 #endregion

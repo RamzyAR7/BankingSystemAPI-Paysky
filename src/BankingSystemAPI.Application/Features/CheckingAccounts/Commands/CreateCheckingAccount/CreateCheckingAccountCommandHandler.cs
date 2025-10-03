@@ -1,5 +1,6 @@
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
@@ -35,38 +36,70 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Create
                 await _accountAuth.CanCreateAccountForUserAsync(reqDto.UserId);
             }
 
-            // Validate currency (backward compatibility)
-            var currency = await _uow.CurrencyRepository.GetByIdAsync(reqDto.CurrencyId);
-            if (currency == null) 
-                return Result<CheckingAccountDto>.Failure(new[] { $"Currency with ID '{reqDto.CurrencyId}' not found." });
-            if (!currency.IsActive) 
-                return Result<CheckingAccountDto>.Failure(new[] { "Cannot create account with inactive currency." });
+            // Validate currency using extensions
+            var currencyResult = await ValidateCurrencyAsync(reqDto.CurrencyId);
+            if (currencyResult.IsFailure)
+                return Result<CheckingAccountDto>.Failure(currencyResult.Errors);
 
-            // Validate user (backward compatibility)
-            var user = await _uow.UserRepository.FindAsync(new UserByIdSpecification(reqDto.UserId));
-            if (user == null) 
-                return Result<CheckingAccountDto>.Failure(new[] { $"User with ID '{reqDto.UserId}' not found." });
-            if (!user.IsActive) 
-                return Result<CheckingAccountDto>.Failure(new[] { "Cannot create account for inactive user." });
+            // Validate user using extensions
+            var userResult = await ValidateUserAsync(reqDto.UserId);
+            if (userResult.IsFailure)
+                return Result<CheckingAccountDto>.Failure(userResult.Errors);
 
-            // Validate user role (backward compatibility)
-            var targetRole = await _uow.RoleRepository.GetRoleByUserIdAsync(reqDto.UserId);
-            if (targetRole == null || string.IsNullOrWhiteSpace(targetRole.Name)) 
-                return Result<CheckingAccountDto>.Failure(new[] { "Cannot create account for a user that has no role assigned. Assign a role first." });
+            // Validate user role using extensions
+            var roleValidationResult = await ValidateUserRoleAsync(reqDto.UserId);
+            if (roleValidationResult.IsFailure)
+                return Result<CheckingAccountDto>.Failure(roleValidationResult.Errors);
 
-            // Create and map entity
+            // Chain successful validations and create account
+            var accountResult = currencyResult
+                .Bind(currency => userResult
+                    .Bind(user => CreateAccountEntity(reqDto, currency)));
+                    
+            return await accountResult.MapAsync(async entity => await PersistAndMapAsync(entity));
+        }
+
+        private async Task<Result<Currency>> ValidateCurrencyAsync(int currencyId)
+        {
+            var currency = await _uow.CurrencyRepository.GetByIdAsync(currencyId);
+            return currency.ToResult($"Currency with ID '{currencyId}' not found.")
+                .Bind(c => !c.IsActive 
+                    ? Result<Currency>.BadRequest("Cannot create account with inactive currency.")
+                    : Result<Currency>.Success(c));
+        }
+
+        private async Task<Result<ApplicationUser>> ValidateUserAsync(string userId)
+        {
+            var user = await _uow.UserRepository.FindAsync(new UserByIdSpecification(userId));
+            return user.ToResult($"User with ID '{userId}' not found.")
+                .Bind(u => !u.IsActive 
+                    ? Result<ApplicationUser>.BadRequest("Cannot create account for inactive user.")
+                    : Result<ApplicationUser>.Success(u));
+        }
+
+        private async Task<Result> ValidateUserRoleAsync(string userId)
+        {
+            var targetRole = await _uow.RoleRepository.GetRoleByUserIdAsync(userId);
+            var roleName = targetRole?.Name;
+            return roleName.ToResult("Cannot create account for a user that has no role assigned. Assign a role first.")
+                .Bind<string>(_ => Result.Success());
+        }
+
+        private Result<CheckingAccount> CreateAccountEntity(CheckingAccountReqDto reqDto, Currency currency)
+        {
             var entity = _mapper.Map<CheckingAccount>(reqDto);
             entity.AccountNumber = $"CHK-{Guid.NewGuid().ToString()[..8].ToUpper()}";
             entity.CreatedDate = DateTime.UtcNow;
+            entity.Currency = currency;
+            
+            return Result<CheckingAccount>.Success(entity);
+        }
 
-            // Persist
+        private async Task<CheckingAccountDto> PersistAndMapAsync(CheckingAccount entity)
+        {
             await _uow.AccountRepository.AddAsync(entity);
             await _uow.SaveAsync();
-
-            // Set navigation property for proper DTO mapping
-            entity.Currency = currency;
-
-            return Result<CheckingAccountDto>.Success(_mapper.Map<CheckingAccountDto>(entity));
+            return _mapper.Map<CheckingAccountDto>(entity);
         }
     }
 }

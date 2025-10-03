@@ -2,6 +2,10 @@ using FluentValidation;
 
 namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
 {
+    /// <summary>
+    /// Simplified transfer validator with basic input validation only
+    /// Business logic validation handled in the handler
+    /// </summary>
     public class TransferCommandValidator : AbstractValidator<TransferCommand>
     {
         public TransferCommandValidator()

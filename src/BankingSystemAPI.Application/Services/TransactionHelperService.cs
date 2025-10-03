@@ -1,7 +1,9 @@
 using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
-using BankingSystemAPI.Application.Exceptions;
+using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Threading.Tasks;
 using BankingSystemAPI.Application.Specifications;
@@ -12,50 +14,193 @@ namespace BankingSystemAPI.Application.Services
     public class TransactionHelperService : ITransactionHelperService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<TransactionHelperService> _logger;
 
-        public TransactionHelperService(IUnitOfWork unitOfWork)
+        public TransactionHelperService(IUnitOfWork unitOfWork, ILogger<TransactionHelperService> logger)
         {
             _unitOfWork = unitOfWork;
+            _logger = logger;
         }
 
         public async Task<decimal> ConvertAsync(int fromCurrencyId, int toCurrencyId, decimal amount)
         {
-            // fetch currencies using repository
-            var fromCurrency = await _unitOfWork.CurrencyRepository.GetByIdAsync(fromCurrencyId);
-            var toCurrency = await _unitOfWork.CurrencyRepository.GetByIdAsync(toCurrencyId);
+            // Validate input
+            var amountValidation = ValidateConversionInput(amount);
+            if (amountValidation.IsFailure)
+                throw new InvalidOperationException(string.Join(", ", amountValidation.Errors));
 
-            if (fromCurrency == null || toCurrency == null)
-                throw new NotFoundException("One or both currencies are invalid.");
+            // Load currencies
+            var currenciesResult = await LoadCurrenciesAsync(fromCurrencyId, toCurrencyId);
+            if (currenciesResult.IsFailure)
+                throw new InvalidOperationException(string.Join(", ", currenciesResult.Errors));
 
-            if (amount <= 0) throw new BadRequestException("Amount to convert must be greater than zero.");
+            // Calculate conversion
+            var conversionResult = CalculateConversion(currenciesResult.Value!, amount);
+            if (conversionResult.IsFailure)
+                throw new InvalidOperationException(string.Join(", ", conversionResult.Errors));
 
-            if (fromCurrency.Id == toCurrency.Id) return amount;
+            // Add side effects using ResultExtensions
+            conversionResult.OnSuccess(() => 
+                {
+                    _logger.LogDebug("Currency conversion successful: {FromId} -> {ToId}, Amount: {Amount}",
+                        fromCurrencyId, toCurrencyId, amount);
+                })
+                .OnFailure(errors => 
+                {
+                    _logger.LogWarning("Currency conversion failed: {FromId} -> {ToId}, Amount: {Amount}, Errors: {Errors}",
+                        fromCurrencyId, toCurrencyId, amount, string.Join(", ", errors));
+                });
 
-            if (fromCurrency.IsBase)
-                return amount * toCurrency.ExchangeRate;
-
-            if (toCurrency.IsBase)
-                return amount / fromCurrency.ExchangeRate;
-
-            var baseAmount = amount / fromCurrency.ExchangeRate;
-            return baseAmount * toCurrency.ExchangeRate;
+            return conversionResult.Value!;
         }
 
         public async Task<decimal> ConvertAsync(string fromCurrencyCode, string toCurrencyCode, decimal amount)
         {
-            if (string.IsNullOrWhiteSpace(fromCurrencyCode) || string.IsNullOrWhiteSpace(toCurrencyCode))
-                throw new BadRequestException("Currency code is required.");
+            // Validate input
+            var amountValidation = ValidateConversionInput(amount);
+            if (amountValidation.IsFailure)
+                throw new InvalidOperationException(string.Join(", ", amountValidation.Errors));
 
-            var fromSpec = new CurrencyByCodeSpecification(fromCurrencyCode);
-            var toSpec = new CurrencyByCodeSpecification(toCurrencyCode);
+            var codesValidation = ValidateCurrencyCodes(fromCurrencyCode, toCurrencyCode);
+            if (codesValidation.IsFailure)
+                throw new InvalidOperationException(string.Join(", ", codesValidation.Errors));
 
-            var from = await _unitOfWork.CurrencyRepository.FindAsync(fromSpec);
-            var to = await _unitOfWork.CurrencyRepository.FindAsync(toSpec);
+            // Load currencies by code
+            var currenciesResult = await LoadCurrenciesByCodeAsync(fromCurrencyCode, toCurrencyCode);
+            if (currenciesResult.IsFailure)
+                throw new InvalidOperationException(string.Join(", ", currenciesResult.Errors));
 
-            if (from == null || to == null)
-                throw new NotFoundException("One or both currencies are invalid.");
+            // Calculate conversion
+            var conversionResult = CalculateConversion(currenciesResult.Value!, amount);
+            if (conversionResult.IsFailure)
+                throw new InvalidOperationException(string.Join(", ", conversionResult.Errors));
 
-            return await ConvertAsync(from.Id, to.Id, amount);
+            // Add side effects using ResultExtensions
+            conversionResult.OnSuccess(() => 
+                {
+                    _logger.LogDebug("Currency conversion successful: {FromCode} -> {ToCode}, Amount: {Amount}",
+                        fromCurrencyCode, toCurrencyCode, amount);
+                })
+                .OnFailure(errors => 
+                {
+                    _logger.LogWarning("Currency conversion failed: {FromCode} -> {ToCode}, Amount: {Amount}, Errors: {Errors}",
+                        fromCurrencyCode, toCurrencyCode, amount, string.Join(", ", errors));
+                });
+
+            return conversionResult.Value!;
         }
+
+        #region Private Helper Methods
+
+        private Result ValidateConversionInput(decimal amount)
+        {
+            return amount <= 0
+                ? Result.BadRequest("Amount to convert must be greater than zero.")
+                : Result.Success();
+        }
+
+        private async Task<Result<CurrencyPair>> LoadCurrenciesAsync(int fromCurrencyId, int toCurrencyId)
+        {
+            try
+            {
+                var fromCurrency = await _unitOfWork.CurrencyRepository.GetByIdAsync(fromCurrencyId);
+                var toCurrency = await _unitOfWork.CurrencyRepository.GetByIdAsync(toCurrencyId);
+
+                if (fromCurrency == null)
+                    return Result<CurrencyPair>.BadRequest("From currency not found.");
+                
+                if (toCurrency == null)
+                    return Result<CurrencyPair>.BadRequest("To currency not found.");
+
+                return Result<CurrencyPair>.Success(new CurrencyPair 
+                { 
+                    FromCurrency = fromCurrency, 
+                    ToCurrency = toCurrency 
+                });
+            }
+            catch (Exception ex)
+            {
+                return Result<CurrencyPair>.BadRequest($"Failed to load currencies: {ex.Message}");
+            }
+        }
+
+        private Result ValidateCurrencyCodes(string fromCode, string toCode)
+        {
+            if (string.IsNullOrWhiteSpace(fromCode))
+                return Result.BadRequest("From currency code is required.");
+            
+            if (string.IsNullOrWhiteSpace(toCode))
+                return Result.BadRequest("To currency code is required.");
+
+            return Result.Success();
+        }
+
+        private async Task<Result<CurrencyPair>> LoadCurrenciesByCodeAsync(string fromCode, string toCode)
+        {
+            try
+            {
+                var fromSpec = new CurrencyByCodeSpecification(fromCode);
+                var toSpec = new CurrencyByCodeSpecification(toCode);
+
+                var fromCurrency = await _unitOfWork.CurrencyRepository.FindAsync(fromSpec);
+                var toCurrency = await _unitOfWork.CurrencyRepository.FindAsync(toSpec);
+
+                if (fromCurrency == null)
+                    return Result<CurrencyPair>.BadRequest($"Currency '{fromCode}' not found.");
+                
+                if (toCurrency == null)
+                    return Result<CurrencyPair>.BadRequest($"Currency '{toCode}' not found.");
+
+                return Result<CurrencyPair>.Success(new CurrencyPair 
+                { 
+                    FromCurrency = fromCurrency, 
+                    ToCurrency = toCurrency 
+                });
+            }
+            catch (Exception ex)
+            {
+                return Result<CurrencyPair>.BadRequest($"Failed to load currencies by code: {ex.Message}");
+            }
+        }
+
+        private Result<decimal> CalculateConversion(CurrencyPair currencies, decimal amount)
+        {
+            try
+            {
+                // Same currency - no conversion needed
+                if (currencies.FromCurrency.Id == currencies.ToCurrency.Id)
+                    return Result<decimal>.Success(amount);
+
+                // From base currency
+                if (currencies.FromCurrency.IsBase)
+                    return Result<decimal>.Success(amount * currencies.ToCurrency.ExchangeRate);
+
+                // To base currency
+                if (currencies.ToCurrency.IsBase)
+                    return Result<decimal>.Success(amount / currencies.FromCurrency.ExchangeRate);
+
+                // Cross-currency conversion (via base)
+                var baseAmount = amount / currencies.FromCurrency.ExchangeRate;
+                var convertedAmount = baseAmount * currencies.ToCurrency.ExchangeRate;
+                
+                return Result<decimal>.Success(convertedAmount);
+            }
+            catch (Exception ex)
+            {
+                return Result<decimal>.BadRequest($"Currency conversion calculation failed: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Helper Classes
+
+        private class CurrencyPair
+        {
+            public Domain.Entities.Currency FromCurrency { get; set; } = null!;
+            public Domain.Entities.Currency ToCurrency { get; set; } = null!;
+        }
+
+        #endregion
     }
 }

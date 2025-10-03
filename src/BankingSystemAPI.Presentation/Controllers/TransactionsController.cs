@@ -3,7 +3,6 @@ using BankingSystemAPI.Application.Features.Transactions.Queries.GetByAccountId;
 using BankingSystemAPI.Application.Features.Transactions.Queries.GetById;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
-using BankingSystemAPI.Presentation.Helpers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -36,14 +35,6 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetTransactionHistory(int accountId, int pageNumber = 1, int pageSize = 20, string? orderBy = null, string? orderDirection = null)
         {
-            var allowed = new[] { "Timestamp", "Amount", "Id" };
-            if (!OrderByValidator.IsValid(orderBy, allowed))
-                return BadRequest(new { 
-                    success = false, 
-                    errors = new[] { $"Invalid orderBy value. Allowed: {string.Join(',', allowed)}" },
-                    message = $"Invalid orderBy value. Allowed: {string.Join(',', allowed)}"
-                });
-
             var result = await _mediator.Send(new GetTransactionsByAccountQuery(accountId, pageNumber, pageSize, orderBy, orderDirection));
             return HandleResult(result);
         }

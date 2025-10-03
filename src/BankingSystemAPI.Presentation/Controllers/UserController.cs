@@ -11,7 +11,6 @@ using BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserByUser
 using BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUsersByBankId;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
-using BankingSystemAPI.Presentation.Helpers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -43,14 +42,6 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetAllUsers(int pageNumber = 1, int pageSize = 10, string? orderBy = null, string? orderDirection = null)
         {
-            var allowed = new[] { "Id", "UserName", "Email", "FullName", "CreatedDate" };
-            if (!OrderByValidator.IsValid(orderBy, allowed))
-                return BadRequest(new { 
-                    success = false, 
-                    errors = new[] { $"Invalid orderBy value. Allowed: {string.Join(',', allowed)}" },
-                    message = $"Invalid orderBy value. Allowed: {string.Join(',', allowed)}"
-                });
-
             var query = new GetAllUsersQuery(pageNumber, pageSize, orderBy, orderDirection);
             var result = await _mediator.Send(query);
             return HandleResult(result);

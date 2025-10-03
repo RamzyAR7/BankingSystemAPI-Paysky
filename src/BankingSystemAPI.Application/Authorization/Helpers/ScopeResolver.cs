@@ -1,6 +1,9 @@
 ﻿using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Identity;
+using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Domain.Constant;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,18 +15,77 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
     public class ScopeResolver : IScopeResolver
     {
         private readonly ICurrentUserService _currentUser;
+        private readonly ILogger<ScopeResolver> _logger;
 
-        public ScopeResolver(ICurrentUserService currentUser)
+        public ScopeResolver(ICurrentUserService currentUser, ILogger<ScopeResolver> logger)
         {
             _currentUser = currentUser;
+            _logger = logger;
         }
 
         public async Task<AccessScope> GetScopeAsync()
         {
-            var role = await _currentUser.GetRoleFromStoreAsync();
-            if (RoleHelper.IsSuperAdmin(role.Name)) return AccessScope.Global;
-            if (RoleHelper.IsClient(role.Name)) return AccessScope.Self;
-            return AccessScope.BankLevel;
+            try
+            {
+                var role = await _currentUser.GetRoleFromStoreAsync();
+                var scope = DetermineAccessScope(role.Name);
+                
+                // Use ResultExtensions for consistent logging patterns
+                var result = Result<AccessScope>.Success(scope);
+                result.OnSuccess(() => 
+                    {
+                        _logger.LogDebug("[AUTHORIZATION] Access scope resolved: UserId={UserId}, Role={Role}, Scope={Scope}", 
+                            _currentUser.UserId, role.Name, scope);
+                    });
+
+                return scope;
+            }
+            catch (Exception ex)
+            {
+                // Use ResultExtensions for error handling
+                var errorResult = Result<AccessScope>.BadRequest($"Failed to resolve access scope: {ex.Message}");
+                errorResult.OnFailure(errors => 
+                    {
+                        _logger.LogError(ex, "[AUTHORIZATION] Failed to resolve access scope for user: {UserId}", 
+                            _currentUser.UserId);
+                    });
+                
+                // Default to most restrictive scope on error
+                return AccessScope.Self;
+            }
+        }
+
+        private AccessScope DetermineAccessScope(string? roleName)
+        {
+            // Use functional approach with ResultExtensions patterns
+            var scopeResult = ProcessRoleToScope(roleName);
+            
+            scopeResult.OnSuccess(() => 
+                {
+                    _logger.LogDebug("[AUTHORIZATION] Role processed successfully: {Role} -> {Scope}", 
+                        roleName, scopeResult.Value);
+                })
+                .OnFailure(errors => 
+                {
+                    _logger.LogWarning("[AUTHORIZATION] Role processing failed: {Role}, using default scope", roleName);
+                });
+
+            return scopeResult.IsSuccess ? scopeResult.Value : AccessScope.Self;
+        }
+
+        private Result<AccessScope> ProcessRoleToScope(string? roleName)
+        {
+            if (string.IsNullOrEmpty(roleName))
+                return Result<AccessScope>.BadRequest("No role provided").Map(_ => AccessScope.Self);
+
+            if (RoleHelper.IsSuperAdmin(roleName))
+                return Result<AccessScope>.Success(AccessScope.Global);
+            
+            if (RoleHelper.IsClient(roleName))
+                return Result<AccessScope>.Success(AccessScope.Self);
+            
+            // Default to bank level for other roles (Admin, etc.)
+            return Result<AccessScope>.Success(AccessScope.BankLevel);
         }
     }
 }

@@ -1,30 +1,44 @@
 using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Auth;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Messaging;
+using Microsoft.Extensions.Logging;
 
 namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Logout
 {
     public sealed class LogoutCommandHandler : ICommandHandler<LogoutCommand, AuthResultDto>
     {
         private readonly IAuthService _authService;
+        private readonly ILogger<LogoutCommandHandler> _logger;
 
-        public LogoutCommandHandler(IAuthService authService)
+        public LogoutCommandHandler(IAuthService authService, ILogger<LogoutCommandHandler> logger)
         {
             _authService = authService;
+            _logger = logger;
         }
 
         public async Task<Result<AuthResultDto>> Handle(LogoutCommand request, CancellationToken cancellationToken)
         {
             var result = await _authService.LogoutAsync(request.UserId);
 
-            if (!result.Succeeded)
-            {
-                var errors = result.Errors.Select(e => e.Description);
-                return Result<AuthResultDto>.Failure(errors);
-            }
+            // Convert AuthResultDto to Result<AuthResultDto> using ResultExtensions patterns
+            var logoutResult = result.Succeeded
+                ? Result<AuthResultDto>.Success(result)
+                : Result<AuthResultDto>.Failure(result.Errors.Select(e => e.Description));
 
-            return Result<AuthResultDto>.Success(result);
+            // Add side effects using ResultExtensions
+            logoutResult.OnSuccess(() => 
+                {
+                    _logger.LogInformation("User logged out successfully: {UserId}", request.UserId);
+                })
+                .OnFailure(errors => 
+                {
+                    _logger.LogWarning("User logout failed: {UserId}. Errors: {Errors}",
+                        request.UserId, string.Join(", ", errors));
+                });
+
+            return logoutResult;
         }
     }
 }

@@ -36,7 +36,7 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                     b.Property<string>("AccountNumber")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50)");
 
                     b.Property<decimal>("Balance")
                         .HasColumnType("decimal(18,2)");
@@ -60,6 +60,7 @@ namespace BankingSystemAPI.Infrastructure.Migrations
 
                     b.Property<string>("UserId")
                         .IsRequired()
+                        .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
@@ -507,11 +508,16 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                     b.HasBaseType("BankingSystemAPI.Domain.Entities.Account");
 
                     b.Property<decimal>("InterestRate")
-                        .HasColumnType("decimal(5,2)");
+                        .HasPrecision(5, 4)
+                        .HasColumnType("decimal(5,4)");
 
-                    b.Property<string>("InterestType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("InterestType")
+                        .HasColumnType("int")
+                        .HasColumnName("InterestType")
+                        .HasComment("1=Monthly, 2=Quarterly, 3=Annually, 4=Every5Minutes(Testing)");
+
+                    b.HasIndex("InterestType")
+                        .HasDatabaseName("IX_SavingsAccount_InterestType");
 
                     b.ToTable("SavingsAccounts");
                 });

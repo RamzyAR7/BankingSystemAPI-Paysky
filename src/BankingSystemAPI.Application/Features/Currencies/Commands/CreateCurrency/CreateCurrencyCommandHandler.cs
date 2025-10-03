@@ -1,11 +1,12 @@
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Currency;
-using BankingSystemAPI.Application.Exceptions;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.CurrencySpecification;
 using BankingSystemAPI.Domain.Entities;
+using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 
 namespace BankingSystemAPI.Application.Features.Currencies.Commands.CreateCurrency
@@ -14,36 +15,70 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.CreateCurren
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
+        private readonly ILogger<CreateCurrencyCommandHandler> _logger;
 
-        public CreateCurrencyCommandHandler(IUnitOfWork uow, IMapper mapper)
+        public CreateCurrencyCommandHandler(IUnitOfWork uow, IMapper mapper, ILogger<CreateCurrencyCommandHandler> logger)
         {
             _uow = uow;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<Result<CurrencyDto>> Handle(CreateCurrencyCommand request, CancellationToken cancellationToken)
         {
-            var reqDto = request.Currency;
-            if (reqDto == null)
-                return Result<CurrencyDto>.Failure(new[] { "Request body is required." });
-            if (string.IsNullOrWhiteSpace(reqDto.Code))
-                return Result<CurrencyDto>.Failure(new[] { "Currency code is required." });
-            if (reqDto.ExchangeRate <= 0)
-                return Result<CurrencyDto>.Failure(new[] { "Exchange rate must be greater than zero." });
+            // Note: Input validation (null checks, empty code, exchange rate > 0) handled by CreateCurrencyCommandValidator
+            // This handler focuses on business logic validation and execution
+            
+            // Business validation: Check base currency business rule
+            var baseValidationResult = await ValidateBaseCurrencyRuleAsync(request.Currency);
+            if (baseValidationResult.IsFailure)
+                return Result<CurrencyDto>.Failure(baseValidationResult.Errors);
 
-            if (reqDto.IsBase)
+            var createResult = await CreateCurrencyAsync(request.Currency);
+            
+            // Add side effects using ResultExtensions
+            createResult.OnSuccess(() => 
+                {
+                    _logger.LogInformation("Currency created successfully: {Code}, IsBase: {IsBase}, ExchangeRate: {Rate}", 
+                        request.Currency.Code, request.Currency.IsBase, request.Currency.ExchangeRate);
+                })
+                .OnFailure(errors => 
+                {
+                    _logger.LogWarning("Currency creation failed for: {Code}. Errors: {Errors}",
+                        request.Currency?.Code, string.Join(", ", errors));
+                });
+
+            return createResult;
+        }
+
+        private async Task<Result> ValidateBaseCurrencyRuleAsync(CurrencyReqDto reqDto)
+        {
+            if (!reqDto.IsBase)
+                return Result.Success();
+
+            var baseSpec = new CurrencyBaseSpecification();
+            var existingBase = await _uow.CurrencyRepository.FindAsync(baseSpec);
+            
+            return existingBase == null
+                ? Result.Success()
+                : Result.BadRequest("A base currency already exists. Clear it before creating another base currency.");
+        }
+
+        private async Task<Result<CurrencyDto>> CreateCurrencyAsync(CurrencyReqDto reqDto)
+        {
+            try
             {
-                var baseSpec = new CurrencyBaseSpecification();
-                var existingBase = await _uow.CurrencyRepository.FindAsync(baseSpec);
-                if (existingBase != null)
-                    return Result<CurrencyDto>.Failure(new[] { "A base currency already exists. Clear it before creating another base currency." });
+                var entity = _mapper.Map<Currency>(reqDto);
+                await _uow.CurrencyRepository.AddAsync(entity);
+                await _uow.SaveAsync();
+
+                var resultDto = _mapper.Map<CurrencyDto>(entity);
+                return Result<CurrencyDto>.Success(resultDto);
             }
-
-            var entity = _mapper.Map<Currency>(reqDto);
-            await _uow.CurrencyRepository.AddAsync(entity);
-            await _uow.SaveAsync();
-
-            return Result<CurrencyDto>.Success(_mapper.Map<CurrencyDto>(entity));
+            catch (Exception ex)
+            {
+                return Result<CurrencyDto>.BadRequest($"Failed to create currency: {ex.Message}");
+            }
         }
     }
 }

@@ -1,9 +1,11 @@
 using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Domain.Constant;
+using Microsoft.Extensions.Logging;
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUser
 {
@@ -12,55 +14,102 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
         private readonly IUserService _userService;
         private readonly ICurrentUserService _currentUserService;
         private readonly IUserAuthorizationService? _userAuthorizationService;
+        private readonly ILogger<DeleteUserCommandHandler> _logger;
 
         public DeleteUserCommandHandler(
             IUserService userService,
             ICurrentUserService currentUserService,
+            ILogger<DeleteUserCommandHandler> logger,
             IUserAuthorizationService? userAuthorizationService = null)
         {
             _userService = userService;
             _currentUserService = currentUserService;
             _userAuthorizationService = userAuthorizationService;
+            _logger = logger;
         }
 
         public async Task<Result<UserResDto>> Handle(DeleteUserCommand request, CancellationToken cancellationToken)
         {
-            // Authorization check - let exceptions bubble up to middleware
-            if (_userAuthorizationService != null)
-            {
-                await _userAuthorizationService.CanModifyUserAsync(request.UserId, UserModificationOperation.Delete);
-            }
+            // Chain validation and deletion using ResultExtensions
+            var authResult = await ValidateAuthorizationAsync(request.UserId);
+            if (authResult.IsFailure)
+                return Result<UserResDto>.Failure(authResult.Errors);
 
-            // Business validation: Prevent self-deletion
+            var selfDeletionResult = ValidateSelfDeletion(request.UserId);
+            if (selfDeletionResult.IsFailure)
+                return Result<UserResDto>.Failure(selfDeletionResult.Errors);
+
+            var userResult = await ValidateUserExistsAsync(request.UserId);
+            if (userResult.IsFailure)
+                return Result<UserResDto>.Failure(userResult.Errors);
+
+            var accountsResult = ValidateNoExistingAccounts(userResult.Value!);
+            if (accountsResult.IsFailure)
+                return Result<UserResDto>.Failure(accountsResult.Errors);
+
+            var deleteResult = await ExecuteUserDeletionAsync(request.UserId);
+            
+            // Add side effects using ResultExtensions
+            deleteResult.OnSuccess(() => 
+                {
+                    _logger.LogInformation("User deleted successfully: {UserId} by {ActorId}", 
+                        request.UserId, _currentUserService.UserId);
+                })
+                .OnFailure(errors => 
+                {
+                    _logger.LogWarning("User deletion failed: {UserId} by {ActorId}. Errors: {Errors}",
+                        request.UserId, _currentUserService.UserId, string.Join(", ", errors));
+                });
+
+            return deleteResult;
+        }
+
+        private async Task<Result> ValidateAuthorizationAsync(string userId)
+        {
+            if (_userAuthorizationService == null)
+                return Result.Success();
+
+            try
+            {
+                await _userAuthorizationService.CanModifyUserAsync(userId, UserModificationOperation.Delete);
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                return Result.Forbidden($"Authorization failed: {ex.Message}");
+            }
+        }
+
+        private Result ValidateSelfDeletion(string targetUserId)
+        {
             var actingUserId = _currentUserService.UserId;
-            if (!string.IsNullOrEmpty(actingUserId) && string.Equals(actingUserId, request.UserId, StringComparison.OrdinalIgnoreCase))
-            {
-                return Result<UserResDto>.Failure(new[] { "Cannot delete yourself." });
-            }
+            
+            return !string.IsNullOrEmpty(actingUserId) && string.Equals(actingUserId, targetUserId, StringComparison.OrdinalIgnoreCase)
+                ? Result.BadRequest("Cannot delete yourself.")
+                : Result.Success();
+        }
 
-            // Business validation: Check if user exists - will fail if user doesn't exist
-            var existingUserResult = await _userService.GetUserByIdAsync(request.UserId);
-            if (!existingUserResult.Succeeded)
-            {
-                return Result<UserResDto>.Failure(existingUserResult.Errors);
-            }
+        private async Task<Result<UserResDto>> ValidateUserExistsAsync(string userId)
+        {
+            var result = await _userService.GetUserByIdAsync(userId);
+            return result.Succeeded
+                ? Result<UserResDto>.Success(result.Value!)
+                : Result<UserResDto>.Failure(result.Errors);
+        }
 
-            var existingUser = existingUserResult.Value!;
+        private Result ValidateNoExistingAccounts(UserResDto user)
+        {
+            return user.Accounts != null && user.Accounts.Any()
+                ? Result.BadRequest("Cannot delete user with existing accounts.")
+                : Result.Success();
+        }
 
-            // Business validation: Check if user has accounts
-            if (existingUser.Accounts != null && existingUser.Accounts.Any())
-            {
-                return Result<UserResDto>.Failure(new[] { "Cannot delete user with existing accounts." });
-            }
-
-            var result = await _userService.DeleteUserAsync(request.UserId);
-
-            if (!result.Succeeded)
-            {
-                return Result<UserResDto>.Failure(result.Errors);
-            }
-
-            return Result<UserResDto>.Success(result.Value!);
+        private async Task<Result<UserResDto>> ExecuteUserDeletionAsync(string userId)
+        {
+            var result = await _userService.DeleteUserAsync(userId);
+            return result.Succeeded
+                ? Result<UserResDto>.Success(result.Value!)
+                : Result<UserResDto>.Failure(result.Errors);
         }
     }
 }

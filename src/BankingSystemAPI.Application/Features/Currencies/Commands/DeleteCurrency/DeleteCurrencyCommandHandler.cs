@@ -1,5 +1,4 @@
 using BankingSystemAPI.Domain.Common;
-using BankingSystemAPI.Application.Exceptions;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.CurrencySpecification;
@@ -17,12 +16,15 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.DeleteCurren
 
         public async Task<Result> Handle(DeleteCurrencyCommand request, CancellationToken cancellationToken)
         {
-            if (request.Id <= 0) return Result.Failure(new[] { "Invalid currency id." });
-
+            // Note: Input validation (ID > 0) handled by DeleteCurrencyCommandValidator
+            // This handler focuses on business logic validation and execution
+            
             var spec = new CurrencyByIdSpecification(request.Id);
             var currency = await _uow.CurrencyRepository.FindAsync(spec);
-            if (currency == null) return Result.Failure(new[] { "Currency not found." });
+            if (currency == null) 
+                return Result.Failure(new[] { "Currency not found." });
 
+            // Business validation: Check if currency is in use by accounts
             var accountsUsingCurrency = await _uow.AccountRepository.CountAsync(a => a.CurrencyId == request.Id);
             if (accountsUsingCurrency > 0)
                 return Result.Failure(new[] { "Cannot delete a currency that is in use by one or more accounts." });

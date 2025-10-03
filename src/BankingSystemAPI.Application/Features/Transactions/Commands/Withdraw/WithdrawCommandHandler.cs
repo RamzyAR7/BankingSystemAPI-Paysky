@@ -1,4 +1,5 @@
 using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Transactions;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
@@ -56,32 +57,95 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
         {
             var req = request.Req;
 
-            // Validate amount
+            // Validate amount using functional approach
             if (req.Amount <= 0m)
-                return Result<TransactionResDto>.Failure(new[] { "Invalid amount." });
+                return Result<TransactionResDto>.BadRequest("Invalid amount.");
 
-            var spec = new AccountByIdSpecification(req.AccountId);
-            var account = await _uow.AccountRepository.FindAsync(spec);
-            if (account == null) 
-                return Result<TransactionResDto>.Failure(new[] { "Account not found." });
+            // Chain validations using ResultExtensions
+            var accountResult = await ValidateAccountAsync(req.AccountId);
+            if (accountResult.IsFailure)
+                return Result<TransactionResDto>.Failure(accountResult.Errors);
 
-            // Use enhanced validation method
-            if (!account.CanPerformTransactions())
-                return Result<TransactionResDto>.Failure(new[] { "Account or user is inactive." });
+            var stateResult = await ValidateAccountStateAsync(accountResult.Value!);
+            if (stateResult.IsFailure)
+                return Result<TransactionResDto>.Failure(stateResult.Errors);
 
-            // Bank validation (if applicable)
-            if (account.User.BankId.HasValue)
+            var bankResult = await ValidateBankAsync(stateResult.Value!);
+            if (bankResult.IsFailure)
+                return Result<TransactionResDto>.Failure(bankResult.Errors);
+
+            var amountResult = ValidateWithdrawalAmount(bankResult.Value!, req.Amount);
+            if (amountResult.IsFailure)
+                return Result<TransactionResDto>.Failure(amountResult.Errors);
+
+            var account = amountResult.Value!;
+            var executionResult = await ExecuteWithdrawalAsync(account, req);
+
+            // Add side effects without changing the return type
+            if (executionResult.IsSuccess)
             {
-                var bank = await _uow.BankRepository.GetByIdAsync(account.User.BankId.Value);
-                if (bank != null && !bank.IsActive)
-                    return Result<TransactionResDto>.Failure(new[] { "Cannot perform transaction: user's bank is inactive." });
+                // Could add success logging here
+            }
+            else
+            {
+                // Could add error logging here
             }
 
-            // Pre-check available funds using enhanced method
-            var availableBalance = account.GetAvailableBalance();
-            if (req.Amount > availableBalance)
-                return Result<TransactionResDto>.Failure(new[] { "Insufficient funds." });
+            return executionResult;
+        }
 
+        private async Task<Result<Account>> ValidateAccountAsync(int accountId)
+        {
+            var spec = new AccountByIdSpecification(accountId);
+            var account = await _uow.AccountRepository.FindAsync(spec);
+            return account.ToResult($"Account with ID '{accountId}' not found.");
+        }
+
+        private async Task<Result<Account>> ValidateAccountStateAsync(Account account)
+        {
+            return account.CanPerformTransactions()
+                ? Result<Account>.Success(account)
+                : Result<Account>.BadRequest("Account or user is inactive.");
+        }
+
+        private async Task<Result<Account>> ValidateBankAsync(Account account)
+        {
+            if (!account.User.BankId.HasValue)
+                return Result<Account>.Success(account);
+
+            var bank = await _uow.BankRepository.GetByIdAsync(account.User.BankId.Value);
+            return bank == null || bank.IsActive
+                ? Result<Account>.Success(account)
+                : Result<Account>.BadRequest("Cannot perform transaction: user's bank is inactive.");
+        }
+
+        private Result<Account> ValidateWithdrawalAmount(Account account, decimal amount)
+        {
+            // Special handling for checking accounts with overdraft facility
+            if (account is CheckingAccount checkingAccount)
+            {
+                if (!checkingAccount.CanWithdraw(amount))
+                {
+                    var maxAllowed = checkingAccount.GetMaxWithdrawalAmount();
+                    var balance = checkingAccount.Balance;
+                    var overdraftAvailable = checkingAccount.GetAvailableOverdraftCredit();
+                    
+                    return Result<Account>.BadRequest(
+                        $"Insufficient funds. Maximum withdrawal: {maxAllowed:C} " +
+                        $"(Balance: {balance:C}, Overdraft available: {overdraftAvailable:C})");
+                }
+                return Result<Account>.Success(account);
+            }
+            
+            // For other account types (Savings), use balance only - no overdraft
+            var availableBalance = account.GetAvailableBalance();
+            return amount > availableBalance
+                ? Result<Account>.BadRequest($"Insufficient funds. Available balance: {availableBalance:C}")
+                : Result<Account>.Success(account);
+        }
+
+        private async Task<Result<TransactionResDto>> ExecuteWithdrawalAsync(Account account, WithdrawReqDto req)
+        {
             // Authorization
             if (_accountAuth is not null)
                 await _accountAuth.CanModifyAccountAsync(req.AccountId, AccountModificationOperation.Withdraw);

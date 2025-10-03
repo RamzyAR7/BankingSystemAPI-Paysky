@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,15 +19,14 @@ namespace BankingSystemAPI.Domain.Entities
         /// Must be between 0% and 100%.
         /// </summary>
         [Required]
-        [Column(TypeName = "decimal(5,4)")]
         [Range(0.0000, 1.0000, ErrorMessage = "Interest rate must be between 0% and 100%")]
         public decimal InterestRate { get; set; } = 0.0000m;
 
         /// <summary>
         /// Type of interest calculation frequency (Monthly, Quarterly, Annually).
+        /// Configuration handled in SavingsAccountConfiguration.
         /// </summary>
         [Required]
-        [Column(TypeName = "int")]
         public InterestType InterestType { get; set; } = InterestType.Monthly;
 
         /// <summary>

@@ -1,10 +1,12 @@
 ﻿using BankingSystemAPI.Application.DTOs.Role;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Domain.Constant;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace BankingSystemAPI.Infrastructure.Services
@@ -12,61 +14,119 @@ namespace BankingSystemAPI.Infrastructure.Services
     public class RoleClaimsService : IRoleClaimsService
     {
         private readonly RoleManager<ApplicationRole> _roleManager;
+        private readonly ILogger<RoleClaimsService> _logger;
 
-        public RoleClaimsService(RoleManager<ApplicationRole> roleManager)
+        public RoleClaimsService(RoleManager<ApplicationRole> roleManager, ILogger<RoleClaimsService> logger)
         {
             _roleManager = roleManager;
+            _logger = logger;
         }
 
         public async Task<Result<RoleClaimsUpdateResultDto>> UpdateRoleClaimsAsync(UpdateRoleClaimsDto dto)
         {
-            // Input validation
-            if (dto == null || string.IsNullOrWhiteSpace(dto.RoleName))
-            {
-                return Result<RoleClaimsUpdateResultDto>.Failure(new[] { "Role name cannot be null or empty." });
-            }
-
-            if (dto.Claims == null)
-            {
-                return Result<RoleClaimsUpdateResultDto>.Failure(new[] { "Claims list cannot be null." });
-            }
-
-            var role = await _roleManager.FindByNameAsync(dto.RoleName);
-            if (role == null)
-            {
-                return Result<RoleClaimsUpdateResultDto>.Failure(new[] { "Role not found." });
-            }
-
-            // REMOVE existing claims
-            var existingClaims = await _roleManager.GetClaimsAsync(role);
-            if (existingClaims.Any())
-            {
-                foreach (var claim in existingClaims)
+            // Chain validation and update operations using ResultExtensions
+            return await ValidateInputAsync(dto)
+                .BindAsync(async validDto => await FindRoleAsync(validDto.RoleName))
+                .BindAsync(async role => await RemoveExistingClaimsAsync(role))
+                .BindAsync(async role => await AddNewClaimsAsync(role, dto.Claims))
+                .MapAsync(async role => CreateSuccessResultAsync(role, dto.Claims))
+                .OnSuccess(() => 
                 {
-                    var removeResult = await _roleManager.RemoveClaimAsync(role, claim);
-                    if (!removeResult.Succeeded)
-                    {
-                        var errors = removeResult.Errors.Select(e => e.Description);
-                        return Result<RoleClaimsUpdateResultDto>.Failure(errors);
-                    }
+                    _logger.LogInformation("Role claims updated successfully for role: {RoleName}", dto.RoleName);
+                })
+                .OnFailure(errors => 
+                {
+                    _logger.LogWarning("Role claims update failed for role: {RoleName}. Errors: {Errors}",
+                        dto?.RoleName, string.Join(", ", errors));
+                });
+        }
+
+        public async Task<Result<ICollection<RoleClaimsResDto>>> GetAllClaimsByGroup()
+        {
+            try
+            {
+                var result = BuildClaimsByGroup();
+                
+                // Add side effects without changing return type
+                if (result.IsSuccess)
+                {
+                    _logger.LogDebug("Successfully retrieved all claims by group");
+                }
+                else
+                {
+                    _logger.LogError("Failed to retrieve claims by group. Errors: {Errors}",
+                        string.Join(", ", result.Errors));
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = $"Failed to retrieve claims by group: {ex.Message}";
+                _logger.LogError(ex, errorMessage);
+                return Result<ICollection<RoleClaimsResDto>>.BadRequest(errorMessage);
+            }
+        }
+
+        private async Task<Result<UpdateRoleClaimsDto>> ValidateInputAsync(UpdateRoleClaimsDto dto)
+        {
+            return dto.ToResult("Role claims data is required.")
+                .Bind(d => string.IsNullOrWhiteSpace(d.RoleName)
+                    ? Result<UpdateRoleClaimsDto>.BadRequest("Role name cannot be null or empty.")
+                    : Result<UpdateRoleClaimsDto>.Success(d))
+                .Bind(d => d.Claims == null
+                    ? Result<UpdateRoleClaimsDto>.BadRequest("Claims list cannot be null.")
+                    : Result<UpdateRoleClaimsDto>.Success(d));
+        }
+
+        private async Task<Result<ApplicationRole>> FindRoleAsync(string roleName)
+        {
+            var role = await _roleManager.FindByNameAsync(roleName);
+            return role.ToResult($"Role '{roleName}' not found.");
+        }
+
+        private async Task<Result<ApplicationRole>> RemoveExistingClaimsAsync(ApplicationRole role)
+        {
+            var existingClaims = await _roleManager.GetClaimsAsync(role);
+            if (!existingClaims.Any())
+                return Result<ApplicationRole>.Success(role);
+
+            // Remove all existing claims
+            foreach (var claim in existingClaims)
+            {
+                var removeResult = await _roleManager.RemoveClaimAsync(role, claim);
+                if (!removeResult.Succeeded)
+                {
+                    var errors = removeResult.Errors.Select(e => e.Description);
+                    return Result<ApplicationRole>.Failure(errors);
                 }
             }
 
-            // ADD new claims
-            var distinctClaims = dto.Claims.Distinct().ToList();
+            return Result<ApplicationRole>.Success(role);
+        }
+
+        private async Task<Result<ApplicationRole>> AddNewClaimsAsync(ApplicationRole role, ICollection<string> claims)
+        {
+            var distinctClaims = claims.Where(c => !string.IsNullOrWhiteSpace(c)).Distinct().ToList();
+            
             foreach (var claim in distinctClaims)
             {
-                if (string.IsNullOrWhiteSpace(claim)) continue; // Skip empty claims
-                
                 var addResult = await _roleManager.AddClaimAsync(role, new Claim("Permission", claim));
                 if (!addResult.Succeeded)
                 {
                     var errors = addResult.Errors.Select(e => e.Description);
-                    return Result<RoleClaimsUpdateResultDto>.Failure(errors);
+                    return Result<ApplicationRole>.Failure(errors);
                 }
             }
 
-            var result = new RoleClaimsUpdateResultDto
+            return Result<ApplicationRole>.Success(role);
+        }
+
+        private RoleClaimsUpdateResultDto CreateSuccessResultAsync(ApplicationRole role, ICollection<string> claims)
+        {
+            var distinctClaims = claims.Where(c => !string.IsNullOrWhiteSpace(c)).Distinct().ToList();
+            
+            return new RoleClaimsUpdateResultDto
             {
                 RoleClaims = new RoleClaimsResDto
                 {
@@ -76,11 +136,9 @@ namespace BankingSystemAPI.Infrastructure.Services
                 Succeeded = true,
                 Errors = new List<IdentityError>()
             };
-
-            return Result<RoleClaimsUpdateResultDto>.Success(result);
         }
 
-        public async Task<Result<ICollection<RoleClaimsResDto>>> GetAllClaimsByGroup()
+        private Result<ICollection<RoleClaimsResDto>> BuildClaimsByGroup()
         {
             try
             {
@@ -89,96 +147,8 @@ namespace BankingSystemAPI.Infrastructure.Services
                 var controllers = Enum.GetValues(typeof(ControllerType)).Cast<ControllerType>();
                 foreach (var controller in controllers)
                 {
-                    IEnumerable<string> permissions = controller switch
-                    {
-                        ControllerType.User => new[]
-                        {
-                            Permission.User.Create,
-                            Permission.User.Update,
-                            Permission.User.Delete,
-                            Permission.User.ReadAll,
-                            Permission.User.ReadById,
-                            Permission.User.ReadByUsername,
-                            Permission.User.ChangePassword,
-                            Permission.User.DeleteRange,
-                            Permission.User.ReadSelf,
-                            Permission.User.UpdateActiveStatus
-                        },
-                        ControllerType.UserRoles => new[]
-                        {
-                            Permission.UserRoles.Assign
-                        },
-                        ControllerType.Role => new[]
-                        {
-                            Permission.Role.Create,
-                            Permission.Role.Delete,
-                            Permission.Role.ReadAll
-                        },
-                        ControllerType.RoleClaims => new[]
-                        {
-                            Permission.RoleClaims.Assign,
-                            Permission.RoleClaims.ReadAll
-                        },
-                        ControllerType.Auth => new[]
-                        {
-                            Permission.Auth.RevokeToken
-                        },
-                        ControllerType.Account => new[]
-                        {
-                            Permission.Account.ReadById,
-                            Permission.Account.ReadByNationalId,
-                            Permission.Account.ReadByAccountNumber,
-                            Permission.Account.ReadByUserId,
-                            Permission.Account.Delete,
-                            Permission.Account.DeleteMany,
-                            Permission.Account.UpdateActiveStatus
-                        },
-                        ControllerType.CheckingAccount => new[]
-                        {
-                            Permission.CheckingAccount.Create,
-                            Permission.CheckingAccount.Update,
-                            Permission.CheckingAccount.ReadAll,
-                            Permission.CheckingAccount.UpdateActiveStatus
-                        },
-                        ControllerType.SavingsAccount => new[]
-                        {
-                            Permission.SavingsAccount.Create,
-                            Permission.SavingsAccount.Update,
-                            Permission.SavingsAccount.ReadAll,
-                            Permission.SavingsAccount.UpdateActiveStatus,
-                            Permission.SavingsAccount.ReadAllInterestRate,
-                            Permission.SavingsAccount.ReadInterestRateById
-                        },
-                        ControllerType.Currency => new[]
-                        {
-                            Permission.Currency.Create,
-                            Permission.Currency.Update,
-                            Permission.Currency.Delete,
-                            Permission.Currency.ReadAll,
-                            Permission.Currency.ReadById
-                        },
-                        ControllerType.Transaction => new[]
-                        {
-                            Permission.Transaction.ReadBalance,
-                            Permission.Transaction.Deposit,
-                            Permission.Transaction.Withdraw,
-                            Permission.Transaction.Transfer,
-                            Permission.Transaction.ReadAllHistory,
-                            Permission.Transaction.ReadById
-                        },
-                        ControllerType.Bank => new[]
-                        {
-                            Permission.Bank.Create,
-                            Permission.Bank.Update,
-                            Permission.Bank.Delete,
-                            Permission.Bank.ReadAll,
-                            Permission.Bank.ReadById,
-                            Permission.Bank.ReadByName,
-                            Permission.Bank.UpdateActiveStatus
-                        },
-                        _ => Array.Empty<string>()
-                    };
-
+                    var permissions = GetPermissionsForController(controller);
+                    
                     result.Add(new RoleClaimsResDto
                     {
                         Name = controller.ToString(),
@@ -188,10 +158,69 @@ namespace BankingSystemAPI.Infrastructure.Services
 
                 return Result<ICollection<RoleClaimsResDto>>.Success(result);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                return Result<ICollection<RoleClaimsResDto>>.Failure(new[] { $"Failed to retrieve claims by group: {ex.Message}" });
+                return Result<ICollection<RoleClaimsResDto>>.BadRequest($"Failed to build claims by group: {ex.Message}");
             }
+        }
+
+        private IEnumerable<string> GetPermissionsForController(ControllerType controller)
+        {
+            return controller switch
+            {
+                ControllerType.User => new[]
+                {
+                    Permission.User.Create, Permission.User.Update, Permission.User.Delete,
+                    Permission.User.ReadAll, Permission.User.ReadById, Permission.User.ReadByUsername,
+                    Permission.User.ChangePassword, Permission.User.DeleteRange, Permission.User.ReadSelf,
+                    Permission.User.UpdateActiveStatus
+                },
+                ControllerType.UserRoles => new[] { Permission.UserRoles.Assign },
+                ControllerType.Role => new[]
+                {
+                    Permission.Role.Create, Permission.Role.Delete, Permission.Role.ReadAll
+                },
+                ControllerType.RoleClaims => new[]
+                {
+                    Permission.RoleClaims.Assign, Permission.RoleClaims.ReadAll
+                },
+                ControllerType.Auth => new[] { Permission.Auth.RevokeToken },
+                ControllerType.Account => new[]
+                {
+                    Permission.Account.ReadById, Permission.Account.ReadByNationalId,
+                    Permission.Account.ReadByAccountNumber, Permission.Account.ReadByUserId,
+                    Permission.Account.Delete, Permission.Account.DeleteMany, Permission.Account.UpdateActiveStatus
+                },
+                ControllerType.CheckingAccount => new[]
+                {
+                    Permission.CheckingAccount.Create, Permission.CheckingAccount.Update,
+                    Permission.CheckingAccount.ReadAll, Permission.CheckingAccount.UpdateActiveStatus
+                },
+                ControllerType.SavingsAccount => new[]
+                {
+                    Permission.SavingsAccount.Create, Permission.SavingsAccount.Update,
+                    Permission.SavingsAccount.ReadAll, Permission.SavingsAccount.UpdateActiveStatus,
+                    Permission.SavingsAccount.ReadAllInterestRate, Permission.SavingsAccount.ReadInterestRateById
+                },
+                ControllerType.Currency => new[]
+                {
+                    Permission.Currency.Create, Permission.Currency.Update, Permission.Currency.Delete,
+                    Permission.Currency.ReadAll, Permission.Currency.ReadById
+                },
+                ControllerType.Transaction => new[]
+                {
+                    Permission.Transaction.ReadBalance, Permission.Transaction.Deposit,
+                    Permission.Transaction.Withdraw, Permission.Transaction.Transfer,
+                    Permission.Transaction.ReadAllHistory, Permission.Transaction.ReadById
+                },
+                ControllerType.Bank => new[]
+                {
+                    Permission.Bank.Create, Permission.Bank.Update, Permission.Bank.Delete,
+                    Permission.Bank.ReadAll, Permission.Bank.ReadById, Permission.Bank.ReadByName,
+                    Permission.Bank.UpdateActiveStatus
+                },
+                _ => Array.Empty<string>()
+            };
         }
     }
 }

@@ -29,20 +29,12 @@ namespace BankingSystemAPI.Application.Specifications
                 var dir = (orderDirection ?? "ASC").ToUpperInvariant();
                 var descending = dir != "ASC";
 
-                try
+                ApplyOrderBy(q =>
                 {
-                    var orderBy = ExpressionBuilder.BuildOrderBy<T>(orderByProperty!, descending);
-                    ApplyOrderBy(orderBy);
-                }
-                catch
-                {
-                    ApplyOrderBy(q =>
-                    {
-                        if (descending)
-                            return q.OrderByDescending(x => EF.Property<object>(x, orderByProperty));
-                        return q.OrderBy(x => EF.Property<object>(x, orderByProperty));
-                    });
-                }
+                    if (descending)
+                        return q.OrderByDescending(x => EF.Property<object>(x, orderByProperty));
+                    return q.OrderBy(x => EF.Property<object>(x, orderByProperty));
+                });
             }
         }
 

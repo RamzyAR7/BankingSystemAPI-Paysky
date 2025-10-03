@@ -197,13 +197,19 @@
         </member>
         <member name="T:BankingSystemAPI.Presentation.Controllers.BaseApiController">
             <summary>
-            Base controller providing consistent Result pattern handling
+            Base controller providing consistent Result pattern handling with proper HTTP status codes
             </summary>
         </member>
         <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Presentation.Controllers.BaseApiController.HandleResult``1(BankingSystemAPI.Domain.Common.Result{``0})" -->
         <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.HandleResult(BankingSystemAPI.Domain.Common.Result)">
             <summary>
-            Handle Result (non-generic) responses
+            Handle Result (non-generic) responses with proper HTTP status codes
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.CreateErrorResponse(System.Collections.Generic.IReadOnlyList{System.String})">
+            <summary>
+            Create appropriate error response based on error message patterns
+            This maps business logic errors to proper HTTP status codes
             </summary>
         </member>
         <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Presentation.Controllers.BaseApiController.HandleCreatedResult``1(BankingSystemAPI.Domain.Common.Result{``0},System.String,System.Object)" -->
@@ -213,6 +219,7 @@
             Handle Result for delete scenarios (returns 204 No Content on success)
             </summary>
         </member>
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Presentation.Controllers.BaseApiController.HandleQueryResult``1(BankingSystemAPI.Domain.Common.Result{``0},System.String)" -->
         <member name="T:BankingSystemAPI.Presentation.Controllers.CheckingAccountController">
             <summary>
             Endpoints to manage checking accounts.
@@ -443,8 +450,9 @@
         </member>
         <member name="T:BankingSystemAPI.Presentation.Middlewares.ExceptionHandlingMiddleware">
             <summary>
-            Middleware to handle infrastructure and system-level exceptions.
-            Business logic errors should be handled via Result pattern.
+            Enhanced middleware to handle infrastructure and system-level exceptions with comprehensive ResultExtensions patterns.
+            Optimized for .NET 8 with modern async patterns and performance improvements.
+            Business logic errors should be handled via Result pattern in controllers.
             </summary>
         </member>
         <member name="T:BankingSystemAPI.Presentation.Middlewares.RequestTimingMiddleware">
