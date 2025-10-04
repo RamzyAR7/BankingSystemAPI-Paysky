@@ -2,6 +2,7 @@ using AutoMapper;
 using BankingSystemAPI.Application.DTOs.Transactions;
 using BankingSystemAPI.Application.Features.Transactions.Commands.Deposit;
 using BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw;
+using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.UnitTests.TestInfrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,8 +22,12 @@ public class EnhancedTransactionTests : TestBase
     public EnhancedTransactionTests()
     {
         var depositLogger = new NullLogger<DepositCommandHandler>();
-        _depositHandler = new DepositCommandHandler(UnitOfWork, Mapper, depositLogger);
-        _withdrawHandler = new WithdrawCommandHandler(UnitOfWork, Mapper);
+        var mockAccountAuth = new Mock<IAccountAuthorizationService>();
+        mockAccountAuth.Setup(x => x.CanModifyAccountAsync(It.IsAny<int>(), It.IsAny<AccountModificationOperation>()))
+            .ReturnsAsync(Result.Success());
+        
+        _depositHandler = new DepositCommandHandler(UnitOfWork, Mapper, depositLogger, mockAccountAuth.Object);
+        _withdrawHandler = new WithdrawCommandHandler(UnitOfWork, Mapper, mockAccountAuth.Object);
     }
 
     protected override void ConfigureMapperMock(Mock<IMapper> mapperMock)

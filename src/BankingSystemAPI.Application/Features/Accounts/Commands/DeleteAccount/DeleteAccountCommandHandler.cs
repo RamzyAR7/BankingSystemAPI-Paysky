@@ -11,9 +11,9 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccount
     public class DeleteAccountCommandHandler : ICommandHandler<DeleteAccountCommand>
     {
         private readonly IUnitOfWork _uow;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
 
-        public DeleteAccountCommandHandler(IUnitOfWork uow, IAccountAuthorizationService? accountAuth = null)
+        public DeleteAccountCommandHandler(IUnitOfWork uow, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _accountAuth = accountAuth;
@@ -21,8 +21,9 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccount
 
         public async Task<Result> Handle(DeleteAccountCommand request, CancellationToken cancellationToken)
         {
-            if (_accountAuth != null)
-                await _accountAuth.CanModifyAccountAsync(request.Id, AccountModificationOperation.Delete);
+            var authResult = await _accountAuth.CanModifyAccountAsync(request.Id, AccountModificationOperation.Delete);
+            if (authResult.IsFailure)
+                return Result.Failure(authResult.Errors);
 
             var spec = new AccountByIdSpecification(request.Id);
             var account = await _uow.AccountRepository.FindAsync(spec);

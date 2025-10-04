@@ -23,7 +23,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserBy
         {
             var result = await _userService.GetUserByUsernameAsync(request.Username);
             
-            if (!result.Succeeded)
+            if (!result.IsSuccess)
             {
                 return Result<UserResDto>.Failure(result.Errors);
             }

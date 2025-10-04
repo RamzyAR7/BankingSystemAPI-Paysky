@@ -32,7 +32,7 @@ namespace BankingSystemAPI.Application.Features.Identity.RoleClaims.Queries.GetA
             // Delegate to RoleClaimsService - returns Result<ICollection<RoleClaimsResDto>>
             var claimsResult = await _roleClaimsService.GetAllClaimsByGroup();
             
-            if (!claimsResult.Succeeded)
+            if (!claimsResult.IsSuccess)
             {
                 return Result<ICollection<RoleClaimsResDto>>.Failure(claimsResult.Errors);
             }

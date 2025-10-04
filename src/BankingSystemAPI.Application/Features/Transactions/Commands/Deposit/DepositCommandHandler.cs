@@ -12,6 +12,7 @@ using BankingSystemAPI.Domain.Constant;
 using Microsoft.EntityFrameworkCore;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using Microsoft.Extensions.Logging;
+using BankingSystemAPI.Application.Exceptions;
 
 namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
 {
@@ -26,9 +27,9 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
         private readonly IMapper _mapper;
         private readonly ILogger<DepositCommandHandler> _logger;
         private const int MaxRetryCount = 3;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
 
-        public DepositCommandHandler(IUnitOfWork uow, IMapper mapper, ILogger<DepositCommandHandler> logger, IAccountAuthorizationService? accountAuth = null)
+        public DepositCommandHandler(IUnitOfWork uow, IMapper mapper, ILogger<DepositCommandHandler> logger, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _mapper = mapper;
@@ -71,22 +72,22 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
 
             // Chain validations using ResultExtensions
             var accountResult = await ValidateAccountAsync(req.AccountId);
-            if (accountResult.IsFailure)
+            if (!accountResult) // Using implicit bool operator!
                 return Result<TransactionResDto>.Failure(accountResult.Errors);
 
             var stateResult = ValidateAccountState(accountResult.Value!);
-            if (stateResult.IsFailure)
+            if (!stateResult) // Using implicit bool operator!
                 return Result<TransactionResDto>.Failure(stateResult.Errors);
 
             var bankResult = await ValidateBankAsync(stateResult.Value!);
-            if (bankResult.IsFailure)
+            if (!bankResult) // Using implicit bool operator!
                 return Result<TransactionResDto>.Failure(bankResult.Errors);
 
             var account = bankResult.Value!;
             var executionResult = await ExecuteDepositAsync(account, req);
 
             // Add side effects without changing the return type
-            if (executionResult.IsSuccess)
+            if (executionResult) // Using implicit bool operator!
             {
                 _logger.LogInformation("Deposit successful. Account: {AccountId}, Amount: {Amount}", 
                     req.AccountId, req.Amount);
@@ -128,61 +129,77 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
         private async Task<Result<TransactionResDto>> ExecuteDepositAsync(Account account, DepositReqDto req)
         {
             // Authorization
-            if (_accountAuth is not null)
-                await _accountAuth.CanModifyAccountAsync(req.AccountId, AccountModificationOperation.Deposit);
+            var authResult = await _accountAuth.CanModifyAccountAsync(req.AccountId, AccountModificationOperation.Deposit);
+            if (authResult.IsFailure)
+                return Result<TransactionResDto>.Failure(authResult.Errors);
 
             Transaction trx = null;
 
-            // Execute deposit with retry mechanism
-            await ExecuteWithRetryAsync(async () =>
+            try
             {
-                // Load fresh tracked instance for the operation
-                var trackedAccount = await _uow.AccountRepository.GetByIdAsync(account.Id);
-                if (trackedAccount == null)
-                    throw new InvalidOperationException("Account not found during transaction execution.");
-
-                // Create transaction record
-                trx = new Transaction 
-                { 
-                    Timestamp = DateTime.UtcNow, 
-                    TransactionType = TransactionType.Deposit 
-                };
-
-                var accountTransaction = new AccountTransaction 
-                { 
-                    AccountId = trackedAccount.Id, 
-                    Transaction = trx, 
-                    TransactionCurrency = trackedAccount.Currency?.Code ?? string.Empty, 
-                    Amount = Math.Round(req.Amount, 2), 
-                    Role = TransactionRole.Target, 
-                    Fees = 0m 
-                };
-                
-                trx.AccountTransactions = new List<AccountTransaction> { accountTransaction };
-
-                // Use domain method for deposit (includes business logic and rounding)
-                try
+                // Execute deposit with retry mechanism
+                await ExecuteWithRetryAsync(async () =>
                 {
-                    trackedAccount.Deposit(req.Amount);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    throw new InvalidOperationException($"Deposit failed: {ex.Message}");
-                }
+                    // Load fresh tracked instance with navigation properties using specification
+                    var spec = new AccountByIdSpecification(account.Id);
+                    var trackedAccount = await _uow.AccountRepository.FindAsync(spec);
+                    if (trackedAccount == null)
+                        throw new InvalidOperationException("Account not found during transaction execution.");
 
-                // Persist changes
-                await _uow.TransactionRepository.AddAsync(trx);
-                await _uow.AccountRepository.UpdateAsync(trackedAccount);
-                
-                // EF Core automatically:
-                // - Checks RowVersion in WHERE clause
-                // - Throws DbUpdateConcurrencyException if conflict
-                // - Updates RowVersion on success
-                await _uow.SaveAsync();
-            });
+                    // Create transaction record
+                    trx = new Transaction 
+                    { 
+                        Timestamp = DateTime.UtcNow, 
+                        TransactionType = TransactionType.Deposit 
+                    };
 
-            var dto = _mapper.Map<TransactionResDto>(trx);
-            return Result<TransactionResDto>.Success(dto);
+                    var accountTransaction = new AccountTransaction 
+                    { 
+                        AccountId = trackedAccount.Id, 
+                        Transaction = trx, 
+                        TransactionCurrency = trackedAccount.Currency?.Code, // Remove ?? string.Empty to allow null
+                        Amount = Math.Round(req.Amount, 2), 
+                        Role = TransactionRole.Target, 
+                        Fees = 0m 
+                    };
+                    
+                    trx.AccountTransactions = new List<AccountTransaction> { accountTransaction };
+
+                    // Use domain method for deposit (includes business logic and rounding)
+                    try
+                    {
+                        trackedAccount.Deposit(req.Amount);
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        // Don't re-throw, instead throw a custom exception that won't be caught by middleware
+                        throw new BusinessRuleException($"Deposit failed: {ex.Message}");
+                    }
+
+                    // Persist changes
+                    await _uow.TransactionRepository.AddAsync(trx);
+                    await _uow.AccountRepository.UpdateAsync(trackedAccount);
+                    
+                    // EF Core automatically:
+                    // - Checks RowVersion in WHERE clause
+                    // - Throws DbUpdateConcurrencyException if conflict
+                    // - Updates RowVersion on success
+                    await _uow.SaveAsync();
+                });
+
+                var dto = _mapper.Map<TransactionResDto>(trx);
+                return Result<TransactionResDto>.Success(dto);
+            }
+            catch (BusinessRuleException ex)
+            {
+                // Return proper error result instead of throwing
+                return Result<TransactionResDto>.BadRequest(ex.Message);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("Concurrent update detected"))
+            {
+                // Handle concurrency conflicts properly
+                return Result<TransactionResDto>.Conflict(ex.Message);
+            }
         }
     }
 }

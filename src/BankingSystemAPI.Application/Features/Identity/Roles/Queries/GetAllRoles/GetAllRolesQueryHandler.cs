@@ -87,7 +87,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Queries.GetAllRol
         private async Task<Result<List<RoleResDto>>> RetrieveRolesAsync()
         {
             var rolesResult = await _roleService.GetAllRolesAsync();
-            return rolesResult.Succeeded
+            return rolesResult.IsSuccess
                 ? Result<List<RoleResDto>>.Success(rolesResult.Value!)
                 : Result<List<RoleResDto>>.Failure(rolesResult.Errors);
         }

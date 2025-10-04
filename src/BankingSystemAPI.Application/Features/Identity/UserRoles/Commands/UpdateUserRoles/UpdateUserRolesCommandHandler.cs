@@ -47,7 +47,7 @@ namespace BankingSystemAPI.Application.Features.Identity.UserRoles.Commands.Upda
 
             var result = await _userRolesService.UpdateUserRolesAsync(updateDto);
 
-            if (!result.Succeeded)
+            if (!result) // Using implicit bool operator!
             {
                 return Result<UserRoleUpdateResultDto>.Failure(result.Errors);
             }

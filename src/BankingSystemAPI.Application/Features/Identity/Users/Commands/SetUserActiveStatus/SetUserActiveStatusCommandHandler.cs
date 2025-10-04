@@ -30,7 +30,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.SetUserA
             // The UserService now returns Result
             var result = await _userService.SetUserActiveStatusAsync(request.UserId, request.IsActive);
             
-            if (!result.Succeeded)
+            if (!result) // Using implicit bool operator!
             {
                 return Result.Failure(result.Errors);
             }

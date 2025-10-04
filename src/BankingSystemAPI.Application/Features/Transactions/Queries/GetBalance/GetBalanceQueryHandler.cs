@@ -11,10 +11,10 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetBalance
     public class GetBalanceQueryHandler : IQueryHandler<GetBalanceQuery, decimal>
     {
         private readonly IUnitOfWork _uow;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
         private readonly ILogger<GetBalanceQueryHandler> _logger;
 
-        public GetBalanceQueryHandler(IUnitOfWork uow, ILogger<GetBalanceQueryHandler> logger, IAccountAuthorizationService? accountAuth = null)
+        public GetBalanceQueryHandler(IUnitOfWork uow, ILogger<GetBalanceQueryHandler> logger, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _accountAuth = accountAuth;
@@ -59,9 +59,6 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetBalance
 
         private async Task<Result> ValidateAuthorizationAsync(int accountId)
         {
-            if (_accountAuth == null)
-                return Result.Success();
-
             try
             {
                 var authResult = await _accountAuth.CanViewAccountAsync(accountId);

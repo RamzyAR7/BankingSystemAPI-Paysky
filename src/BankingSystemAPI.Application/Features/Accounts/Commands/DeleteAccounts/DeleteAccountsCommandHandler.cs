@@ -14,9 +14,9 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts
     public class DeleteAccountsCommandHandler : ICommandHandler<DeleteAccountsCommand>
     {
         private readonly IUnitOfWork _uow;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
 
-        public DeleteAccountsCommandHandler(IUnitOfWork uow, IAccountAuthorizationService? accountAuth = null)
+        public DeleteAccountsCommandHandler(IUnitOfWork uow, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _accountAuth = accountAuth;
@@ -42,14 +42,12 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts
                 return Result.Failure(new[] { $"Accounts with IDs [{string.Join(", ", missingIds)}] could not be found." });
             }
 
-            // Authorization
-            if (_accountAuth != null)
+            // Authorization - Check each account
+            foreach (var account in accountsToDelete)
             {
-                // Authorize each account
-                foreach (var account in accountsToDelete)
-                {
-                    await _accountAuth.CanModifyAccountAsync(account.Id, AccountModificationOperation.Delete);
-                }
+                var authResult = await _accountAuth.CanModifyAccountAsync(account.Id, AccountModificationOperation.Delete);
+                if (authResult.IsFailure)
+                    return Result.Failure(authResult.Errors);
             }
 
             // Validate accounts can be deleted (no positive balance)

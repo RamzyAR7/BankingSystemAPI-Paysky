@@ -135,15 +135,19 @@ namespace BankingSystemAPI.Application.Mapping
                         ? src.AccountTransactions.First(at => at.Role == TransactionRole.Target).AccountId
                         : (int?)null))
                 .ForMember(dest => dest.SourceCurrency, opt => opt.MapFrom(src =>
-                    src.AccountTransactions != null && src.AccountTransactions.Any(at => at.Role == TransactionRole.Source)
-                        ? src.AccountTransactions.First(at => at.Role == TransactionRole.Source).TransactionCurrency
-                        : (src.AccountTransactions != null && src.AccountTransactions.Any()
-                            ? src.AccountTransactions.First().TransactionCurrency
-                            : string.Empty)))
+                    src.AccountTransactions != null && src.AccountTransactions.Any()
+                        ? (src.AccountTransactions.Any(at => at.Role == TransactionRole.Source)
+                            ? src.AccountTransactions.First(at => at.Role == TransactionRole.Source).TransactionCurrency
+                            : null) // For deposits, set null instead of empty string
+                        : null))
                 .ForMember(dest => dest.TargetCurrency, opt => opt.MapFrom(src =>
-                    src.AccountTransactions != null && src.AccountTransactions.Count > 1
-                        ? src.AccountTransactions.First(at => at.Role == TransactionRole.Target).TransactionCurrency
-                        : string.Empty))
+                    src.AccountTransactions != null && src.AccountTransactions.Any()
+                        ? (src.AccountTransactions.Count > 1
+                            ? src.AccountTransactions.First(at => at.Role == TransactionRole.Target).TransactionCurrency
+                            : (src.AccountTransactions.First().Role == TransactionRole.Target
+                                ? src.AccountTransactions.First().TransactionCurrency
+                                : null)) // For withdrawals, set null instead of empty string
+                        : null))
                 // convert enum to string representation
                 .ForMember(dest => dest.TransactionType, opt => opt.MapFrom(src => src.TransactionType.ToString()))
                 // set TransactionRole to Source when available, otherwise fall back to first

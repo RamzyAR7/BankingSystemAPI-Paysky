@@ -169,7 +169,7 @@
             <param name="id">The identifier of the bank to update.</param>
             <param name="dto">The updated bank data.</param>
             <returns>
-            204 No Content when the update is successful.
+            200 OK with success message when successful.
             400 Bad Request when the provided data is null or invalid.
             404 Not Found when no bank exists with the provided id.
             </returns>
@@ -180,7 +180,7 @@
             </summary>
             <param name="id">The identifier of the bank to delete.</param>
             <returns>
-            204 No Content when the bank was successfully deleted.
+            200 OK with success message when the bank was successfully deleted.
             404 Not Found when no bank exists with the provided id.
             </returns>
         </member>
@@ -191,35 +191,118 @@
             <param name="id">The identifier of the bank to modify.</param>
             <param name="isActive">Boolean flag indicating whether the bank should be active.</param>
             <returns>
-            204 No Content when the active status change request is processed.
+            200 OK with success message when the active status change request is processed.
             404 Not Found may be returned by the implementation if the bank does not exist.
             </returns>
         </member>
         <member name="T:BankingSystemAPI.Presentation.Controllers.BaseApiController">
             <summary>
             Base controller providing consistent Result pattern handling with proper HTTP status codes
+            Optimized to work seamlessly with semantic Result factory methods
             </summary>
         </member>
         <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Presentation.Controllers.BaseApiController.HandleResult``1(BankingSystemAPI.Domain.Common.Result{``0})" -->
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Presentation.Controllers.BaseApiController.HandleUpdateResult``1(BankingSystemAPI.Domain.Common.Result{``0})" -->
         <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.HandleResult(BankingSystemAPI.Domain.Common.Result)">
             <summary>
-            Handle Result (non-generic) responses with proper HTTP status codes
+            Handle Result (non-generic) responses with proper HTTP status codes and specific success messages
+            Enhanced to work with semantic Result factory methods
+            </summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Presentation.Controllers.BaseApiController.HandleCreatedResult``1(BankingSystemAPI.Domain.Common.Result{``0},System.String,System.Object)" -->
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetSuccessMessage">
+            <summary>
+            Get success message based on HTTP method and controller context
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetDeleteMessage(System.String,System.String)">
+            <summary>
+            Get delete success message
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetUpdateMessage(System.String,System.String)">
+            <summary>
+            Get update success message
+            Enhanced to provide specific messages for different update scenarios
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetSpecificUpdateMessage(System.String,System.String)">
+            <summary>
+            Get specific update message based on action patterns
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetAccountSpecificUpdateMessage(System.String)">
+            <summary>
+            Get account-specific update messages
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetBankSpecificUpdateMessage(System.String)">
+            <summary>
+            Get bank-specific update messages
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetCurrencySpecificUpdateMessage(System.String)">
+            <summary>
+            Get currency-specific update messages
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetProcessMessage(System.String,System.String)">
+            <summary>
+            Get process success message
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetStatusMessage(System.String)">
+            <summary>
+            Get status update message
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetDeactivateMessage(System.String)">
+            <summary>
+            Get deactivate message
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetControllerName">
+            <summary>
+            Get controller name in lowercase
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetActionName">
+            <summary>
+            Get action name in lowercase
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.LogSuccess">
+            <summary>
+            Log successful operation
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.LogFailure(System.Collections.Generic.IReadOnlyList{System.String})">
+            <summary>
+            Log failed operation
             </summary>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.CreateErrorResponse(System.Collections.Generic.IReadOnlyList{System.String})">
             <summary>
             Create appropriate error response based on error message patterns
-            This maps business logic errors to proper HTTP status codes
+            Enhanced to work seamlessly with semantic Result factory methods
             </summary>
         </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Presentation.Controllers.BaseApiController.HandleCreatedResult``1(BankingSystemAPI.Domain.Common.Result{``0},System.String,System.Object)" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Presentation.Controllers.BaseApiController.HandleUpdateResult``1(BankingSystemAPI.Domain.Common.Result{``0})" -->
-        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.HandleDeleteResult(BankingSystemAPI.Domain.Common.Result)">
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetStatusCodeFromSemanticError(System.String)">
             <summary>
-            Handle Result for delete scenarios (returns 204 No Content on success)
+            Get HTTP status code from semantic error message patterns
+            Optimized to work with Result factory method messages
             </summary>
         </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Presentation.Controllers.BaseApiController.HandleQueryResult``1(BankingSystemAPI.Domain.Common.Result{``0},System.String)" -->
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.GetLegacyStatusCode(System.String)">
+            <summary>
+            Legacy status code mapping for backwards compatibility
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Presentation.Controllers.BaseApiController.ContainsAny(System.String,System.String[])">
+            <summary>
+            Check if string contains any of the specified values
+            </summary>
+        </member>
         <member name="T:BankingSystemAPI.Presentation.Controllers.CheckingAccountController">
             <summary>
             Endpoints to manage checking accounts.
@@ -324,18 +407,8 @@
             <summary>
             Create a new savings account.
             </summary>
-            <remarks>
-            Example request body:
-            {
-              "userId": "string",
-              "currencyId": 1,
-              "initialDeposit": 100.00,
-              "interestType": 1 // 1=Monthly, 2=Quarterly, 3=Annually, 4=every5minutes (testing)
-            }
-            
             The handler will validate that the currency and user exist and are active and will persist
             the new savings account. An account number and CreatedDate are auto-generated.
-            </remarks>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.SavingsAccountController.Update(System.Int32,BankingSystemAPI.Application.DTOs.Account.SavingsAccountEditDto)">
             <summary>
@@ -440,23 +513,23 @@
         </member>
         <member name="T:BankingSystemAPI.Presentation.Controllers.UserRolesController">
             <summary>
-            Endpoints to manage user roles assignment.
+            Unified endpoint to manage user role assignments.
+            Provides a single PUT endpoint that removes old roles and assigns new ones.
             </summary>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.UserRolesController.UpdateUserRole(System.String,BankingSystemAPI.Application.DTOs.User.UpdateUserRoleRequestDto)">
             <summary>
-            Update user role assignment.
+            Update user role assignment (replaces old roles with new role)
             </summary>
-            <param name="userId">The user ID to update</param>
-            <param name="updateDto">The role update data</param>
-            <returns>Result of the role update operation</returns>
-        </member>
-        <member name="M:BankingSystemAPI.Presentation.Controllers.UserRolesController.UpdateUserRoles(BankingSystemAPI.Application.DTOs.User.UpdateUserRolesDto)">
-            <summary>
-            Assign roles to a user.
-            </summary>
-            <param name="dto">The user role assignment data</param>
-            <returns>Result of the role assignment operation</returns>
+            <param name="userId">The user ID to update roles for</param>
+            <param name="updateDto">The new role assignment data</param>
+            <returns>Success message indicating the role has been updated</returns>
+            <response code="200">Role assignment updated successfully</response>
+            <response code="400">Bad request - validation errors or invalid input</response>
+            <response code="401">Unauthorized - user not authenticated</response>
+            <response code="403">Forbidden - insufficient permissions</response>
+            <response code="404">Not found - user does not exist</response>
+            <response code="409">Conflict - business rule violation (e.g., cannot assign SuperAdmin role)</response>
         </member>
         <member name="T:BankingSystemAPI.Presentation.Middlewares.ExceptionHandlingMiddleware">
             <summary>

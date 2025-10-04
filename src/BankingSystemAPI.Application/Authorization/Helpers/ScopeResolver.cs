@@ -70,7 +70,7 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
                     _logger.LogWarning("[AUTHORIZATION] Role processing failed: {Role}, using default scope", roleName);
                 });
 
-            return scopeResult.IsSuccess ? scopeResult.Value : AccessScope.Self;
+            return scopeResult ? scopeResult.Value : AccessScope.Self;
         }
 
         private Result<AccessScope> ProcessRoleToScope(string? roleName)

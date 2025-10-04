@@ -114,7 +114,7 @@ namespace BankingSystemAPI.Presentation.Controllers
         {
             var command = new UpdateUserCommand(userId, user);
             var result = await _mediator.Send(command);
-            return HandleResult(result);
+            return HandleUpdateResult(result);
         }
 
         /// <summary>
@@ -128,7 +128,7 @@ namespace BankingSystemAPI.Presentation.Controllers
         {
             var command = new ChangeUserPasswordCommand(userId, dto);
             var result = await _mediator.Send(command);
-            return HandleResult(result);
+            return HandleUpdateResult(result);
         }
 
         /// <summary>
@@ -136,13 +136,13 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         [HttpDelete("{userId}")]
         [PermissionFilterFactory(Permission.User.Delete)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> DeleteUser(string userId)
         {
             var command = new DeleteUserCommand(userId);
             var result = await _mediator.Send(command);
-            return HandleDeleteResult(result);
+            return HandleResult(result);
         }
 
         /// <summary>
@@ -150,13 +150,13 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         [HttpDelete("bulk")]
         [PermissionFilterFactory(Permission.User.DeleteRange)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> DeleteUsers([FromBody] IEnumerable<string> userIds)
         {
             var command = new DeleteUsersCommand(userIds);
             var result = await _mediator.Send(command);
-            return HandleDeleteResult(result);
+            return HandleResult(result);
         }
 
         /// <summary>

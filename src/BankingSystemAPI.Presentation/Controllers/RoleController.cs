@@ -68,7 +68,7 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         [HttpDelete("DeleteRole/{roleId}")]
         [PermissionFilterFactory(Permission.Role.Delete)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> DeleteRole([FromRoute] string roleId)
         {
@@ -83,7 +83,7 @@ namespace BankingSystemAPI.Presentation.Controllers
 
             var command = new DeleteRoleCommand(roleId);
             var result = await _mediator.Send(command);
-            return HandleDeleteResult(result);
+            return HandleResult(result);
         }
     }
 }

@@ -14,9 +14,9 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByNa
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
 
-        public GetAccountsByNationalIdQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService? accountAuth = null)
+        public GetAccountsByNationalIdQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _mapper = mapper;
@@ -28,12 +28,12 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByNa
             var spec = new AccountsByNationalIdSpecification(request.NationalId);
             var accounts = await _uow.AccountRepository.ListAsync(spec);
 
-            if (_accountAuth is not null)
+            // Check authorization for each account
+            foreach (var acc in accounts)
             {
-                foreach (var acc in accounts)
-                {
-                    await _accountAuth.CanViewAccountAsync(acc.Id);
-                }
+                var authResult = await _accountAuth.CanViewAccountAsync(acc.Id);
+                if (authResult.IsFailure)
+                    return Result<List<AccountDto>>.Failure(authResult.Errors);
             }
 
             var mapped = accounts.Select(a => _mapper.Map<AccountDto>(a)).ToList();

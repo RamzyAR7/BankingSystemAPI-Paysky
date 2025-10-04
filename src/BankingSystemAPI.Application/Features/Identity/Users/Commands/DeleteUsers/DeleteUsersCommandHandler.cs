@@ -59,7 +59,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
 
                 // Business validation: Check if user exists and has no accounts
                 var existingUserResult = await _userService.GetUserByIdAsync(userId);
-                if (!existingUserResult.Succeeded)
+                if (!existingUserResult) // Using implicit bool operator!
                 {
                     errors.Add($"User {userId}: {string.Join("; ", existingUserResult.Errors)}");
                     continue;
@@ -90,7 +90,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
             // Perform bulk deletion using the existing service method - returns Result<bool>
             var deleteResult = await _userService.DeleteRangeOfUsersAsync(usersToDelete);
             
-            if (!deleteResult.Succeeded)
+            if (!deleteResult.IsSuccess)
             {
                 return Result.Failure(deleteResult.Errors);
             }

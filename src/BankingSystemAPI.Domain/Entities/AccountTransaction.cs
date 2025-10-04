@@ -15,7 +15,7 @@ namespace BankingSystemAPI.Domain.Entities
         public int TransactionId { get; set; }
         public Transaction Transaction { get; set; }
 
-        public string TransactionCurrency { get; set; }
+        public string? TransactionCurrency { get; set; }
         public decimal Amount { get; set; }
         public TransactionRole Role { get; set; }
         public decimal Fees { get; set; }

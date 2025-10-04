@@ -81,16 +81,13 @@
             Execute action if result is successful
             </summary>
         </member>
-        <member name="M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccessAsync(BankingSystemAPI.Domain.Common.Result,System.Func{System.Threading.Tasks.Task})">
-            <summary>
-            Execute action if result is successful (async)
-            </summary>
-        </member>
         <member name="M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnFailure(BankingSystemAPI.Domain.Common.Result,System.Action{System.Collections.Generic.IReadOnlyList{System.String}})">
             <summary>
             Execute action if result fails
             </summary>
         </member>
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccess``1(BankingSystemAPI.Domain.Common.Result{``0},System.Action)" -->
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnFailure``1(BankingSystemAPI.Domain.Common.Result{``0},System.Action{System.Collections.Generic.IReadOnlyList{System.String}})" -->
         <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccess``1(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}},System.Action)" -->
         <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnFailure``1(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}},System.Action{System.Collections.Generic.IReadOnlyList{System.String}})" -->
         <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccess(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result},System.Action)" -->
@@ -122,7 +119,6 @@
         <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.BindAsync``1(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}},System.Func{``0,System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result}})" -->
         <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.BindAsync``1(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result},System.Func{System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}}})" -->
         <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.BindAsync(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result},System.Func{System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result}})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.GetAwaiter``1(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}})" -->
         <member name="M:BankingSystemAPI.Domain.Extensions.ResultExtensions.ValidateAll(BankingSystemAPI.Domain.Common.Result[])">
             <summary>
             Validate multiple results and return combined result
@@ -136,6 +132,161 @@
         <member name="M:BankingSystemAPI.Domain.Extensions.ResultExtensions.ToResult``1(System.Nullable{``0},System.String)">
             <summary>
             Convert nullable value to Result (value types)
+            </summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.ToResult``1(BankingSystemAPI.Domain.Common.Result{``0})" -->
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.ToResultAsync``1(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}})" -->
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccessToResult``1(BankingSystemAPI.Domain.Common.Result{``0},System.Action{``0})" -->
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccessToResultAsync``1(BankingSystemAPI.Domain.Common.Result{``0},System.Func{``0,System.Threading.Tasks.Task})" -->
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccessToResultAsync``1(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}},System.Func{``0,System.Threading.Tasks.Task})" -->
+        <member name="T:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions">
+            <summary>
+            Extension methods to create semantic Result objects using ApiResponseMessages constants
+            This provides a bridge between the Result factory methods and consistent error messages
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.NotFoundEntity(System.String,System.Object)">
+            <summary>
+            Creates a NotFound result using consistent message format
+            </summary>
+            <param name="entityName">Name of the entity (e.g., "User", "Account")</param>
+            <param name="id">ID of the entity that was not found</param>
+            <returns>Result with 404 status code mapping</returns>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.NotFoundEntity``1(System.String,System.Object)" -->
+        <member name="M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.EntityAlreadyExists(System.String,System.String)">
+            <summary>
+            Creates an AlreadyExists result using consistent message format
+            </summary>
+            <param name="entityName">Name of the entity (e.g., "User", "Account")</param>
+            <param name="identifier">Identifier that already exists (e.g., email, account number)</param>
+            <returns>Result with 409 status code mapping</returns>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.EntityAlreadyExists``1(System.String,System.String)" -->
+        <member name="M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.InsufficientFundsError(System.Decimal,System.Decimal)">
+            <summary>
+            Creates an InsufficientFunds result using consistent message format
+            </summary>
+            <param name="requested">Amount requested</param>
+            <param name="available">Amount available</param>
+            <returns>Result with 409 status code mapping</returns>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.InsufficientFundsError``1(System.Decimal,System.Decimal)" -->
+        <member name="M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.AccountInactiveError(System.String)">
+            <summary>
+            Creates an AccountInactive result using consistent message format
+            </summary>
+            <param name="accountNumber">Account number that is inactive</param>
+            <returns>Result with 409 status code mapping</returns>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.AccountInactiveError``1(System.String)" -->
+        <member name="M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.NotAuthenticatedError">
+            <summary>
+            Creates an Unauthorized result using consistent message
+            </summary>
+            <returns>Result with 401 status code mapping</returns>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.NotAuthenticatedError``1" -->
+        <member name="M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.AccessDeniedError">
+            <summary>
+            Creates a Forbidden result using consistent message
+            </summary>
+            <returns>Result with 403 status code mapping</returns>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.AccessDeniedError``1" -->
+        <member name="M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.InvalidCredentialsError">
+            <summary>
+            Creates an InvalidCredentials result using consistent message
+            </summary>
+            <returns>Result with 401 status code mapping</returns>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.InvalidCredentialsError``1" -->
+        <member name="M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.TokenExpiredError">
+            <summary>
+            Creates a TokenExpired result using consistent message
+            </summary>
+            <returns>Result with 401 status code mapping</returns>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.SemanticResultExtensions.TokenExpiredError``1" -->
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages">
+            <summary>
+            Constants for API response messages to maintain consistency and improve maintainability
+            Enhanced to work seamlessly with semantic Result factory methods
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Generic">
+            <summary>
+            Generic response messages
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.ErrorPatterns">
+            <summary>
+            Error message patterns for semantic Result factory methods
+            These patterns are used by BaseApiController to map errors to proper HTTP status codes
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Delete">
+            <summary>
+            Delete operation messages
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Update">
+            <summary>
+            Update operation messages
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Status">
+            <summary>
+            Active/Inactive status messages
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Authentication">
+            <summary>
+            Authentication and processing messages
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Transaction">
+            <summary>
+            Transaction processing messages
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.RolePermissions">
+            <summary>
+            Role and permission messages
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Processing">
+            <summary>
+            General processing messages
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.BankingErrors">
+            <summary>
+            Banking-specific error messages that align with Result factory methods
+            </summary>
+        </member>
+        <member name="F:BankingSystemAPI.Domain.Constant.ApiResponseMessages.BankingErrors.InsufficientFundsFormat">
+            <summary>
+            Format: "Insufficient funds. Requested: {0}, Available: {1}"
+            Used by Result.InsufficientFunds()
+            </summary>
+        </member>
+        <member name="F:BankingSystemAPI.Domain.Constant.ApiResponseMessages.BankingErrors.AccountInactiveFormat">
+            <summary>
+            Format: "Account {0} is inactive and cannot be used for transactions"
+            Used by Result.AccountInactive()
+            </summary>
+        </member>
+        <member name="F:BankingSystemAPI.Domain.Constant.ApiResponseMessages.BankingErrors.AlreadyExistsFormat">
+            <summary>
+            Format: "{0} with identifier '{1}' already exists"
+            Used by Result.AlreadyExists()
+            </summary>
+        </member>
+        <member name="F:BankingSystemAPI.Domain.Constant.ApiResponseMessages.BankingErrors.NotFoundFormat">
+            <summary>
+            Format: "{0} with id '{1}' was not found"
+            Used by Result.NotFound()
             </summary>
         </member>
         <member name="T:BankingSystemAPI.Domain.Constant.InterestType">

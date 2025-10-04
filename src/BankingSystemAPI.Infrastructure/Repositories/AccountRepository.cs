@@ -60,20 +60,19 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 
             var skip = (pageNumber - 1) * pageSize;
 
-            var countTask = query.CountAsync();
+            var totalCount = await query.CountAsync();
             
-            var itemsTask = query
+            var items = await query
                 .OrderBy(a => a.Id)  // Add explicit ordering before Skip/Take to fix split query issue
                 .Skip(skip)
                 .Take(pageSize)
                 .Include(a => a.Currency)
                 .Include(a => a.User)
                 .AsSplitQuery()
+                .AsNoTracking() // Add AsNoTracking for better performance since we're not updating
                 .ToListAsync();
 
-            await Task.WhenAll(countTask, itemsTask);
-
-            return (itemsTask.Result, countTask.Result);
+            return (items, totalCount);
         }
     }
 }

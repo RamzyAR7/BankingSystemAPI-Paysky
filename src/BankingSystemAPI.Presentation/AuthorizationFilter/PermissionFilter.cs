@@ -26,7 +26,7 @@ namespace BankingSystemAPI.Presentation.AuthorizationFilter
                 };
                 return Task.CompletedTask;
             }
-            var hasPermission = user.Claims.Any(c => string.Equals(c.Type, "Permission", System.StringComparison.OrdinalIgnoreCase) && c.Value == _permission);
+            var hasPermission = user.Claims.Any(c => string.Equals(c.Type, "Permission", StringComparison.OrdinalIgnoreCase) && c.Value == _permission);
 
             if (!hasPermission)
             {

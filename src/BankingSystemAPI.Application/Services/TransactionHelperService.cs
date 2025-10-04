@@ -1,13 +1,10 @@
 using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Domain.Common;
-using BankingSystemAPI.Domain.Extensions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Linq;
 using System.Threading.Tasks;
-using BankingSystemAPI.Application.Specifications;
 using BankingSystemAPI.Application.Specifications.CurrencySpecification;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace BankingSystemAPI.Application.Services
 {
@@ -15,22 +12,28 @@ namespace BankingSystemAPI.Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<TransactionHelperService> _logger;
+        private readonly IMemoryCache _cache;
+        private const int CacheDurationMinutes = 5;
 
-        public TransactionHelperService(IUnitOfWork unitOfWork, ILogger<TransactionHelperService> logger)
+        public TransactionHelperService(IUnitOfWork unitOfWork, ILogger<TransactionHelperService> logger, IMemoryCache cache)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _cache = cache;
         }
 
         public async Task<decimal> ConvertAsync(int fromCurrencyId, int toCurrencyId, decimal amount)
         {
-            // Validate input
-            var amountValidation = ValidateConversionInput(amount);
-            if (amountValidation.IsFailure)
-                throw new InvalidOperationException(string.Join(", ", amountValidation.Errors));
+            // Quick check for same currency
+            if (fromCurrencyId == toCurrencyId)
+                return amount;
 
-            // Load currencies
-            var currenciesResult = await LoadCurrenciesAsync(fromCurrencyId, toCurrencyId);
+            // Validate input
+            if (amount <= 0)
+                throw new InvalidOperationException("Amount to convert must be greater than zero.");
+
+            // Load currencies with caching
+            var currenciesResult = await LoadCurrenciesWithCacheAsync(fromCurrencyId, toCurrencyId);
             if (currenciesResult.IsFailure)
                 throw new InvalidOperationException(string.Join(", ", currenciesResult.Errors));
 
@@ -38,35 +41,25 @@ namespace BankingSystemAPI.Application.Services
             var conversionResult = CalculateConversion(currenciesResult.Value!, amount);
             if (conversionResult.IsFailure)
                 throw new InvalidOperationException(string.Join(", ", conversionResult.Errors));
-
-            // Add side effects using ResultExtensions
-            conversionResult.OnSuccess(() => 
-                {
-                    _logger.LogDebug("Currency conversion successful: {FromId} -> {ToId}, Amount: {Amount}",
-                        fromCurrencyId, toCurrencyId, amount);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning("Currency conversion failed: {FromId} -> {ToId}, Amount: {Amount}, Errors: {Errors}",
-                        fromCurrencyId, toCurrencyId, amount, string.Join(", ", errors));
-                });
 
             return conversionResult.Value!;
         }
 
         public async Task<decimal> ConvertAsync(string fromCurrencyCode, string toCurrencyCode, decimal amount)
         {
+            // Quick check for same currency
+            if (string.Equals(fromCurrencyCode, toCurrencyCode, StringComparison.OrdinalIgnoreCase))
+                return amount;
+
             // Validate input
-            var amountValidation = ValidateConversionInput(amount);
-            if (amountValidation.IsFailure)
-                throw new InvalidOperationException(string.Join(", ", amountValidation.Errors));
+            if (amount <= 0)
+                throw new InvalidOperationException("Amount to convert must be greater than zero.");
 
-            var codesValidation = ValidateCurrencyCodes(fromCurrencyCode, toCurrencyCode);
-            if (codesValidation.IsFailure)
-                throw new InvalidOperationException(string.Join(", ", codesValidation.Errors));
+            if (string.IsNullOrWhiteSpace(fromCurrencyCode) || string.IsNullOrWhiteSpace(toCurrencyCode))
+                throw new InvalidOperationException("Currency codes are required.");
 
-            // Load currencies by code
-            var currenciesResult = await LoadCurrenciesByCodeAsync(fromCurrencyCode, toCurrencyCode);
+            // Load currencies by code with caching
+            var currenciesResult = await LoadCurrenciesByCodeWithCacheAsync(fromCurrencyCode, toCurrencyCode);
             if (currenciesResult.IsFailure)
                 throw new InvalidOperationException(string.Join(", ", currenciesResult.Errors));
 
@@ -75,36 +68,20 @@ namespace BankingSystemAPI.Application.Services
             if (conversionResult.IsFailure)
                 throw new InvalidOperationException(string.Join(", ", conversionResult.Errors));
 
-            // Add side effects using ResultExtensions
-            conversionResult.OnSuccess(() => 
-                {
-                    _logger.LogDebug("Currency conversion successful: {FromCode} -> {ToCode}, Amount: {Amount}",
-                        fromCurrencyCode, toCurrencyCode, amount);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning("Currency conversion failed: {FromCode} -> {ToCode}, Amount: {Amount}, Errors: {Errors}",
-                        fromCurrencyCode, toCurrencyCode, amount, string.Join(", ", errors));
-                });
-
             return conversionResult.Value!;
         }
 
         #region Private Helper Methods
 
-        private Result ValidateConversionInput(decimal amount)
-        {
-            return amount <= 0
-                ? Result.BadRequest("Amount to convert must be greater than zero.")
-                : Result.Success();
-        }
-
-        private async Task<Result<CurrencyPair>> LoadCurrenciesAsync(int fromCurrencyId, int toCurrencyId)
+        private async Task<Result<CurrencyPair>> LoadCurrenciesWithCacheAsync(int fromCurrencyId, int toCurrencyId)
         {
             try
             {
-                var fromCurrency = await _unitOfWork.CurrencyRepository.GetByIdAsync(fromCurrencyId);
-                var toCurrency = await _unitOfWork.CurrencyRepository.GetByIdAsync(toCurrencyId);
+                var fromKey = $"currency_id_{fromCurrencyId}";
+                var toKey = $"currency_id_{toCurrencyId}";
+
+                var fromCurrency = await GetCurrencyFromCacheAsync(fromKey, () => _unitOfWork.CurrencyRepository.GetByIdAsync(fromCurrencyId));
+                var toCurrency = await GetCurrencyFromCacheAsync(toKey, () => _unitOfWork.CurrencyRepository.GetByIdAsync(toCurrencyId));
 
                 if (fromCurrency == null)
                     return Result<CurrencyPair>.BadRequest("From currency not found.");
@@ -120,30 +97,29 @@ namespace BankingSystemAPI.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to load currencies for conversion: {FromId} -> {ToId}", fromCurrencyId, toCurrencyId);
                 return Result<CurrencyPair>.BadRequest($"Failed to load currencies: {ex.Message}");
             }
         }
 
-        private Result ValidateCurrencyCodes(string fromCode, string toCode)
-        {
-            if (string.IsNullOrWhiteSpace(fromCode))
-                return Result.BadRequest("From currency code is required.");
-            
-            if (string.IsNullOrWhiteSpace(toCode))
-                return Result.BadRequest("To currency code is required.");
-
-            return Result.Success();
-        }
-
-        private async Task<Result<CurrencyPair>> LoadCurrenciesByCodeAsync(string fromCode, string toCode)
+        private async Task<Result<CurrencyPair>> LoadCurrenciesByCodeWithCacheAsync(string fromCode, string toCode)
         {
             try
             {
-                var fromSpec = new CurrencyByCodeSpecification(fromCode);
-                var toSpec = new CurrencyByCodeSpecification(toCode);
+                var fromKey = $"currency_code_{fromCode.ToUpperInvariant()}";
+                var toKey = $"currency_code_{toCode.ToUpperInvariant()}";
 
-                var fromCurrency = await _unitOfWork.CurrencyRepository.FindAsync(fromSpec);
-                var toCurrency = await _unitOfWork.CurrencyRepository.FindAsync(toSpec);
+                var fromCurrency = await GetCurrencyFromCacheAsync(fromKey, async () =>
+                {
+                    var spec = new CurrencyByCodeSpecification(fromCode);
+                    return await _unitOfWork.CurrencyRepository.FindAsync(spec);
+                });
+
+                var toCurrency = await GetCurrencyFromCacheAsync(toKey, async () =>
+                {
+                    var spec = new CurrencyByCodeSpecification(toCode);
+                    return await _unitOfWork.CurrencyRepository.FindAsync(spec);
+                });
 
                 if (fromCurrency == null)
                     return Result<CurrencyPair>.BadRequest($"Currency '{fromCode}' not found.");
@@ -159,8 +135,31 @@ namespace BankingSystemAPI.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to load currencies by code: {FromCode} -> {ToCode}", fromCode, toCode);
                 return Result<CurrencyPair>.BadRequest($"Failed to load currencies by code: {ex.Message}");
             }
+        }
+
+        private async Task<Domain.Entities.Currency?> GetCurrencyFromCacheAsync(string cacheKey, Func<Task<Domain.Entities.Currency?>> factory)
+        {
+            if (_cache.TryGetValue(cacheKey, out Domain.Entities.Currency? cached))
+            {
+                return cached;
+            }
+
+            var currency = await factory();
+            if (currency != null)
+            {
+                var cacheOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(CacheDurationMinutes),
+                    SlidingExpiration = TimeSpan.FromMinutes(CacheDurationMinutes / 2),
+                    Priority = CacheItemPriority.High
+                };
+                _cache.Set(cacheKey, currency, cacheOptions);
+            }
+
+            return currency;
         }
 
         private Result<decimal> CalculateConversion(CurrencyPair currencies, decimal amount)
@@ -171,22 +170,30 @@ namespace BankingSystemAPI.Application.Services
                 if (currencies.FromCurrency.Id == currencies.ToCurrency.Id)
                     return Result<decimal>.Success(amount);
 
+                decimal result;
+
                 // From base currency
                 if (currencies.FromCurrency.IsBase)
-                    return Result<decimal>.Success(amount * currencies.ToCurrency.ExchangeRate);
-
+                {
+                    result = amount * currencies.ToCurrency.ExchangeRate;
+                }
                 // To base currency
-                if (currencies.ToCurrency.IsBase)
-                    return Result<decimal>.Success(amount / currencies.FromCurrency.ExchangeRate);
-
-                // Cross-currency conversion (via base)
-                var baseAmount = amount / currencies.FromCurrency.ExchangeRate;
-                var convertedAmount = baseAmount * currencies.ToCurrency.ExchangeRate;
+                else if (currencies.ToCurrency.IsBase)
+                {
+                    result = amount / currencies.FromCurrency.ExchangeRate;
+                }
+                // Cross-currency conversion
+                else
+                {
+                    result = (amount / currencies.FromCurrency.ExchangeRate) * currencies.ToCurrency.ExchangeRate;
+                }
                 
-                return Result<decimal>.Success(convertedAmount);
+                return Result<decimal>.Success(result);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Currency conversion failed: {FromCode} -> {ToCode}, Amount: {Amount}", 
+                    currencies.FromCurrency.Code, currencies.ToCurrency.Code, amount);
                 return Result<decimal>.BadRequest($"Currency conversion calculation failed: {ex.Message}");
             }
         }

@@ -15,10 +15,10 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByUs
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
-        private readonly IAccountAuthorizationService? _accountAuth;
-        private readonly IUserAuthorizationService? _userAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
+        private readonly IUserAuthorizationService _userAuth;
 
-        public GetAccountsByUserIdQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService? accountAuth = null, IUserAuthorizationService? userAuth = null)
+        public GetAccountsByUserIdQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService accountAuth, IUserAuthorizationService userAuth)
         {
             _uow = uow;
             _mapper = mapper;
@@ -34,36 +34,23 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByUs
                 return Result<List<AccountDto>>.Failure(new[] { "UserId is required." });
             }
 
-            // Explicit user-level authorization: if a user authorization service is available, validate access to the target user
-            if (_userAuth is not null)
-            {
-                var userAuthResult = await _userAuth.CanViewUserAsync(request.UserId);
-                if (userAuthResult.IsFailure)
-                    return Result<List<AccountDto>>.Failure(userAuthResult.Errors);
-            }
+            // Explicit user-level authorization: validate access to the target user
+            var userAuthResult = await _userAuth.CanViewUserAsync(request.UserId);
+            if (userAuthResult.IsFailure)
+                return Result<List<AccountDto>>.Failure(userAuthResult.Errors);
 
-            if (_accountAuth is not null)
-            {
-                var accountQuery = _uow.AccountRepository.QueryByUserId(request.UserId).AsQueryable();
-                var filterResult = await _accountAuth.FilterAccountsQueryAsync(accountQuery);
-                
-                if (filterResult.IsFailure)
-                    return Result<List<AccountDto>>.Failure(filterResult.Errors);
-                
-                var filteredQuery = filterResult.Value!;
+            var accountQuery = _uow.AccountRepository.QueryByUserId(request.UserId).AsQueryable();
+            var filterResult = await _accountAuth.FilterAccountsQueryAsync(accountQuery);
+            
+            if (filterResult.IsFailure)
+                return Result<List<AccountDto>>.Failure(filterResult.Errors);
+            
+            var filteredQuery = filterResult.Value!;
 
-                // Fetch all matching accounts via repository paging helper
-                var (accounts, total) = await _uow.AccountRepository.GetFilteredAccountsAsync(filteredQuery, 1, int.MaxValue);
-                var mapped = accounts.Select(a => _mapper.Map<AccountDto>(a)).ToList();
-                return Result<List<AccountDto>>.Success(mapped);
-            }
-
-            // Fallback: original behavior
-            var spec = new AccountsByUserIdSpecification(request.UserId);
-            var accountsFallback = await _uow.AccountRepository.ListAsync(spec);
-
-            var mappedFallback = accountsFallback.Select(a => _mapper.Map<AccountDto>(a)).ToList();
-            return Result<List<AccountDto>>.Success(mappedFallback);
+            // Fetch all matching accounts via repository paging helper
+            var (accounts, total) = await _uow.AccountRepository.GetFilteredAccountsAsync(filteredQuery, 1, int.MaxValue);
+            var mapped = accounts.Select(a => _mapper.Map<AccountDto>(a)).ToList();
+            return Result<List<AccountDto>>.Success(mapped);
         }
     }
 }

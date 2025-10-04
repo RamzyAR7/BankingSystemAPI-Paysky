@@ -57,7 +57,7 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         [HttpPut("{id:int}")]
         [PermissionFilterFactory(Permission.CheckingAccount.Update)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] CheckingAccountEditDto req)
         {

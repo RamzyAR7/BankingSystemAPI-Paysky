@@ -18,14 +18,14 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
         private readonly ILogger<CreateSavingsAccountCommandHandler> _logger;
 
         public CreateSavingsAccountCommandHandler(
             IUnitOfWork uow, 
             IMapper mapper, 
             ILogger<CreateSavingsAccountCommandHandler> logger,
-            IAccountAuthorizationService? accountAuth = null)
+            IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _mapper = mapper;
@@ -69,9 +69,6 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
 
         private async Task<Result> ValidateAuthorizationAsync(string userId)
         {
-            if (_accountAuth == null)
-                return Result.Success();
-
             try
             {
                 var authResult = await _accountAuth.CanCreateAccountForUserAsync(userId);

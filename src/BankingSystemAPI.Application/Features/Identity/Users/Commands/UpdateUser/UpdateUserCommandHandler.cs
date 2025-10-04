@@ -12,13 +12,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
     public sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, UserResDto>
     {
         private readonly IUserService _userService;
-        private readonly IUserAuthorizationService? _userAuthorizationService;
+        private readonly IUserAuthorizationService _userAuthorizationService;
         private readonly ILogger<UpdateUserCommandHandler> _logger;
 
         public UpdateUserCommandHandler(
             IUserService userService,
             ILogger<UpdateUserCommandHandler> logger,
-            IUserAuthorizationService? userAuthorizationService = null)
+            IUserAuthorizationService userAuthorizationService)
         {
             _userService = userService;
             _userAuthorizationService = userAuthorizationService;
@@ -59,13 +59,10 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
 
         private async Task<Result> ValidateAuthorizationAsync(string userId)
         {
-            if (_userAuthorizationService == null)
-                return Result.Success();
-
             try
             {
-                await _userAuthorizationService.CanModifyUserAsync(userId, UserModificationOperation.Edit);
-                return Result.Success();
+                var authResult = await _userAuthorizationService.CanModifyUserAsync(userId, UserModificationOperation.Edit);
+                return authResult;
             }
             catch (Exception ex)
             {
@@ -76,16 +73,14 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
         private async Task<Result<UserResDto>> ValidateUserExistsAsync(string userId)
         {
             var result = await _userService.GetUserByIdAsync(userId);
-            return result.Succeeded
-                ? Result<UserResDto>.Success(result.Value!)
-                : Result<UserResDto>.Failure(result.Errors);
+            return result ? Result<UserResDto>.Success(result.Value!) : Result<UserResDto>.Failure(result.Errors);
         }
 
         private async Task<Result<UpdateValidationContext>> ValidateUniquenessAsync(UpdateUserCommand request, UserResDto existingUser)
         {
             // Check for duplicates within the same bank using functional approach
             var usersInBankResult = await GetUsersInSameBankAsync(existingUser.BankId ?? 0);
-            if (usersInBankResult.IsFailure)
+            if (!usersInBankResult) // Using implicit bool operator!
                 return Result<UpdateValidationContext>.Failure(usersInBankResult.Errors);
 
             var usersInSameBank = usersInBankResult.Value!;
@@ -105,9 +100,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
         private async Task<Result<IList<UserResDto>>> GetUsersInSameBankAsync(int bankId)
         {
             var result = await _userService.GetUsersByBankIdAsync(bankId);
-            return result.Succeeded
-                ? Result<IList<UserResDto>>.Success(result.Value!)
-                : Result<IList<UserResDto>>.Failure(result.Errors);
+            return result ? Result<IList<UserResDto>>.Success(result.Value!) : Result<IList<UserResDto>>.Failure(result.Errors);
         }
 
         private List<string> CheckForConflicts(UpdateUserCommand request, IList<UserResDto> usersInBank)
@@ -139,7 +132,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
         private async Task<Result<UserResDto>> ExecuteUpdateAsync(UpdateUserCommand request)
         {
             var result = await _userService.UpdateUserAsync(request.UserId, request.UserEdit);
-            return result.Succeeded
+            return result.IsSuccess
                 ? Result<UserResDto>.Success(result.Value!)
                 : Result<UserResDto>.Failure(result.Errors);
         }

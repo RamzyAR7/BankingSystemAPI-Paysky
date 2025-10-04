@@ -17,9 +17,9 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Create
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
 
-        public CreateCheckingAccountCommandHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService? accountAuth = null)
+        public CreateCheckingAccountCommandHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _mapper = mapper;
@@ -31,24 +31,23 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Create
             var reqDto = request.Req;
 
             // Authorization
-            if (_accountAuth != null)
-            {
-                await _accountAuth.CanCreateAccountForUserAsync(reqDto.UserId);
-            }
+            var authResult = await _accountAuth.CanCreateAccountForUserAsync(reqDto.UserId);
+            if (authResult.IsFailure)
+                return Result<CheckingAccountDto>.Failure(authResult.Errors);
 
             // Validate currency using extensions
             var currencyResult = await ValidateCurrencyAsync(reqDto.CurrencyId);
-            if (currencyResult.IsFailure)
+            if (!currencyResult) // Using implicit bool operator!
                 return Result<CheckingAccountDto>.Failure(currencyResult.Errors);
 
             // Validate user using extensions
             var userResult = await ValidateUserAsync(reqDto.UserId);
-            if (userResult.IsFailure)
+            if (!userResult) // Using implicit bool operator!
                 return Result<CheckingAccountDto>.Failure(userResult.Errors);
 
             // Validate user role using extensions
             var roleValidationResult = await ValidateUserRoleAsync(reqDto.UserId);
-            if (roleValidationResult.IsFailure)
+            if (!roleValidationResult) // Using implicit bool operator!
                 return Result<CheckingAccountDto>.Failure(roleValidationResult.Errors);
 
             // Chain successful validations and create account

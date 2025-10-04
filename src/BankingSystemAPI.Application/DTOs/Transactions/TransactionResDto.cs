@@ -29,13 +29,13 @@ namespace BankingSystemAPI.Application.DTOs.Transactions
         /// Currency code for the source account.
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string SourceCurrency { get; set; } = string.Empty;
+        public string? SourceCurrency { get; set; }
 
         /// <summary>
         /// Currency code for the target account.
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string TargetCurrency { get; set; } = string.Empty;
+        public string? TargetCurrency { get; set; }
 
         /// <summary>
         /// Transaction type (Deposit, Withdraw, Transfer, etc.).
@@ -45,7 +45,7 @@ namespace BankingSystemAPI.Application.DTOs.Transactions
         /// <summary>
         /// Role of the primary account transaction (Source/Target) as string.
         /// </summary>
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string TransactionRole { get; set; } = string.Empty;
 
         /// <summary>
@@ -56,13 +56,13 @@ namespace BankingSystemAPI.Application.DTOs.Transactions
         /// <summary>
         /// Source amount (amount deducted from the source account). Populated for transfers.
         /// </summary>
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public decimal SourceAmount { get; set; }
 
         /// <summary>
         /// Target amount (amount credited to the target account). Populated for transfers.
         /// </summary>
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public decimal TargetAmount { get; set; }
 
         /// <summary>
@@ -74,6 +74,6 @@ namespace BankingSystemAPI.Application.DTOs.Transactions
         /// Fee charged on the source account for this transaction (in source account currency).
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public decimal Fees { get; set; }
+        public decimal? Fees { get; set; }
     }
 }

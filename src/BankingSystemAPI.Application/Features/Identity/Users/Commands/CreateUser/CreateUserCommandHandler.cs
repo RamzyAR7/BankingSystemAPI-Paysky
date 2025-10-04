@@ -99,7 +99,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
 
             var result = await _userService.CreateUserAsync(adjustedRequest);
 
-            return result.Succeeded
+            return result.IsSuccess
                 ? Result<UserResDto>.Success(result.Value!)
                 : Result<UserResDto>.Failure(result.Errors);
         }

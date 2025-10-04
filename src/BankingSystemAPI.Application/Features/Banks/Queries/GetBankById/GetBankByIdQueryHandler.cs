@@ -37,7 +37,7 @@ namespace BankingSystemAPI.Application.Features.Banks.Queries.GetBankById
                 .Map(b => MapBankToDto(b));
 
             // Add side effects without changing return type
-            if (result.IsSuccess)
+            if (result) // Using implicit bool operator!
             {
                 _logger.LogDebug("Successfully retrieved bank with ID: {BankId}", request.id);
             }

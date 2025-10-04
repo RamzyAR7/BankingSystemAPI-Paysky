@@ -102,7 +102,7 @@ namespace BankingSystemAPI.Application.Behaviors
                 return (TResponse)(object)failure;
             }
 
-            // If the pipeline response is Result<T>, construct a failed Result<T> dynamically
+            // If the pipeline response is Result<T>, construct a failed Result<T> dynamically - reflection
             var responseType = typeof(TResponse);
             if (responseType.IsGenericType && responseType.GetGenericTypeDefinition() == typeof(Result<>))
             {

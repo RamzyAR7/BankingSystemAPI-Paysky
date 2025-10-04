@@ -62,7 +62,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
             var userResult = await _userService.GetUserByEmailAsync(email);
             
             // Map "User not found" to authentication error for security (prevents user enumeration)
-            if (!userResult.Succeeded)
+            if (!userResult.IsSuccess)
             {
                 return Result<UserResDto>.InvalidCredentials(); // Will map to 401 Unauthorized
             }
@@ -83,7 +83,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
                 return Result<UserResDto>.Success(userDto);
 
             var bankActiveResult = await _userService.IsBankActiveAsync(userDto.BankId.Value);
-            if (!bankActiveResult.Succeeded)
+            if (!bankActiveResult.IsSuccess)
             {
                 return Result<UserResDto>.Failure(bankActiveResult.Errors);
             }
@@ -96,7 +96,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
         private async Task<Result<UserResDto>> ValidateUserRole(UserResDto userDto)
         {
             var userRoleResult = await _userService.GetUserRoleAsync(userDto.Id);
-            if (!userRoleResult.Succeeded)
+            if (!userRoleResult.IsSuccess)
             {
                 return Result<UserResDto>.Failure(userRoleResult.Errors);
             }

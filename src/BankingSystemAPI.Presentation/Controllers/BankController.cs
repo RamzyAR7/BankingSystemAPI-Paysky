@@ -137,13 +137,13 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// <param name="id">The identifier of the bank to update.</param>
         /// <param name="dto">The updated bank data.</param>
         /// <returns>
-        /// 204 No Content when the update is successful.
+        /// 200 OK with success message when successful.
         /// 400 Bad Request when the provided data is null or invalid.
         /// 404 Not Found when no bank exists with the provided id.
         /// </returns>
         [HttpPut("{id:int}")]
         [PermissionFilterFactory(Permission.Bank.Update)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] BankEditDto dto)
         {
@@ -163,17 +163,17 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         /// <param name="id">The identifier of the bank to delete.</param>
         /// <returns>
-        /// 204 No Content when the bank was successfully deleted.
+        /// 200 OK with success message when the bank was successfully deleted.
         /// 404 Not Found when no bank exists with the provided id.
         /// </returns>
         [HttpDelete("{id:int}")]
         [PermissionFilterFactory(Permission.Bank.Delete)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
         {
             var result = await _mediator.Send(new DeleteBankCommand(id));
-            return HandleDeleteResult(result);
+            return HandleResult(result);
         }
 
         /// <summary>
@@ -182,12 +182,12 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// <param name="id">The identifier of the bank to modify.</param>
         /// <param name="isActive">Boolean flag indicating whether the bank should be active.</param>
         /// <returns>
-        /// 204 No Content when the active status change request is processed.
+        /// 200 OK with success message when the active status change request is processed.
         /// 404 Not Found may be returned by the implementation if the bank does not exist.
         /// </returns>
         [HttpPut("{id:int}/active")]
         [PermissionFilterFactory(Permission.Bank.UpdateActiveStatus)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> SetActive(int id, [FromQuery] bool isActive)
         {

@@ -13,14 +13,14 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
     {
         private readonly IUserService _userService;
         private readonly ICurrentUserService _currentUserService;
-        private readonly IUserAuthorizationService? _userAuthorizationService;
+        private readonly IUserAuthorizationService _userAuthorizationService;
         private readonly ILogger<DeleteUserCommandHandler> _logger;
 
         public DeleteUserCommandHandler(
             IUserService userService,
             ICurrentUserService currentUserService,
             ILogger<DeleteUserCommandHandler> logger,
-            IUserAuthorizationService? userAuthorizationService = null)
+            IUserAuthorizationService userAuthorizationService)
         {
             _userService = userService;
             _currentUserService = currentUserService;
@@ -66,13 +66,10 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
 
         private async Task<Result> ValidateAuthorizationAsync(string userId)
         {
-            if (_userAuthorizationService == null)
-                return Result.Success();
-
             try
             {
-                await _userAuthorizationService.CanModifyUserAsync(userId, UserModificationOperation.Delete);
-                return Result.Success();
+                var authResult = await _userAuthorizationService.CanModifyUserAsync(userId, UserModificationOperation.Delete);
+                return authResult;
             }
             catch (Exception ex)
             {
@@ -92,7 +89,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
         private async Task<Result<UserResDto>> ValidateUserExistsAsync(string userId)
         {
             var result = await _userService.GetUserByIdAsync(userId);
-            return result.Succeeded
+            return result.IsSuccess
                 ? Result<UserResDto>.Success(result.Value!)
                 : Result<UserResDto>.Failure(result.Errors);
         }
@@ -107,7 +104,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
         private async Task<Result<UserResDto>> ExecuteUserDeletionAsync(string userId)
         {
             var result = await _userService.DeleteUserAsync(userId);
-            return result.Succeeded
+            return result.IsSuccess
                 ? Result<UserResDto>.Success(result.Value!)
                 : Result<UserResDto>.Failure(result.Errors);
         }

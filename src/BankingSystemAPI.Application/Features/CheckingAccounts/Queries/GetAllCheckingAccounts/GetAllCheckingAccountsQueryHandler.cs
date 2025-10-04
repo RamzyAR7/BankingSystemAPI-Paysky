@@ -16,9 +16,9 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Queries.GetAllC
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
 
-        public GetAllCheckingAccountsQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService? accountAuth = null)
+        public GetAllCheckingAccountsQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _mapper = mapper;
@@ -29,28 +29,19 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Queries.GetAllC
         {
             var pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
             var pageSize = request.PageSize < 1 ? 10 : request.PageSize;
-            var skip = (pageNumber - 1) * pageSize;
 
-            if (_accountAuth is not null)
-            {
-                var query = _uow.AccountRepository.Table
-                    .Where(a => a is CheckingAccount)
-                    .Include(a => a.Currency)
-                    .AsQueryable();
+            var query = _uow.AccountRepository.Table
+                .Where(a => a is CheckingAccount)
+                .Include(a => a.Currency)
+                .AsQueryable();
 
-                var filterResult = await _accountAuth.FilterAccountsAsync(query, pageNumber, pageSize);
-                if (filterResult.IsFailure)
-                    return Result<List<CheckingAccountDto>>.Failure(filterResult.Errors);
+            var filterResult = await _accountAuth.FilterAccountsAsync(query, pageNumber, pageSize);
+            if (filterResult.IsFailure)
+                return Result<List<CheckingAccountDto>>.Failure(filterResult.Errors);
 
-                var (items, total) = filterResult.Value!;
-                var mapped = items.OfType<CheckingAccount>().Select(a => _mapper.Map<CheckingAccountDto>(a)).ToList();
-                return Result<List<CheckingAccountDto>>.Success(mapped);
-            }
-
-            var spec = new PagedSpecification<Account>(a => a is CheckingAccount, skip, pageSize, request.OrderBy, request.OrderDirection, a => a.Currency);
-            var accounts = await _uow.AccountRepository.ListAsync(spec);
-            var mappedFallback = accounts.OfType<CheckingAccount>().Select(a => _mapper.Map<CheckingAccountDto>(a)).ToList();
-            return Result<List<CheckingAccountDto>>.Success(mappedFallback);
+            var (items, total) = filterResult.Value!;
+            var mapped = items.OfType<CheckingAccount>().Select(a => _mapper.Map<CheckingAccountDto>(a)).ToList();
+            return Result<List<CheckingAccountDto>>.Success(mapped);
         }
     }
 }

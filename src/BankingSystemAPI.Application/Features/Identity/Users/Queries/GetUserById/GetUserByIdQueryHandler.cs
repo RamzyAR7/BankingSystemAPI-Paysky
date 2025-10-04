@@ -30,7 +30,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserBy
             // The UserService now returns Result<UserResDto> - will fail if user not found
             var userResult = await _userService.GetUserByIdAsync(request.UserId);
             
-            if (!userResult.Succeeded)
+            if (!userResult.IsSuccess)
             {
                 return Result<UserResDto>.Failure(userResult.Errors);
             }

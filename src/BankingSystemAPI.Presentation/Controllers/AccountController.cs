@@ -89,12 +89,12 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         [HttpDelete("{id:int}")]
         [PermissionFilterFactory(Permission.Account.Delete)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
         {
             var result = await _mediator.Send(new DeleteAccountCommand(id));
-            return HandleDeleteResult(result);
+            return HandleResult(result);
         }
 
         /// <summary>
@@ -102,12 +102,12 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         [HttpDelete("bulk")]
         [PermissionFilterFactory(Permission.Account.DeleteMany)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> DeleteMany([FromBody] IEnumerable<int> ids)
         {
             var result = await _mediator.Send(new DeleteAccountsCommand(ids));
-            return HandleDeleteResult(result);
+            return HandleResult(result);
         }
 
         /// <summary>

@@ -12,9 +12,9 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountByAcc
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
 
-        public GetAccountByAccountNumberQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService? accountAuth = null)
+        public GetAccountByAccountNumberQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _mapper = mapper;
@@ -27,8 +27,9 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountByAcc
             var account = await _uow.AccountRepository.FindAsync(spec);
             if (account == null) return Result<AccountDto>.Failure(new[] { $"Account with number '{request.AccountNumber}' not found." });
 
-            if (_accountAuth is not null)
-                await _accountAuth.CanViewAccountAsync(account.Id);
+            var authResult = await _accountAuth.CanViewAccountAsync(account.Id);
+            if (authResult.IsFailure)
+                return Result<AccountDto>.Failure(authResult.Errors);
 
             return Result<AccountDto>.Success(_mapper.Map<AccountDto>(account));
         }

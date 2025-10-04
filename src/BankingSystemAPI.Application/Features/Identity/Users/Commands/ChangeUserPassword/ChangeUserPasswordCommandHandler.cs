@@ -13,14 +13,14 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
     {
         private readonly IUserService _userService;
         private readonly ICurrentUserService _currentUserService;
-        private readonly IUserAuthorizationService? _userAuthorizationService;
+        private readonly IUserAuthorizationService _userAuthorizationService;
         private readonly ILogger<ChangeUserPasswordCommandHandler> _logger;
 
         public ChangeUserPasswordCommandHandler(
             IUserService userService,
             ICurrentUserService currentUserService,
             ILogger<ChangeUserPasswordCommandHandler> logger,
-            IUserAuthorizationService? userAuthorizationService = null)
+            IUserAuthorizationService userAuthorizationService)
         {
             _userService = userService;
             _currentUserService = currentUserService;
@@ -60,13 +60,10 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
 
         private async Task<Result> ValidateAuthorizationAsync(string userId)
         {
-            if (_userAuthorizationService == null)
-                return Result.Success();
-
             try
             {
-                await _userAuthorizationService.CanModifyUserAsync(userId, UserModificationOperation.ChangePassword);
-                return Result.Success();
+                var authResult = await _userAuthorizationService.CanModifyUserAsync(userId, UserModificationOperation.ChangePassword);
+                return authResult;
             }
             catch (Exception ex)
             {
@@ -126,7 +123,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             // Execute password change
             var result = await _userService.ChangeUserPasswordAsync(request.UserId, changePasswordDto);
             
-            return result.Succeeded
+            return result.IsSuccess
                 ? Result<UserResDto>.Success(result.Value!)
                 : Result<UserResDto>.Failure(result.Errors);
         }

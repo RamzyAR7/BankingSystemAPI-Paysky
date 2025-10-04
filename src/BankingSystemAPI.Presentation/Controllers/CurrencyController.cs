@@ -73,11 +73,12 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         [HttpPut("{id:int}")]
         [PermissionFilterFactory(Permission.Currency.Update)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] CurrencyReqDto reqDto)
         {
             var result = await _mediator.Send(new UpdateCurrencyCommand(id, reqDto));
+            // ✅ FIXED: Use HandleUpdateResult to return success message instead of full object
             return HandleUpdateResult(result);
         }
 
@@ -86,12 +87,12 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         [HttpDelete("{id:int}")]
         [PermissionFilterFactory(Permission.Currency.Delete)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
         {
             var result = await _mediator.Send(new DeleteCurrencyCommand(id));
-            return HandleDeleteResult(result);
+            return HandleResult(result);
         }
 
         /// <summary>

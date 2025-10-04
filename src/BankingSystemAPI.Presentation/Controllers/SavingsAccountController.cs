@@ -44,18 +44,8 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// <summary>
         /// Create a new savings account.
         /// </summary>
-        /// <remarks>
-        /// Example request body:
-        /// {
-        ///   "userId": "string",
-        ///   "currencyId": 1,
-        ///   "initialDeposit": 100.00,
-        ///   "interestType": 1 // 1=Monthly, 2=Quarterly, 3=Annually, 4=every5minutes (testing)
-        /// }
-        /// 
         /// The handler will validate that the currency and user exist and are active and will persist
         /// the new savings account. An account number and CreatedDate are auto-generated.
-        /// </remarks>
         [HttpPost]
         [PermissionFilterFactory(Permission.SavingsAccount.Create)]
         [ProducesResponseType(StatusCodes.Status201Created)]
@@ -76,7 +66,7 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </remarks>
         [HttpPut("{id:int}")]
         [PermissionFilterFactory(Permission.SavingsAccount.Update)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] SavingsAccountEditDto req)
         {

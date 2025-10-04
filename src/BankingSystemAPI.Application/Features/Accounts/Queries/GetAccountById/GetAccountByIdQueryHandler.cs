@@ -17,9 +17,9 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountById
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
 
-        public GetAccountByIdQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService? accountAuth = null)
+        public GetAccountByIdQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _mapper = mapper;
@@ -29,17 +29,9 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountById
         public async Task<Result<AccountDto>> Handle(GetAccountByIdQuery request, CancellationToken cancellationToken)
         {
             // Authorization
-            if (_accountAuth != null)
-            {
-                try
-                {
-                    await _accountAuth.CanViewAccountAsync(request.Id);
-                }
-                catch (Exception ex)
-                {
-                    return Result<AccountDto>.Failure(new[] { ex.Message });
-                }
-            }
+            var authResult = await _accountAuth.CanViewAccountAsync(request.Id);
+            if (authResult.IsFailure)
+                return Result<AccountDto>.Failure(authResult.Errors);
 
             // Get account using specification
             var spec = new AccountByIdSpecification(request.Id);

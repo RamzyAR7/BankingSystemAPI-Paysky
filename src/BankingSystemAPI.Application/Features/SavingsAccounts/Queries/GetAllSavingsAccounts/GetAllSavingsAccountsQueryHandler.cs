@@ -16,9 +16,9 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetAllSa
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
 
-        public GetAllSavingsAccountsQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService? accountAuth = null)
+        public GetAllSavingsAccountsQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _mapper = mapper;
@@ -29,28 +29,19 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetAllSa
         {
             var pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
             var pageSize = request.PageSize < 1 ? 10 : request.PageSize;
-            var skip = (pageNumber - 1) * pageSize;
 
-            if (_accountAuth is not null)
-            {
-                var accountQuery = _uow.AccountRepository.Table
-                    .Where(a => a is SavingsAccount)
-                    .Include(a => a.Currency)
-                    .AsQueryable();
+            var accountQuery = _uow.AccountRepository.Table
+                .Where(a => a is SavingsAccount)
+                .Include(a => a.Currency)
+                .AsQueryable();
 
-                var filterResult = await _accountAuth.FilterAccountsAsync(accountQuery, pageNumber, pageSize);
-                if (filterResult.IsFailure)
-                    return Result<List<SavingsAccountDto>>.Failure(filterResult.Errors);
+            var filterResult = await _accountAuth.FilterAccountsAsync(accountQuery, pageNumber, pageSize);
+            if (filterResult.IsFailure)
+                return Result<List<SavingsAccountDto>>.Failure(filterResult.Errors);
 
-                var (accounts, total) = filterResult.Value!;
-                var mapped = accounts.OfType<SavingsAccount>().Select(a => _mapper.Map<SavingsAccountDto>(a)).ToList();
-                return Result<List<SavingsAccountDto>>.Success(mapped);
-            }
-
-            var spec = new PagedSpecification<Account>(a => a is SavingsAccount, skip, pageSize, request.OrderBy, request.OrderDirection, a => a.Currency);
-            var accountsDefault = await _uow.AccountRepository.ListAsync(spec);
-            var mappedDefault = accountsDefault.OfType<SavingsAccount>().Select(a => _mapper.Map<SavingsAccountDto>(a)).ToList();
-            return Result<List<SavingsAccountDto>>.Success(mappedDefault);
+            var (accounts, total) = filterResult.Value!;
+            var mapped = accounts.OfType<SavingsAccount>().Select(a => _mapper.Map<SavingsAccountDto>(a)).ToList();
+            return Result<List<SavingsAccountDto>>.Success(mapped);
         }
     }
 }

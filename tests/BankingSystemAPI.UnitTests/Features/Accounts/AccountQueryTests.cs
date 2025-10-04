@@ -22,10 +22,22 @@ public class AccountQueryTests : TestBase
 
     public AccountQueryTests()
     {
-        _getByIdHandler = new GetAccountByIdQueryHandler(UnitOfWork, Mapper);
-        _getByNumberHandler = new GetAccountByAccountNumberQueryHandler(UnitOfWork, Mapper);
-        _getByUserHandler = new GetAccountsByUserIdQueryHandler(UnitOfWork, Mapper);
-        _deleteHandler = new DeleteAccountCommandHandler(UnitOfWork);
+        var mockAccountAuth = new Mock<BankingSystemAPI.Application.Interfaces.Authorization.IAccountAuthorizationService>();
+        mockAccountAuth.Setup(x => x.CanViewAccountAsync(It.IsAny<int>()))
+            .ReturnsAsync(BankingSystemAPI.Domain.Common.Result.Success());
+        mockAccountAuth.Setup(x => x.CanModifyAccountAsync(It.IsAny<int>(), It.IsAny<BankingSystemAPI.Domain.Constant.AccountModificationOperation>()))
+            .ReturnsAsync(BankingSystemAPI.Domain.Common.Result.Success());
+        mockAccountAuth.Setup(x => x.FilterAccountsQueryAsync(It.IsAny<IQueryable<BankingSystemAPI.Domain.Entities.Account>>()))
+            .ReturnsAsync(BankingSystemAPI.Domain.Common.Result<IQueryable<BankingSystemAPI.Domain.Entities.Account>>.Success(It.IsAny<IQueryable<BankingSystemAPI.Domain.Entities.Account>>()));
+
+        var mockUserAuth = new Mock<BankingSystemAPI.Application.Interfaces.Authorization.IUserAuthorizationService>();
+        mockUserAuth.Setup(x => x.CanViewUserAsync(It.IsAny<string>()))
+            .ReturnsAsync(BankingSystemAPI.Domain.Common.Result.Success());
+
+        _getByIdHandler = new GetAccountByIdQueryHandler(UnitOfWork, Mapper, mockAccountAuth.Object);
+        _getByNumberHandler = new GetAccountByAccountNumberQueryHandler(UnitOfWork, Mapper, mockAccountAuth.Object);
+        _getByUserHandler = new GetAccountsByUserIdQueryHandler(UnitOfWork, Mapper, mockAccountAuth.Object, mockUserAuth.Object);
+        _deleteHandler = new DeleteAccountCommandHandler(UnitOfWork, mockAccountAuth.Object);
     }
 
     protected override void ConfigureMapperMock(Mock<IMapper> mapperMock)

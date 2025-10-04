@@ -10,9 +10,9 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.SetAccountActi
     public class SetAccountActiveStatusCommandHandler : ICommandHandler<SetAccountActiveStatusCommand>
     {
         private readonly IUnitOfWork _uow;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
 
-        public SetAccountActiveStatusCommandHandler(IUnitOfWork uow, IAccountAuthorizationService? accountAuth = null)
+        public SetAccountActiveStatusCommandHandler(IUnitOfWork uow, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _accountAuth = accountAuth;
@@ -20,8 +20,9 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.SetAccountActi
 
         public async Task<Result> Handle(SetAccountActiveStatusCommand request, CancellationToken cancellationToken)
         {
-            if (_accountAuth is not null)
-                await _accountAuth.CanModifyAccountAsync(request.Id, AccountModificationOperation.Edit);
+            var authResult = await _accountAuth.CanModifyAccountAsync(request.Id, AccountModificationOperation.Edit);
+            if (authResult.IsFailure)
+                return Result.Failure(authResult.Errors);
 
             var spec = new AccountByIdSpecification(request.Id);
             var account = await _uow.AccountRepository.FindAsync(spec);

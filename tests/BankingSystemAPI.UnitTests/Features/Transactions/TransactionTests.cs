@@ -18,7 +18,11 @@ public class TransactionTests : TestBase
     public TransactionTests()
     {
         var depositLogger = new NullLogger<DepositCommandHandler>();
-        _depositHandler = new DepositCommandHandler(UnitOfWork, Mapper, depositLogger);
+        var mockAccountAuth = new Mock<BankingSystemAPI.Application.Interfaces.Authorization.IAccountAuthorizationService>();
+        mockAccountAuth.Setup(x => x.CanModifyAccountAsync(It.IsAny<int>(), It.IsAny<BankingSystemAPI.Domain.Constant.AccountModificationOperation>()))
+            .ReturnsAsync(BankingSystemAPI.Domain.Common.Result.Success());
+        
+        _depositHandler = new DepositCommandHandler(UnitOfWork, Mapper, depositLogger, mockAccountAuth.Object);
     }
 
     protected override void ConfigureMapperMock(Mock<IMapper> mapperMock)

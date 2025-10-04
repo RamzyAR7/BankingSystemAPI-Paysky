@@ -19,14 +19,14 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
         private readonly ILogger<UpdateSavingsAccountCommandHandler> _logger;
 
         public UpdateSavingsAccountCommandHandler(
             IUnitOfWork uow, 
             IMapper mapper, 
             ILogger<UpdateSavingsAccountCommandHandler> logger,
-            IAccountAuthorizationService? accountAuth = null)
+            IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _mapper = mapper;
@@ -72,9 +72,6 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
 
         private async Task<Result> ValidateAuthorizationAsync(int accountId)
         {
-            if (_accountAuth == null)
-                return Result.Success();
-
             try
             {
                 var authResult = await _accountAuth.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);

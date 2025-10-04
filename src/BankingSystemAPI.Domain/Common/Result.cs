@@ -17,9 +17,6 @@ namespace BankingSystemAPI.Domain.Common
         public IReadOnlyList<string> Errors { get; private set; }
         public string ErrorMessage => string.Join("; ", Errors);
 
-        // Keep old property for backward compatibility
-        public bool Succeeded => IsSuccess;
-
         protected Result(bool isSuccess, IEnumerable<string> errors)
         {
             IsSuccess = isSuccess;
@@ -114,7 +111,7 @@ namespace BankingSystemAPI.Domain.Common
         // Combine multiple results
         public static Result Combine(params Result[] results)
         {
-            var failures = results.Where(r => r.IsFailure).ToList();
+            var failures = results.Where(r => !r).ToList(); // Using implicit bool operator!
             if (!failures.Any()) return Success();
             
             var allErrors = failures.SelectMany(r => r.Errors);

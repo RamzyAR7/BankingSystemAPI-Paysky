@@ -15,9 +15,9 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetAllIn
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
 
-        public GetAllInterestLogsQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService? accountAuth = null)
+        public GetAllInterestLogsQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _mapper = mapper;
@@ -28,44 +28,35 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetAllIn
         {
             var pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
             var pageSize = request.PageSize < 1 ? 10 : request.PageSize;
-            var skip = (pageNumber - 1) * pageSize;
 
-            if (_accountAuth is not null)
+            // Start with savings accounts query
+            var accountQuery = _uow.AccountRepository.Table
+                .Where(a => a is SavingsAccount)
+                .Include(a => a.User)
+                .AsQueryable();
+
+            // Let the authorization service filter the query
+            var filterResult = await _accountAuth.FilterAccountsQueryAsync(accountQuery);
+            if (filterResult.IsFailure)
+                return Result<InterestLogsPagedDto>.Failure(filterResult.Errors);
+
+            var filteredAccountQuery = filterResult.Value!;
+
+            // Materialize allowed account ids
+            var accountIds = await filteredAccountQuery.Select(a => a.Id).ToListAsync(cancellationToken);
+
+            if (accountIds == null || accountIds.Count == 0)
             {
-                // Start with savings accounts query
-                var accountQuery = _uow.AccountRepository.Table
-                    .Where(a => a is SavingsAccount)
-                    .Include(a => a.User)
-                    .AsQueryable();
-
-                // Let the authorization service filter the query
-                var filterResult = await _accountAuth.FilterAccountsQueryAsync(accountQuery);
-                if (filterResult.IsFailure)
-                    return Result<InterestLogsPagedDto>.Failure(filterResult.Errors);
-
-                var filteredAccountQuery = filterResult.Value!;
-
-                // Materialize allowed account ids
-                var accountIds = await filteredAccountQuery.Select(a => a.Id).ToListAsync(cancellationToken);
-
-                if (accountIds == null || accountIds.Count == 0)
-                {
-                    var emptyDto = new InterestLogsPagedDto { Logs = Enumerable.Empty<InterestLogDto>(), TotalCount = 0 };
-                    return Result<InterestLogsPagedDto>.Success(emptyDto);
-                }
-
-                var spec = new InterestLogsPagedSpecification(accountIds, skip, pageSize);
-                var (items, total) = await _uow.InterestLogRepository.GetPagedAsync(spec);
-                var dtoItems = items.Select(i => _mapper.Map<InterestLogDto>(i)).ToList();
-                var dto = new InterestLogsPagedDto { Logs = dtoItems, TotalCount = total };
-                return Result<InterestLogsPagedDto>.Success(dto);
+                var emptyDto = new InterestLogsPagedDto { Logs = Enumerable.Empty<InterestLogDto>(), TotalCount = 0 };
+                return Result<InterestLogsPagedDto>.Success(emptyDto);
             }
 
-            var fallbackSpec = new InterestLogsPagedSpecification(skip, pageSize);
-            var (fallbackItems, fallbackTotal) = await _uow.InterestLogRepository.GetPagedAsync(fallbackSpec);
-            var fallbackDtoItems = fallbackItems.Select(i => _mapper.Map<InterestLogDto>(i)).ToList();
-            var fallbackDto = new InterestLogsPagedDto { Logs = fallbackDtoItems, TotalCount = fallbackTotal };
-            return Result<InterestLogsPagedDto>.Success(fallbackDto);
+            var skip = (pageNumber - 1) * pageSize;
+            var spec = new InterestLogsPagedSpecification(accountIds, skip, pageSize);
+            var (items, total) = await _uow.InterestLogRepository.GetPagedAsync(spec);
+            var dtoItems = items.Select(i => _mapper.Map<InterestLogDto>(i)).ToList();
+            var dto = new InterestLogsPagedDto { Logs = dtoItems, TotalCount = total };
+            return Result<InterestLogsPagedDto>.Success(dto);
         }
     }
 }

@@ -30,7 +30,7 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
             
             // Business validation: Check bank name uniqueness
             var uniquenessResult = await ValidateUniquenessAsync(request.bankDto);
-            if (uniquenessResult.IsFailure)
+            if (!uniquenessResult) // Using implicit bool operator!
                 return Result<BankResDto>.Failure(uniquenessResult.Errors);
 
             var createResult = await CreateAndPersistBankAsync(request.bankDto);

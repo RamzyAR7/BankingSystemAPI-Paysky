@@ -17,9 +17,9 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Update
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
 
-        public UpdateCheckingAccountCommandHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService? accountAuth = null)
+        public UpdateCheckingAccountCommandHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _mapper = mapper;
@@ -32,14 +32,15 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Update
         /// </summary>
         public async Task<Result<CheckingAccountDto>> Handle(UpdateCheckingAccountCommand request, CancellationToken cancellationToken)
         {
-            if (_accountAuth != null)
-                await _accountAuth.CanModifyAccountAsync(request.Id, AccountModificationOperation.Edit);
+            var authResult = await _accountAuth.CanModifyAccountAsync(request.Id, AccountModificationOperation.Edit);
+            if (authResult.IsFailure)
+                return Result<CheckingAccountDto>.Failure(authResult.Errors);
 
             var spec = new CheckingAccountByIdSpecification(request.Id);
             var account = await _uow.AccountRepository.FindAsync(spec);
             if (account is not CheckingAccount chk) return Result<CheckingAccountDto>.Failure(new[] { "Checking account not found." });
 
-            // Ensure the provided UserId actually owns this account — do not allow ownership reassignment here
+            // Ensure the provided UserId actually owns this account – do not allow ownership reassignment here
             if (!string.Equals(request.Req.UserId, chk.UserId, StringComparison.OrdinalIgnoreCase))
                 return Result<CheckingAccountDto>.Failure(new[] { "Specified user does not own this account." });
 

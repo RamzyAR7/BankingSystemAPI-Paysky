@@ -13,9 +13,9 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetInter
     {
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
-        private readonly IAccountAuthorizationService? _accountAuth;
+        private readonly IAccountAuthorizationService _accountAuth;
 
-        public GetInterestLogsByAccountIdQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService? accountAuth = null)
+        public GetInterestLogsByAccountIdQueryHandler(IUnitOfWork uow, IMapper mapper, IAccountAuthorizationService accountAuth)
         {
             _uow = uow;
             _mapper = mapper;
@@ -24,10 +24,10 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetInter
 
         public async Task<Result<InterestLogsPagedDto>> Handle(GetInterestLogsByAccountIdQuery request, CancellationToken cancellationToken)
         {
-            if (_accountAuth is not null)
-            {
-                await _accountAuth.CanViewAccountAsync(request.AccountId);
-            }
+            // Authorization - check if user can view the account
+            var authResult = await _accountAuth.CanViewAccountAsync(request.AccountId);
+            if (authResult.IsFailure)
+                return Result<InterestLogsPagedDto>.Failure(authResult.Errors);
 
             var pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
             var pageSize = request.PageSize < 1 ? 10 : request.PageSize;
