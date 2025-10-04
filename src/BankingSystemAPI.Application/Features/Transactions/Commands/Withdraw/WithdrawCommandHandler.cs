@@ -131,9 +131,12 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
                     var balance = checkingAccount.Balance;
                     var overdraftAvailable = checkingAccount.GetAvailableOverdraftCredit();
                     
+                    // Format balance with minus sign for negative values instead of parentheses
+                    var balanceFormatted = balance >= 0 ? $"${balance:F2}" : $"-${Math.Abs(balance):F2}";
+                    
                     return Result<Account>.BadRequest(
-                        $"Insufficient funds. Maximum withdrawal: {maxAllowed:C} " +
-                        $"(Balance: {balance:C}, Overdraft available: {overdraftAvailable:C})");
+                        $"Insufficient funds. Maximum withdrawal: ${maxAllowed:F2} " +
+                        $"(Balance: {balanceFormatted}, Overdraft available: ${overdraftAvailable:F2})");
                 }
                 return Result<Account>.Success(account);
             }

@@ -33,27 +33,35 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             // Validate authorization
             var authResult = await ValidateAuthorizationAsync(request.UserId);
             if (authResult.IsFailure)
+            {
+                _logger.LogWarning("Password change authorization failed for user {UserId} by {ActorId}: {Errors}", 
+                    request.UserId, _currentUserService.UserId, string.Join(", ", authResult.Errors));
                 return Result<UserResDto>.Failure(authResult.Errors);
+            }
 
             // Get user context
             var contextResult = await GetPasswordChangeContextAsync(request.UserId);
             if (contextResult.IsFailure)
+            {
+                _logger.LogWarning("Failed to get password change context for user {UserId}: {Errors}", 
+                    request.UserId, string.Join(", ", contextResult.Errors));
                 return Result<UserResDto>.Failure(contextResult.Errors);
+            }
 
             // Validate business rules and execute password change
             var changeResult = await ValidateAndExecutePasswordChangeAsync(request, contextResult.Value!);
             
             // Add side effects using ResultExtensions
             changeResult.OnSuccess(() => 
-                {
-                    _logger.LogInformation("Password changed successfully for user: {UserId} by {ActorId}", 
-                        request.UserId, _currentUserService.UserId);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning("Password change failed for user: {UserId} by {ActorId}. Errors: {Errors}",
-                        request.UserId, _currentUserService.UserId, string.Join(", ", errors));
-                });
+            {
+                _logger.LogInformation("Password changed successfully for user: {UserId} by {ActorId}", 
+                    request.UserId, _currentUserService.UserId);
+            })
+            .OnFailure(errors => 
+            {
+                _logger.LogWarning("Password change failed for user: {UserId} by {ActorId}. Errors: {Errors}",
+                    request.UserId, _currentUserService.UserId, string.Join(", ", errors));
+            });
 
             return changeResult;
         }
@@ -110,7 +118,11 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
 
             // Validate current password requirement
             if (rules.RequiresCurrentPassword && string.IsNullOrWhiteSpace(request.PasswordRequest.CurrentPassword))
-                return Result<UserResDto>.BadRequest("Current password is required.");
+                return Result<UserResDto>.BadRequest("Current password is required to change your password.");
+
+            // Validate password confirmation early
+            if (request.PasswordRequest.NewPassword != request.PasswordRequest.ConfirmNewPassword)
+                return Result<UserResDto>.BadRequest("The new password and confirmation password do not match. Please ensure both passwords are identical.");
 
             // Create ChangePasswordReqDto with business rules applied
             var changePasswordDto = new ChangePasswordReqDto
@@ -123,9 +135,19 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             // Execute password change
             var result = await _userService.ChangeUserPasswordAsync(request.UserId, changePasswordDto);
             
-            return result.IsSuccess
-                ? Result<UserResDto>.Success(result.Value!)
-                : Result<UserResDto>.Failure(result.Errors);
+            // Enhanced error handling for password change failures
+            if (result.IsFailure)
+            {
+                // Log the original error for debugging purposes
+                _logger.LogWarning("Password change failed for user {UserId}: {Errors}", 
+                    request.UserId, string.Join(", ", result.Errors));
+
+                // Check for common password change error patterns and provide specific messages
+                var enhancedErrors = EnhancePasswordChangeErrors(result.Errors, context, rules);
+                return Result<UserResDto>.Failure(enhancedErrors);
+            }
+
+            return Result<UserResDto>.Success(result.Value!);
         }
 
         private Result<PasswordChangeRules> DeterminePasswordRules(PasswordChangeContext context)
@@ -175,6 +197,30 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
 
             // Default to requiring current password for security
             return true;
+        }
+
+        /// <summary>
+        /// Enhances password change error messages with more specific user-friendly messages
+        /// </summary>
+        private IEnumerable<string> EnhancePasswordChangeErrors(IReadOnlyList<string> originalErrors, PasswordChangeContext context, PasswordChangeRules rules)
+        {
+            var enhancedErrors = new List<string>();
+
+            foreach (var error in originalErrors)
+            {
+                // ASP.NET Identity returns "Incorrect password." for wrong current password
+                if (error.Equals("Incorrect password.", StringComparison.OrdinalIgnoreCase))
+                {
+                    enhancedErrors.Add("The current password is incorrect. Please check your password and try again.");
+                }
+                // Keep other errors as-is for simplicity
+                else
+                {
+                    enhancedErrors.Add(error);
+                }
+            }
+
+            return enhancedErrors.Any() ? enhancedErrors : originalErrors;
         }
 
         private class PasswordChangeContext

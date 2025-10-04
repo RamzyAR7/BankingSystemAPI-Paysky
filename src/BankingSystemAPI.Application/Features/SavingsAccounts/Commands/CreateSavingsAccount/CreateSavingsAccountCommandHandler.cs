@@ -108,8 +108,22 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
             {
                 // Create and map entity
                 var entity = _mapper.Map<SavingsAccount>(req);
+                
+                // Convert percentage to decimal (e.g., 20% -> 0.20)
+                if (entity.InterestRate > 1.0000m)
+                {
+                    entity.InterestRate = entity.InterestRate / 100m;
+                }
+                
+                // Validate interest rate after conversion
+                if (entity.InterestRate < 0.0000m || entity.InterestRate > 1.0000m)
+                {
+                    return Result<SavingsAccountDto>.BadRequest("Interest rate must be between 0% and 100%.");
+                }
+                
                 entity.AccountNumber = $"SAV-{Guid.NewGuid().ToString()[..8].ToUpper()}";
                 entity.CreatedDate = DateTime.UtcNow;
+                entity.Balance = req.InitialBalance; // Set the balance from InitialBalance
 
                 // Persist
                 await _uow.AccountRepository.AddAsync(entity);

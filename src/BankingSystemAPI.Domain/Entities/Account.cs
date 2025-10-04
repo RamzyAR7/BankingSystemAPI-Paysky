@@ -135,20 +135,20 @@ namespace BankingSystemAPI.Domain.Entities
         public abstract void Withdraw(decimal amount);
 
         /// <summary>
-        /// Performs withdrawal for transfer operations.
+        /// Performs withdrawal for transfer operations including fees.
         /// Default implementation prevents overdraft (no negative balance allowed).
         /// </summary>
-        /// <param name="amount">Amount to withdraw for transfer</param>
+        /// <param name="totalAmount">Total amount to withdraw including transfer amount and fees</param>
         /// <exception cref="InvalidOperationException">Thrown when amount is invalid or insufficient funds</exception>
-        public void WithdrawForTransfer(decimal amount)
+        public void WithdrawForTransfer(decimal totalAmount)
         {
-            if (amount <= 0) 
-                throw new InvalidOperationException("Withdrawal amount must be greater than zero.");
+            if (totalAmount <= 0) 
+                throw new InvalidOperationException("Transfer amount must be greater than zero.");
             
-            if (amount > Balance) 
-                throw new InvalidOperationException("Insufficient funds for transfer (overdraft not allowed).");
+            if (totalAmount > Balance) 
+                throw new InvalidOperationException($"Insufficient funds for transfer. Available balance: {Balance:C}, Required: {totalAmount:C}. Overdraft is not available for transfers.");
             
-            Balance = Math.Round(Balance - amount, 2);
+            Balance = Math.Round(Balance - totalAmount, 2);
         }
 
         /// <summary>

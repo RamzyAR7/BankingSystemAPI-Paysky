@@ -282,6 +282,47 @@ namespace BankingSystemAPI.UnitTests.Application.Authorization
 
         #endregion
 
+        #region Admin Role Restriction Tests
+
+        [Fact]
+        public async Task CanViewUserAsync_AdminViewingAnotherAdmin_ShouldReturnForbidden()
+        {
+            // Arrange
+            var mockAuthService = new Mock<IUserAuthorizationService>();
+            var targetAdminUserId = "admin456";
+            var expectedResult = Result.Forbidden("You can only access Client users.");
+
+            mockAuthService.Setup(x => x.CanViewUserAsync(targetAdminUserId))
+                .ReturnsAsync(expectedResult);
+
+            // Act
+            var result = await mockAuthService.Object.CanViewUserAsync(targetAdminUserId);
+
+            // Assert
+            Assert.True(result.IsFailure);
+            Assert.Contains("You can only access Client users", string.Join(" ", result.Errors));
+        }
+
+        [Fact]
+        public async Task CanViewUserAsync_AdminViewingClient_ShouldReturnSuccess()
+        {
+            // Arrange
+            var mockAuthService = new Mock<IUserAuthorizationService>();
+            var targetClientUserId = "client123";
+            var expectedResult = Result.Success();
+
+            mockAuthService.Setup(x => x.CanViewUserAsync(targetClientUserId))
+                .ReturnsAsync(expectedResult);
+
+            // Act
+            var result = await mockAuthService.Object.CanViewUserAsync(targetClientUserId);
+
+            // Assert
+            Assert.True(result.IsSuccess);
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private ApplicationUser CreateTestUser(string userId, int? bankId = null)

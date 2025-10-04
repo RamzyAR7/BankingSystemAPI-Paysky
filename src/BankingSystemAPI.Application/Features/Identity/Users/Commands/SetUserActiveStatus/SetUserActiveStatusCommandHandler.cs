@@ -21,12 +21,14 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.SetUserA
 
         public async Task<Result> Handle(SetUserActiveStatusCommand request, CancellationToken cancellationToken)
         {
-            // Business validation: Authorization check
-            if (_userAuthorizationService != null)
-            {
-                await _userAuthorizationService.CanModifyUserAsync(request.UserId, UserModificationOperation.Edit);
-            }
+            
 
+            var authResult = await _userAuthorizationService.CanModifyUserAsync(request.UserId, UserModificationOperation.Edit);
+            if(!authResult)
+            {
+                return Result.Failure(authResult.Errors);
+            }
+            
             // The UserService now returns Result
             var result = await _userService.SetUserActiveStatusAsync(request.UserId, request.IsActive);
             

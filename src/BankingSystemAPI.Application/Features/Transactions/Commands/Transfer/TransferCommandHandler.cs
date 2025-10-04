@@ -233,12 +233,12 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
             var fees = Math.Round(amount * feeRate, 2);
             var totalRequired = amount + fees;
             
-            decimal available = source.Balance;
-            if (source is CheckingAccount sc) available += sc.OverdraftLimit;
+            // For transfers, NEVER allow overdraft - only use actual balance
+            decimal availableBalance = source.Balance;
             
-            return available >= totalRequired
+            return availableBalance >= totalRequired
                 ? Result.Success()
-                : Result.InsufficientFunds(totalRequired, available); // Maps to 409 Conflict
+                : Result.InsufficientFunds(totalRequired, availableBalance); // Maps to 409 Conflict
         }
 
         private async Task<Result<TransactionResDto>> ExecuteTransferAsync(AccountPair accounts, TransferReqDto req)
@@ -312,11 +312,19 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
                 }
             };
 
-            // Update balances using the same logic as the old implementation:
-            // - Withdraw amount + fee from source (like WithdrawForTransfer)  
-            // - Deposit only the converted/target amount to target account
-            src.Balance = Math.Round(src.Balance - req.Amount - feeOnSource, 2);
-            tgt.Balance = Math.Round(tgt.Balance + targetAmount, 2);
+            // Use domain methods for balance updates to enforce business rules
+            // WithdrawForTransfer prevents overdraft usage (no negative balance allowed)
+            var totalWithdrawal = req.Amount + feeOnSource;
+            
+            try
+            {
+                src.WithdrawForTransfer(totalWithdrawal);  // This enforces no overdraft for transfers
+                tgt.Deposit(targetAmount);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new InvalidOperationException($"Transfer failed: {ex.Message}");
+            }
 
             // Persist changes - EF Core will automatically handle RowVersion for both accounts
             await _uow.TransactionRepository.AddAsync(transaction);

@@ -6,22 +6,33 @@ using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
+using BankingSystemAPI.Application.Specifications.AccountSpecification;
+using BankingSystemAPI.Application.Specifications.UserSpecifications;
 using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using BankingSystemAPI.Application.Specifications.AccountSpecification;
-using BankingSystemAPI.Application.Specifications.UserSpecifications;
+using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.AuthorizationServices
 {
+    /// <summary>
+    /// Comprehensive account authorization service implementing hierarchical access control
+    /// with organized validation rules and proper error handling for financial account operations
+    /// </summary>
     public class AccountAuthorizationService : IAccountAuthorizationService
     {
+        #region Private Fields - Organized by Responsibility
+
+        // Core Dependencies
         private readonly ICurrentUserService _currentUser;
         private readonly IUnitOfWork _uow;
         private readonly IScopeResolver _scopeResolver;
         private readonly ILogger<AccountAuthorizationService> _logger;
+
+        #endregion
+
+        #region Constructor
 
         public AccountAuthorizationService(
             ICurrentUserService currentUser,
@@ -35,67 +46,102 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             _logger = logger;
         }
 
+        #endregion
+
+        #region Public Interface Implementation - Ordered by Operation Impact
+
+        /// <summary>
+        /// Validates account view access with minimal security impact
+        /// Priority: Low-Medium impact operation for financial data viewing
+        /// </summary>
         public async Task<Result> CanViewAccountAsync(int accountId)
         {
             var scopeResult = await GetScopeAsync();
             if (scopeResult.IsFailure)
-                return scopeResult;
+                return HandleScopeError(scopeResult);
 
             var accountResult = await LoadAccountAsync(accountId);
             if (accountResult.IsFailure)
-                return Result.Failure(accountResult.Errors);
+                return HandleAccountError(accountResult);
 
-            var authorizationResult = await ValidateViewAccountAuthorizationAsync(accountResult.Value!, scopeResult.Value);
+            var authorizationResult = await ValidateViewAuthorizationAsync(accountResult.Value!, scopeResult.Value);
             
-                authorizationResult.OnSuccess(() => 
-                {
-                    _logger.LogDebug("[AUTHORIZATION] Account view authorization granted: AccountId={AccountId}, UserId={UserId}, Scope={Scope}", 
-                        accountId, _currentUser.UserId, scopeResult.Value);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning("[AUTHORIZATION] Account view authorization denied: AccountId={AccountId}, UserId={UserId}, Errors={Errors}",
-                        accountId, _currentUser.UserId, string.Join(", ", errors));
-                });
+            LogAuthorizationResult(
+                AuthorizationCheckType.View, 
+                accountId.ToString(), 
+                authorizationResult, 
+                scopeResult.Value);
 
             return authorizationResult;
         }
 
+        /// <summary>
+        /// Validates account creation with medium-high security impact
+        /// Priority: Medium-High impact operation for financial account creation
+        /// </summary>
+        public async Task<Result> CanCreateAccountForUserAsync(string targetUserId)
+        {
+            var scopeResult = await GetScopeAsync();
+            if (scopeResult.IsFailure)
+                return HandleScopeError(scopeResult);
+
+            var authorizationResult = await ValidateCreationAuthorizationAsync(targetUserId, scopeResult.Value);
+            
+            LogAuthorizationResult(
+                AuthorizationCheckType.Create, 
+                targetUserId, 
+                authorizationResult, 
+                scopeResult.Value);
+
+            return authorizationResult;
+        }
+
+        /// <summary>
+        /// Validates account modification with high security impact
+        /// Priority: High impact operation for financial account modifications
+        /// </summary>
         public async Task<Result> CanModifyAccountAsync(int accountId, AccountModificationOperation operation)
         {
             var scopeResult = await GetScopeAsync();
             if (scopeResult.IsFailure)
-                return scopeResult;
+                return HandleScopeError(scopeResult);
 
             var actingUserResult = await GetActingUserAsync();
             if (actingUserResult.IsFailure)
-                return actingUserResult;
+                return HandleUserError(actingUserResult);
 
             var accountResult = await LoadAccountAsync(accountId);
             if (accountResult.IsFailure)
-                return Result.Failure(accountResult.Errors);
+                return HandleAccountError(accountResult);
 
-            var selfModificationResult = ValidateSelfModificationRules(actingUserResult.Value!, accountResult.Value!, operation);
+            // Critical security check - highest priority for financial operations
+            var selfModificationResult = ValidateSelfModificationRules(
+                actingUserResult.Value!, 
+                accountResult.Value!, 
+                operation);
             if (selfModificationResult.IsFailure)
                 return selfModificationResult;
 
-            var authorizationResult = await ValidateAccountModificationAuthorizationAsync(accountResult.Value!, operation, scopeResult.Value, actingUserResult.Value!);
+            var authorizationResult = await ValidateModificationAuthorizationAsync(
+                accountResult.Value!, 
+                operation, 
+                scopeResult.Value, 
+                actingUserResult.Value!);
             
-            // Add side effects using ResultExtensions
-            authorizationResult.OnSuccess(() => 
-                {
-                    _logger.LogDebug("[AUTHORIZATION] Account modification authorization granted: AccountId={AccountId}, Operation={Operation}, UserId={UserId}, Scope={Scope}", 
-                        accountId, operation, _currentUser.UserId, scopeResult.Value);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning("[AUTHORIZATION] Account modification authorization denied: AccountId={AccountId}, Operation={Operation}, UserId={UserId}, Errors={Errors}",
-                        accountId, operation, _currentUser.UserId, string.Join(", ", errors));
-                });
+            LogAuthorizationResult(
+                AuthorizationCheckType.Modify, 
+                accountId.ToString(), 
+                authorizationResult, 
+                scopeResult.Value, 
+                operation.ToString());
 
             return authorizationResult;
         }
 
+        /// <summary>
+        /// Filters accounts based on authorization scope
+        /// Priority: Low impact operation with potential high financial data exposure
+        /// </summary>
         public async Task<Result<(IEnumerable<Account> Accounts, int TotalCount)>> FilterAccountsAsync(
             IQueryable<Account> query,
             int pageNumber = 1,
@@ -105,46 +151,21 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             if (roleResult.IsFailure)
                 return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Failure(roleResult.Errors);
 
-            var filteringResult = await ApplyRoleBasedFilteringAsync(query, roleResult.Value!, pageNumber, pageSize);
+            var filteringResult = await ApplyRoleBasedFilteringAsync(
+                query, 
+                roleResult.Value!, 
+                pageNumber, 
+                pageSize);
             
-            // Add side effects using ResultExtensions
-            filteringResult.OnSuccess(() => 
-                {
-                    _logger.LogDebug("[AUTHORIZATION] Account filtering completed: Count={Count}, Page={Page}, Size={Size}, Role={Role}", 
-                        filteringResult.Value.TotalCount, pageNumber, pageSize, roleResult.Value!.Name);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning("[AUTHORIZATION] Account filtering failed: UserId={UserId}, Role={Role}, Errors={Errors}",
-                        _currentUser.UserId, roleResult.Value?.Name, string.Join(", ", errors));
-                });
+            LogFilteringResult(filteringResult, roleResult.Value!.Name, pageNumber, pageSize);
 
             return filteringResult;
         }
 
-        public async Task<Result> CanCreateAccountForUserAsync(string targetUserId)
-        {
-            var scopeResult = await GetScopeAsync();
-            if (scopeResult.IsFailure)
-                return scopeResult;
-
-            var authorizationResult = await ValidateAccountCreationAuthorizationAsync(targetUserId, scopeResult.Value);
-            
-            // Add side effects using ResultExtensions
-            authorizationResult.OnSuccess(() => 
-                {
-                    _logger.LogDebug("[AUTHORIZATION] Account creation authorization granted: TargetUserId={TargetUserId}, ActingUserId={ActingUserId}, Scope={Scope}", 
-                        targetUserId, _currentUser.UserId, scopeResult.Value);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning("[AUTHORIZATION] Account creation authorization denied: TargetUserId={TargetUserId}, ActingUserId={ActingUserId}, Scope={Scope}, Errors={Errors}",
-                        targetUserId, _currentUser.UserId, scopeResult.Value, string.Join(", ", errors));
-                });
-
-            return authorizationResult;
-        }
-
+        /// <summary>
+        /// Provides filtered query for accounts based on user permissions
+        /// Priority: Low impact operation with controlled data access
+        /// </summary>
         public async Task<Result<IQueryable<Account>>> FilterAccountsQueryAsync(IQueryable<Account> query)
         {
             var roleResult = await GetCurrentUserRoleAsync();
@@ -153,18 +174,332 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
             var queryFilteringResult = await ApplyRoleBasedQueryFilteringAsync(query, roleResult.Value!);
             
-            // Add side effects using ResultExtensions
-            queryFilteringResult.OnSuccess(() => 
-                {
-                    _logger.LogDebug("[AUTHORIZATION] Account query filtering applied: Role={Role}, UserId={UserId}", 
-                        roleResult.Value!.Name, _currentUser.UserId);
-                });
+            LogQueryFilteringResult(queryFilteringResult, roleResult.Value!.Name);
 
             return queryFilteringResult;
         }
 
-        #region Private Helper Methods Using ResultExtensions
+        #endregion
 
+        #region Core Authorization Logic - Organized by Validation Type
+
+        /// <summary>
+        /// Validates view authorization with hierarchical scope checking for account access
+        /// Order: Self-access → Scope-based validation → Financial data protection
+        /// </summary>
+        private async Task<Result> ValidateViewAuthorizationAsync(Account account, AccessScope scope)
+        {
+            // Critical Priority: Check self-access first (bypasses other restrictions for own accounts)
+            if (IsSelfAccess(account.UserId))
+            {
+                LogSelfAccessGranted(AuthorizationCheckType.View, account.Id.ToString());
+                return Result.Success();
+            }
+
+            // High Priority: Apply scope-based validation for financial data
+            return scope switch
+            {
+                AccessScope.Global => Result.Success(),
+                AccessScope.Self => Result.Forbidden(AuthorizationConstants.ErrorMessages.AccountOwnershipRequired),
+                AccessScope.BankLevel => await ValidateBankLevelViewAsync(account),
+                _ => Result.Forbidden(AuthorizationConstants.ErrorMessages.UnknownAccessScope)
+            };
+        }
+
+        /// <summary>
+        /// Validates modification authorization with enhanced security checks for financial operations
+        /// Order: Self-modification rules → Scope validation → Role validation → Financial protection
+        /// </summary>
+        private async Task<Result> ValidateModificationAuthorizationAsync(
+            Account account, 
+            AccountModificationOperation operation, 
+            AccessScope scope, 
+            ApplicationUser actingUser)
+        {
+            return scope switch
+            {
+                AccessScope.Global => Result.Success(),
+                AccessScope.Self => Result.Forbidden("Clients cannot modify other users' accounts."),
+                AccessScope.BankLevel => await ValidateBankLevelModificationAsync(account, actingUser),
+                _ => Result.Forbidden(AuthorizationConstants.ErrorMessages.UnknownAccessScope)
+            };
+        }
+
+        /// <summary>
+        /// Validates creation authorization based on user scope for new financial accounts
+        /// Order: Scope hierarchy validation → Target user validation → Bank isolation
+        /// </summary>
+        private async Task<Result> ValidateCreationAuthorizationAsync(string targetUserId, AccessScope scope)
+        {
+            return scope switch
+            {
+                AccessScope.Global => Result.Success(),
+                AccessScope.Self => Result.Forbidden("Clients cannot create accounts for other users."),
+                AccessScope.BankLevel => await ValidateBankLevelCreationAsync(targetUserId),
+                _ => Result.Forbidden(AuthorizationConstants.ErrorMessages.UnknownAccessScope)
+            };
+        }
+
+        #endregion
+
+        #region Bank-Level Authorization - Organized by Security Layer
+
+        /// <summary>
+        /// Bank-level view validation with account ownership and bank isolation checks
+        /// Order: Account owner role validation → Bank isolation → Financial data protection
+        /// </summary>
+        private async Task<Result> ValidateBankLevelViewAsync(Account account)
+        {
+            // Layer 1: Role-based access validation - Admins can only view Client accounts
+            var roleValidationResult = await ValidateAccountOwnerRoleForViewAsync(account.UserId);
+            if (roleValidationResult.IsFailure)
+                return roleValidationResult;
+
+            // Layer 2: Bank isolation validation for financial data
+            return BankGuard.ValidateSameBank(_currentUser.BankId, account.User?.BankId);
+        }
+
+        /// <summary>
+        /// Bank-level modification validation with comprehensive security checks for financial operations
+        /// Order: Account owner role → Bank isolation → Financial operation validation
+        /// </summary>
+        private async Task<Result> ValidateBankLevelModificationAsync(Account account, ApplicationUser actingUser)
+        {
+            // Layer 1: Role-based access validation for financial operations
+            var roleValidationResult = await ValidateAccountOwnerRoleAsync(account.UserId);
+            if (roleValidationResult.IsFailure)
+                return roleValidationResult;
+
+            // Layer 2: Bank isolation validation for financial security
+            return BankGuard.ValidateSameBank(actingUser.BankId, account.User?.BankId);
+        }
+
+        /// <summary>
+        /// Bank-level creation validation for new financial accounts
+        /// Order: Target user existence → Role validation → Bank isolation
+        /// </summary>
+        private async Task<Result> ValidateBankLevelCreationAsync(string targetUserId)
+        {
+            // Layer 1: Acting user validation
+            var actingUserResult = await GetActingUserAsync();
+            if (actingUserResult.IsFailure)
+                return actingUserResult;
+
+            // Layer 2: Target user existence validation
+            var targetUserResult = await LoadTargetUserForCreationAsync(targetUserId);
+            if (targetUserResult.IsFailure)
+                return targetUserResult;
+
+            // Layer 3: Role-based access validation
+            var roleValidationResult = await ValidateTargetUserRoleForCreationAsync(targetUserId);
+            if (roleValidationResult.IsFailure)
+                return roleValidationResult;
+
+            // Layer 4: Bank isolation validation
+            return BankGuard.ValidateSameBank(actingUserResult.Value!.BankId, targetUserResult.Value!.BankId);
+        }
+
+        #endregion
+
+        #region Self-Modification Rules - Organized by Financial Operation Risk
+
+        /// <summary>
+        /// Self-modification validation with financial operation-specific rules
+        /// Order: Risk level from highest to lowest impact for financial operations
+        /// </summary>
+        private Result ValidateSelfModificationRules(
+            ApplicationUser actingUser, 
+            Account account, 
+            AccountModificationOperation operation)
+        {
+            if (!IsSelfAccess(actingUser.Id, account.UserId))
+                return Result.Success(); // Not self-modification
+
+            return operation switch
+            {
+                // CRITICAL RISK: Account structure modifications
+                AccountModificationOperation.Edit => 
+                    Result.Forbidden(AuthorizationConstants.ErrorMessages.CannotModifyOwnAccount),
+                AccountModificationOperation.Delete => 
+                    Result.Forbidden("Users cannot delete their own accounts."),
+                
+                // HIGH RISK: Account status changes
+                AccountModificationOperation.Freeze or AccountModificationOperation.Unfreeze => 
+                    Result.Forbidden("Users cannot freeze or unfreeze their own accounts."),
+                
+                // LOW RISK: Financial transactions (allowed)
+                AccountModificationOperation.Deposit or AccountModificationOperation.Withdraw => 
+                    Result.Success(),
+                
+                // Default: Operation not permitted
+                _ => Result.Forbidden("Operation not permitted on own account.")
+            };
+        }
+
+        #endregion
+
+        #region Role Validation - Organized by Target Role Hierarchy
+
+        /// <summary>
+        /// Role validation for account ownership with financial data protection
+        /// Order: Role hierarchy validation for financial account access
+        /// </summary>
+        private async Task<Result> ValidateAccountOwnerRoleAsync(string accountOwnerId)
+        {
+            var ownerRole = await _uow.RoleRepository.GetRoleByUserIdAsync(accountOwnerId);
+            return RoleHelper.IsClient(ownerRole?.Name)
+                ? Result.Success()
+                : Result.Forbidden("Only Client accounts can be modified.");
+        }
+
+        /// <summary>
+        /// Role validation for account viewing with financial data protection
+        /// Order: Role hierarchy validation for financial account viewing
+        /// </summary>
+        private async Task<Result> ValidateAccountOwnerRoleForViewAsync(string accountOwnerId)
+        {
+            var ownerRole = await _uow.RoleRepository.GetRoleByUserIdAsync(accountOwnerId);
+            return RoleHelper.IsClient(ownerRole?.Name)
+                ? Result.Success()
+                : Result.Forbidden("You can only view accounts belonging to Client users.");
+        }
+
+        /// <summary>
+        /// Role validation for account creation targeting specific user types
+        /// Order: Role hierarchy validation for new account creation
+        /// </summary>
+        private async Task<Result> ValidateTargetUserRoleForCreationAsync(string targetUserId)
+        {
+            var targetRole = await _uow.RoleRepository.GetRoleByUserIdAsync(targetUserId);
+            return RoleHelper.IsClient(targetRole?.Name)
+                ? Result.Success()
+                : Result.Forbidden("Can only create accounts for Client users.");
+        }
+
+        #endregion
+
+        #region Data Filtering - Organized by Scope Complexity
+
+        /// <summary>
+        /// Apply role-based filtering with proper financial data isolation
+        /// Order: Role complexity from simple to complex
+        /// </summary>
+        private async Task<Result<(IEnumerable<Account> Accounts, int TotalCount)>> ApplyRoleBasedFilteringAsync(
+            IQueryable<Account> query, 
+            ApplicationRole role, 
+            int pageNumber, 
+            int pageSize)
+        {
+            try
+            {
+                // Route by role complexity
+                if (RoleHelper.IsSuperAdmin(role.Name))
+                {
+                    return await ExecuteGlobalAccountFilteringAsync(query, pageNumber, pageSize);
+                }
+
+                if (RoleHelper.IsClient(role.Name))
+                {
+                    return await ExecuteSelfAccountFilteringAsync(query, pageNumber, pageSize);
+                }
+
+                return await ExecuteBankLevelAccountFilteringAsync(query, pageNumber, pageSize);
+            }
+            catch (Exception ex)
+            {
+                LogSystemError("Failed to filter accounts", ex);
+                return Result<(IEnumerable<Account> Accounts, int TotalCount)>
+                    .BadRequest($"Failed to filter accounts: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Global filtering - least restrictive (SuperAdmin access to all financial accounts)
+        /// </summary>
+        private async Task<Result<(IEnumerable<Account> Accounts, int TotalCount)>> ExecuteGlobalAccountFilteringAsync(
+            IQueryable<Account> query, int pageNumber, int pageSize)
+        {
+            var filteredQuery = query.OrderBy(a => a.Id);
+            var result = await _uow.AccountRepository.GetFilteredAccountsAsync(filteredQuery, pageNumber, pageSize);
+            return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Success(result);
+        }
+
+        /// <summary>
+        /// Self filtering - most restrictive (Client access to own accounts only)
+        /// </summary>
+        private async Task<Result<(IEnumerable<Account> Accounts, int TotalCount)>> ExecuteSelfAccountFilteringAsync(
+            IQueryable<Account> query, int pageNumber, int pageSize)
+        {
+            var filteredQuery = query.Where(a => a.UserId == _currentUser.UserId).OrderBy(a => a.Id);
+            var result = await _uow.AccountRepository.GetFilteredAccountsAsync(filteredQuery, pageNumber, pageSize);
+            return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Success(result);
+        }
+
+        /// <summary>
+        /// Bank-level filtering - moderately restrictive (Admin access to Client accounts within bank)
+        /// </summary>
+        private async Task<Result<(IEnumerable<Account> Accounts, int TotalCount)>> ExecuteBankLevelAccountFilteringAsync(
+            IQueryable<Account> query, int pageNumber, int pageSize)
+        {
+            var actingUserResult = await GetActingUserAsync();
+            if (actingUserResult.IsFailure)
+                return Result<(IEnumerable<Account> Accounts, int TotalCount)>
+                    .Success((Enumerable.Empty<Account>(), 0));
+
+            var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery(UserRole.Client.ToString());
+            var filteredQuery = query
+                .Where(a => clientUserIds.Contains(a.UserId) && a.User.BankId == actingUserResult.Value!.BankId)
+                .OrderBy(a => a.Id);
+            
+            var result = await _uow.AccountRepository.GetFilteredAccountsAsync(filteredQuery, pageNumber, pageSize);
+            return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Success(result);
+        }
+
+        /// <summary>
+        /// Apply role-based query filtering for financial account access
+        /// Order: Role complexity from simple to complex
+        /// </summary>
+        private async Task<Result<IQueryable<Account>>> ApplyRoleBasedQueryFilteringAsync(
+            IQueryable<Account> query, ApplicationRole role)
+        {
+            try
+            {
+                if (RoleHelper.IsSuperAdmin(role.Name))
+                {
+                    return Result<IQueryable<Account>>.Success(query.OrderBy(a => a.Id));
+                }
+
+                if (RoleHelper.IsClient(role.Name))
+                {
+                    return Result<IQueryable<Account>>.Success(
+                        query.Where(a => a.UserId == _currentUser.UserId).OrderBy(a => a.Id));
+                }
+
+                var actingUserResult = await GetActingUserAsync();
+                if (actingUserResult.IsFailure)
+                {
+                    return Result<IQueryable<Account>>.Success(Enumerable.Empty<Account>().AsQueryable());
+                }
+
+                var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery(UserRole.Client.ToString());
+                var filteredQuery = query
+                    .Where(a => clientUserIds.Contains(a.UserId) && a.User.BankId == actingUserResult.Value!.BankId)
+                    .OrderBy(a => a.Id);
+                
+                return Result<IQueryable<Account>>.Success(filteredQuery);
+            }
+            catch (Exception ex)
+            {
+                LogSystemError("Failed to apply query filtering", ex);
+                return Result<IQueryable<Account>>.BadRequest($"Failed to apply query filtering: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Helper Methods - Organized by Function Category
+
+        // Core Data Access Helpers
         private async Task<Result<AccessScope>> GetScopeAsync()
         {
             try
@@ -174,6 +509,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             }
             catch (Exception ex)
             {
+                LogSystemError("Failed to resolve access scope", ex);
                 return Result<AccessScope>.BadRequest($"Failed to resolve access scope: {ex.Message}");
             }
         }
@@ -192,6 +528,13 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             return account.ToResult($"Account with ID '{accountId}' not found.");
         }
 
+        private async Task<Result<ApplicationUser>> LoadTargetUserForCreationAsync(string targetUserId)
+        {
+            var targetUserSpec = new UserByIdSpecification(targetUserId);
+            var targetUser = await _uow.UserRepository.FindAsync(targetUserSpec);
+            return targetUser.ToResult($"Target user with ID '{targetUserId}' not found.");
+        }
+
         private async Task<Result<ApplicationRole>> GetCurrentUserRoleAsync()
         {
             try
@@ -201,202 +544,127 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             }
             catch (Exception ex)
             {
+                LogSystemError("Failed to get user role", ex);
                 return Result<ApplicationRole>.BadRequest($"Failed to get user role: {ex.Message}");
             }
         }
 
-        private async Task<Result> ValidateViewAccountAuthorizationAsync(Account account, AccessScope scope)
+        // Validation Helpers
+        private bool IsSelfAccess(string targetUserId) => 
+            _currentUser.UserId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase);
+
+        private bool IsSelfAccess(string actingUserId, string targetUserId) => 
+            actingUserId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase);
+
+        // Error Handling Helpers
+        private Result HandleScopeError(Result<AccessScope> scopeResult) => 
+            Result.BadRequest(scopeResult.Errors.FirstOrDefault() ?? AuthorizationConstants.ErrorMessages.SystemError);
+
+        private Result HandleUserError(Result<ApplicationUser> userResult) => 
+            Result.BadRequest(userResult.Errors.FirstOrDefault() ?? AuthorizationConstants.ErrorMessages.ResourceNotFound);
+
+        private Result HandleAccountError(Result<Account> accountResult) => 
+            Result.BadRequest(accountResult.Errors.FirstOrDefault() ?? "Account not found or inaccessible.");
+
+        #endregion
+
+        #region Logging Methods - Organized by Log Level and Category
+
+        private void LogAuthorizationResult(
+            AuthorizationCheckType checkType, 
+            string? targetId, 
+            Result authResult, 
+            AccessScope scope, 
+            string? additionalInfo = null)
         {
-            return scope switch
+            if (authResult.IsSuccess)
             {
-                AccessScope.Global => Result.Success(),
-                AccessScope.Self => ValidateSelfViewAuthorization(account),
-                AccessScope.BankLevel => ValidateBankLevelViewAuthorization(account),
-                _ => Result.Forbidden("Unknown access scope.")
-            };
-        }
-
-        private Result ValidateSelfViewAuthorization(Account account)
-        {
-            return _currentUser.UserId.Equals(account.UserId, StringComparison.OrdinalIgnoreCase)
-                ? Result.Success()
-                : Result.Forbidden("Clients can only view their own accounts.");
-        }
-
-        private Result ValidateBankLevelViewAuthorization(Account account)
-        {
-            return BankGuard.ValidateSameBank(_currentUser.BankId, account.User.BankId);
-        }
-
-        private Result ValidateSelfModificationRules(ApplicationUser actingUser, Account account, AccountModificationOperation operation)
-        {
-            if (!actingUser.Id.Equals(account.UserId, StringComparison.OrdinalIgnoreCase))
-                return Result.Success(); // Not self-modification
-
-            return operation switch
-            {
-                AccountModificationOperation.Edit => Result.Forbidden("Users cannot edit their own accounts."),
-                AccountModificationOperation.Delete => Result.Forbidden("Users cannot delete their own accounts."),
-                AccountModificationOperation.Freeze or AccountModificationOperation.Unfreeze => 
-                    Result.Forbidden("Users cannot freeze or unfreeze their own accounts."),
-                AccountModificationOperation.Deposit or AccountModificationOperation.Withdraw => Result.Success(),
-                _ => Result.Forbidden("Operation not permitted on own account.")
-            };
-        }
-
-        private async Task<Result> ValidateAccountModificationAuthorizationAsync(Account account, AccountModificationOperation operation, AccessScope scope, ApplicationUser actingUser)
-        {
-            return scope switch
-            {
-                AccessScope.Global => Result.Success(),
-                AccessScope.Self => Result.Forbidden("Clients cannot modify other users' accounts."),
-                AccessScope.BankLevel => await ValidateBankLevelModificationAuthorizationAsync(account, actingUser),
-                _ => Result.Forbidden("Unknown access scope.")
-            };
-        }
-
-        private async Task<Result> ValidateBankLevelModificationAuthorizationAsync(Account account, ApplicationUser actingUser)
-        {
-            var roleValidationResult = await ValidateAccountOwnerRoleAsync(account.UserId);
-            if (roleValidationResult.IsFailure)
-                return roleValidationResult;
-
-            var bankAccessResult = BankGuard.ValidateSameBank(actingUser.BankId, account.User.BankId);
-            return bankAccessResult;
-        }
-
-        private async Task<Result> ValidateAccountOwnerRoleAsync(string accountOwnerId)
-        {
-            var ownerRole = await _uow.RoleRepository.GetRoleByUserIdAsync(accountOwnerId);
-            return RoleHelper.IsClient(ownerRole?.Name)
-                ? Result.Success()
-                : Result.Forbidden("Only Client accounts can be modified.");
-        }
-
-        private async Task<Result> ValidateAccountCreationAuthorizationAsync(string targetUserId, AccessScope scope)
-        {
-            return scope switch
-            {
-                AccessScope.Global => Result.Success(),
-                AccessScope.Self => Result.Forbidden("Clients cannot create accounts for other users."),
-                AccessScope.BankLevel => await ValidateBankLevelAccountCreationAsync(targetUserId),
-                _ => Result.Forbidden("Unknown access scope.")
-            };
-        }
-
-        private async Task<Result> ValidateBankLevelAccountCreationAsync(string targetUserId)
-        {
-            var actingUserResult = await GetActingUserAsync();
-            if (actingUserResult.IsFailure)
-                return actingUserResult;
-
-            var targetUserResult = await LoadTargetUserForCreationAsync(targetUserId);
-            if (targetUserResult.IsFailure)
-                return targetUserResult;
-
-            var roleValidationResult = await ValidateTargetUserRoleForCreationAsync(targetUserId);
-            if (roleValidationResult.IsFailure)
-                return roleValidationResult;
-
-            var bankAccessResult = BankGuard.ValidateSameBank(actingUserResult.Value!.BankId, targetUserResult.Value!.BankId);
-            return bankAccessResult;
-        }
-
-        private async Task<Result<ApplicationUser>> LoadTargetUserForCreationAsync(string targetUserId)
-        {
-            var targetUserSpec = new UserByIdSpecification(targetUserId);
-            var targetUser = await _uow.UserRepository.FindAsync(targetUserSpec);
-            return targetUser.ToResult($"Target user with ID '{targetUserId}' not found.");
-        }
-
-        private async Task<Result> ValidateTargetUserRoleForCreationAsync(string targetUserId)
-        {
-            var targetRole = await _uow.RoleRepository.GetRoleByUserIdAsync(targetUserId);
-            return RoleHelper.IsClient(targetRole?.Name)
-                ? Result.Success()
-                : Result.Forbidden("Can only create accounts for Client users.");
-        }
-
-        private async Task<Result<(IEnumerable<Account> Accounts, int TotalCount)>> ApplyRoleBasedFilteringAsync(
-            IQueryable<Account> query, ApplicationRole role, int pageNumber, int pageSize)
-        {
-            try
-            {
-                if (RoleHelper.IsSuperAdmin(role.Name))
-                {
-                    return await ExecuteGlobalAccountFilteringAsync(query, pageNumber, pageSize);
-                }
-
-                if (RoleHelper.IsClient(role.Name))
-                {
-                    return await ExecuteSelfAccountFilteringAsync(query, pageNumber, pageSize);
-                }
-
-                return await ExecuteBankLevelAccountFilteringAsync(query, pageNumber, pageSize);
+                _logger.LogDebug(
+                    "{LogCategory} Account authorization granted: CheckType={CheckType}, TargetId={TargetId}, Scope={Scope}, Info={Info}", 
+                    AuthorizationConstants.LoggingCategories.ACCESS_GRANTED,
+                    checkType, 
+                    targetId, 
+                    scope, 
+                    additionalInfo ?? "N/A");
             }
-            catch (Exception ex)
+            else
             {
-                return Result<(IEnumerable<Account> Accounts, int TotalCount)>.BadRequest($"Failed to filter accounts: {ex.Message}");
+                _logger.LogWarning(
+                    "{LogCategory} Account authorization denied: CheckType={CheckType}, TargetId={TargetId}, ActingUserId={ActingUserId}, Scope={Scope}, Errors={Errors}, Info={Info}",
+                    AuthorizationConstants.LoggingCategories.ACCESS_DENIED,
+                    checkType,
+                    targetId, 
+                    _currentUser.UserId, 
+                    scope, 
+                    string.Join(", ", authResult.Errors),
+                    additionalInfo ?? "N/A");
             }
         }
 
-        private async Task<Result<(IEnumerable<Account> Accounts, int TotalCount)>> ExecuteGlobalAccountFilteringAsync(
-            IQueryable<Account> query, int pageNumber, int pageSize)
+        private void LogFilteringResult<T>(
+            Result<T> filterResult, 
+            string roleName, 
+            int pageNumber, 
+            int pageSize)
         {
-            var filteredQuery = query.OrderBy(a => a.Id);
-            var result = await _uow.AccountRepository.GetFilteredAccountsAsync(filteredQuery, pageNumber, pageSize);
-            return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Success(result);
-        }
-
-        private async Task<Result<(IEnumerable<Account> Accounts, int TotalCount)>> ExecuteSelfAccountFilteringAsync(
-            IQueryable<Account> query, int pageNumber, int pageSize)
-        {
-            var filteredQuery = query.Where(a => a.UserId == _currentUser.UserId).OrderBy(a => a.Id);
-            var result = await _uow.AccountRepository.GetFilteredAccountsAsync(filteredQuery, pageNumber, pageSize);
-            return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Success(result);
-        }
-
-        private async Task<Result<(IEnumerable<Account> Accounts, int TotalCount)>> ExecuteBankLevelAccountFilteringAsync(
-            IQueryable<Account> query, int pageNumber, int pageSize)
-        {
-            var actingUserResult = await GetActingUserAsync();
-            if (actingUserResult.IsFailure)
-                return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Success((Enumerable.Empty<Account>(), 0));
-
-            var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery(UserRole.Client.ToString());
-            var filteredQuery = query.Where(a => clientUserIds.Contains(a.UserId) && a.User.BankId == actingUserResult.Value!.BankId).OrderBy(a => a.Id);
-            var result = await _uow.AccountRepository.GetFilteredAccountsAsync(filteredQuery, pageNumber, pageSize);
-            return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Success(result);
-        }
-
-        private async Task<Result<IQueryable<Account>>> ApplyRoleBasedQueryFilteringAsync(IQueryable<Account> query, ApplicationRole role)
-        {
-            try
+            if (filterResult.IsSuccess)
             {
-                if (RoleHelper.IsSuperAdmin(role.Name))
-                {
-                    return Result<IQueryable<Account>>.Success(query.OrderBy(a => a.Id));
-                }
-
-                if (RoleHelper.IsClient(role.Name))
-                {
-                    return Result<IQueryable<Account>>.Success(query.Where(a => a.UserId == _currentUser.UserId).OrderBy(a => a.Id));
-                }
-
-                var actingUserResult = await GetActingUserAsync();
-                if (actingUserResult.IsFailure)
-                {
-                    return Result<IQueryable<Account>>.Success(Enumerable.Empty<Account>().AsQueryable());
-                }
-
-                var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery(UserRole.Client.ToString());
-                var filteredQuery = query.Where(a => clientUserIds.Contains(a.UserId) && a.User.BankId == actingUserResult.Value!.BankId).OrderBy(a => a.Id);
-                return Result<IQueryable<Account>>.Success(filteredQuery);
+                _logger.LogDebug(
+                    "{LogCategory} Account filtering completed: Role={Role}, Page={Page}, Size={Size}, ActingUserId={ActingUserId}", 
+                    AuthorizationConstants.LoggingCategories.AUTHORIZATION_CHECK,
+                    roleName, 
+                    pageNumber, 
+                    pageSize, 
+                    _currentUser.UserId);
             }
-            catch (Exception ex)
+            else
             {
-                return Result<IQueryable<Account>>.BadRequest($"Failed to apply query filtering: {ex.Message}");
+                _logger.LogWarning(
+                    "{LogCategory} Account filtering failed: ActingUserId={ActingUserId}, Role={Role}, Errors={Errors}",
+                    AuthorizationConstants.LoggingCategories.SYSTEM_ERROR,
+                    _currentUser.UserId, 
+                    roleName, 
+                    string.Join(", ", filterResult.Errors));
             }
+        }
+
+        private void LogQueryFilteringResult<T>(Result<T> filterResult, string roleName)
+        {
+            if (filterResult.IsSuccess)
+            {
+                _logger.LogDebug(
+                    "{LogCategory} Account query filtering applied: Role={Role}, ActingUserId={ActingUserId}", 
+                    AuthorizationConstants.LoggingCategories.AUTHORIZATION_CHECK,
+                    roleName, 
+                    _currentUser.UserId);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "{LogCategory} Account query filtering failed: ActingUserId={ActingUserId}, Role={Role}, Errors={Errors}",
+                    AuthorizationConstants.LoggingCategories.SYSTEM_ERROR,
+                    _currentUser.UserId, 
+                    roleName, 
+                    string.Join(", ", filterResult.Errors));
+            }
+        }
+
+        private void LogSelfAccessGranted(AuthorizationCheckType checkType, string targetId)
+        {
+            _logger.LogDebug(
+                "{LogCategory} Self-access granted: CheckType={CheckType}, AccountId={AccountId}", 
+                AuthorizationConstants.LoggingCategories.ACCESS_GRANTED,
+                checkType, 
+                targetId);
+        }
+
+        private void LogSystemError(string message, Exception? ex = null)
+        {
+            _logger.LogError(ex,
+                "{LogCategory} {Message}: ActingUserId={ActingUserId}", 
+                AuthorizationConstants.LoggingCategories.SYSTEM_ERROR,
+                message, 
+                _currentUser.UserId);
         }
 
         #endregion

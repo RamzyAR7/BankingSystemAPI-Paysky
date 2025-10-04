@@ -1,7 +1,6 @@
-using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Constant;
 
-namespace BankingSystemAPI.Domain.Extensions
+namespace BankingSystemAPI.Domain.Common
 {
     /// <summary>
     /// Extension methods to create semantic Result objects using ApiResponseMessages constants

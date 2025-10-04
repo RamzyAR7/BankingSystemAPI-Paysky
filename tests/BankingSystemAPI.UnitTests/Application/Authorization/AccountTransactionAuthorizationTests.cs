@@ -84,7 +84,7 @@ namespace BankingSystemAPI.UnitTests.Application.Authorization
 
             // Assert
             Assert.False(result.IsSuccess);
-            Assert.Contains("Users cannot edit their own accounts.", result.Errors);
+            Assert.Contains("Users cannot modify their own accounts directly.", result.Errors);
         }
 
         [Fact]
@@ -273,7 +273,7 @@ namespace BankingSystemAPI.UnitTests.Application.Authorization
 
             // Assert
             Assert.False(result.IsSuccess);
-            Assert.Contains("Clients cannot initiate transfers from accounts they don't own.", result.Errors.First());
+            Assert.Contains("You cannot use accounts you don't own for", result.Errors.First());
         }
 
         #endregion

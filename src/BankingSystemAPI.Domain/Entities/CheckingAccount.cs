@@ -76,9 +76,12 @@ namespace BankingSystemAPI.Domain.Entities
             if (!CanWithdraw(amount))
             {
                 var maxAllowed = GetMaxWithdrawalAmount();
+                var balanceFormatted = Balance >= 0 ? $"${Balance:F2}" : $"-${Math.Abs(Balance):F2}";
+                var overdraftAvailable = GetAvailableOverdraftCredit();
+                
                 throw new InvalidOperationException(
-                    $"Insufficient funds. Maximum withdrawal allowed: {maxAllowed:C} " +
-                    $"(Balance: {Balance:C}, Overdraft available: {GetAvailableOverdraftCredit():C})");
+                    $"Insufficient funds. Maximum withdrawal: ${maxAllowed:F2} " +
+                    $"(Balance: {balanceFormatted}, Overdraft available: ${overdraftAvailable:F2})");
             }
 
             Balance = Math.Round(Balance - amount, 2);

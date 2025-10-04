@@ -21,11 +21,14 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserBy
 
         public async Task<Result<UserResDto>> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
         {
-            // Business validation: Authorization check
-            if (_userAuthorizationService != null)
+
+            var authResult = await _userAuthorizationService.CanViewUserAsync(request.UserId);
+
+            if(!authResult)
             {
-                await _userAuthorizationService.CanViewUserAsync(request.UserId);
+                return Result<UserResDto>.Failure(authResult.ErrorMessage);
             }
+          
 
             // The UserService now returns Result<UserResDto> - will fail if user not found
             var userResult = await _userService.GetUserByIdAsync(request.UserId);
