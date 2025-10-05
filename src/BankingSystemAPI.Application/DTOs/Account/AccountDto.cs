@@ -1,6 +1,9 @@
-﻿using BankingSystemAPI.Domain.Constant;
+﻿#region Usings
+using BankingSystemAPI.Domain.Constant;
 using System;
 using System.ComponentModel.DataAnnotations;
+#endregion
+
 
 namespace BankingSystemAPI.Application.DTOs.Account
 {
@@ -9,6 +12,17 @@ namespace BankingSystemAPI.Application.DTOs.Account
     /// </summary>
     public class AccountDto
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// Account identifier.
         /// </summary>
@@ -53,3 +67,4 @@ namespace BankingSystemAPI.Application.DTOs.Account
         public bool IsActive { get; set; }
     }
 }
+

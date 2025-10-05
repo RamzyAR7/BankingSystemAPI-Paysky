@@ -1,3 +1,4 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
@@ -8,6 +9,9 @@ using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Specifications.UserSpecifications;
 using BankingSystemAPI.Domain.Entities;
 using Microsoft.Extensions.Logging;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateSavingsAccount
 {
@@ -54,15 +58,13 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
             
             // Add side effects using ResultExtensions
             createResult.OnSuccess(() => 
-                {
-                    _logger.LogInformation("Savings account created successfully for user: {UserId}, Currency: {CurrencyCode}", 
-                        req.UserId, currencyResult.Value!.Code);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning("Savings account creation failed for user: {UserId}. Errors: {Errors}",
-                        req.UserId, string.Join(", ", errors));
-                });
+            {
+                _logger.LogInformation(ApiResponseMessages.Logging.SavingsAccountCreated, createResult.Value?.AccountNumber ?? "", req.UserId, currencyResult.Value!.Code);
+            })
+            .OnFailure(errors => 
+            {
+                _logger.LogWarning(ApiResponseMessages.Logging.SavingsAccountCreateFailed, req.UserId, string.Join(", ", errors));
+            });
 
             return createResult;
         }
@@ -78,7 +80,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
             }
             catch (Exception ex)
             {
-                return Result.Forbidden($"Authorization failed: {ex.Message}");
+                return Result.Forbidden(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
@@ -86,20 +88,20 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
         {
             var currency = await _uow.CurrencyRepository.GetByIdAsync(currencyId);
             
-            return currency.ToResult($"Currency with ID '{currencyId}' not found.")
+            return currency.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Currency", currencyId))
                 .Bind(c => c.IsActive 
                     ? Result<Currency>.Success(c) 
-                    : Result<Currency>.BadRequest("Cannot create account with inactive currency."));
+                    : Result<Currency>.BadRequest(ApiResponseMessages.Validation.CurrencyInactive));
         }
 
         private async Task<Result<ApplicationUser>> ValidateUserAsync(string userId)
         {
             var user = await _uow.UserRepository.FindAsync(new UserByIdSpecification(userId));
             
-            return user.ToResult($"User with ID '{userId}' not found.")
+            return user.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "User", userId))
                 .Bind(u => u.IsActive 
                     ? Result<ApplicationUser>.Success(u) 
-                    : Result<ApplicationUser>.BadRequest("Cannot create account for inactive user."));
+                    : Result<ApplicationUser>.BadRequest(ApiResponseMessages.Validation.UserInactive));
         }
 
         private async Task<Result<SavingsAccountDto>> CreateSavingsAccountAsync(SavingsAccountReqDto req, Currency currency)
@@ -118,7 +120,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
                 // Validate interest rate after conversion
                 if (entity.InterestRate < 0.0000m || entity.InterestRate > 1.0000m)
                 {
-                    return Result<SavingsAccountDto>.BadRequest("Interest rate must be between 0% and 100%.");
+                    return Result<SavingsAccountDto>.BadRequest(ApiResponseMessages.Validation.InterestRateRange);
                 }
                 
                 entity.AccountNumber = $"SAV-{Guid.NewGuid().ToString()[..8].ToUpper()}";
@@ -137,7 +139,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
             }
             catch (Exception ex)
             {
-                return Result<SavingsAccountDto>.BadRequest($"Failed to create savings account: {ex.Message}");
+                return Result<SavingsAccountDto>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
     }

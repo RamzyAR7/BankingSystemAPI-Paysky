@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
 {
@@ -8,13 +12,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
         {
             RuleFor(x => x.Email)
                 .NotEmpty()
-                .WithMessage("Email is required.")
+                .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Email"))
                 .EmailAddress()
-                .WithMessage("Invalid email address.");
+                .WithMessage(ApiResponseMessages.Validation.InvalidEmailAddress);
 
             RuleFor(x => x.Password)
                 .NotEmpty()
-                .WithMessage("Password is required.");
+                .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Password"));
         }
     }
 }

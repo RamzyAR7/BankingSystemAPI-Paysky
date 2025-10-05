@@ -1,9 +1,13 @@
-﻿using FluentValidation;
+﻿#region Usings
+using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Banks.Commands.SetBankActiveStatus
 {
@@ -12,10 +16,11 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.SetBankActiveStat
         public SetBankActiveStatusCommandValidator()
         {
             RuleFor(x => x.id)
-                .NotEmpty().WithMessage("BankId is required");
+                .NotEmpty().WithMessage(ApiResponseMessages.Validation.InvalidIdFormat.Replace("{0}", "BankId"));
 
             RuleFor(x => x.isActive)
-                .NotNull().WithMessage("IsActive flag is required");
+                .NotNull().WithMessage(ApiResponseMessages.Validation.RequiredDataFormat.Replace("{0}", "IsActive flag"));
         }
     }
 }
+

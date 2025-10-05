@@ -1,26 +1,35 @@
+﻿#region Usings
 using BankingSystemAPI.Application.Interfaces;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Cache
 {
     public class MemoryCacheService : ICacheService
     {
+        #region Fields
         private readonly IMemoryCache _memoryCache;
         private readonly ILogger<MemoryCacheService> _logger;
         private readonly MemoryCacheEntryOptions _defaultCacheOptions = new MemoryCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
         };
+        #endregion
 
+        #region Constructor
         public MemoryCacheService(IMemoryCache memoryCache, ILogger<MemoryCacheService> logger)
         {
             _memoryCache = memoryCache;
             _logger = logger;
         }
+        #endregion
 
+        #region Public Methods
         public bool TryGetValue<T>(object key, out T value)
         {
             try
@@ -39,8 +48,8 @@ namespace BankingSystemAPI.Infrastructure.Cache
                 
                 value = default;
                 
-                // Log cache miss using ResultExtensions patterns
-                var missResult = Result<T>.BadRequest("Cache miss");
+                // Log cache miss using centralized constant
+                var missResult = Result<T>.BadRequest(ApiResponseMessages.Infrastructure.CacheMiss);
                 missResult.OnFailure(errors => 
                     _logger.LogDebug("[CACHE] Cache miss: Key={Key}, Type={Type}", key, typeof(T).Name));
                 
@@ -50,8 +59,8 @@ namespace BankingSystemAPI.Infrastructure.Cache
             {
                 value = default;
                 
-                // Use ResultExtensions for error logging
-                var errorResult = Result<T>.BadRequest($"Cache access error: {ex.Message}");
+                // Use centralized cache access error message
+                var errorResult = Result<T>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.CacheAccessErrorFormat, ex.Message));
                 errorResult.OnFailure(errors => 
                     _logger.LogWarning(ex, "[CACHE] Cache access failed: Key={Key}, Type={Type}", key, typeof(T).Name));
                 
@@ -70,7 +79,7 @@ namespace BankingSystemAPI.Infrastructure.Cache
                 
                 _memoryCache.Set(key, value, options);
                 
-                // Use ResultExtensions for successful cache set logging
+                // Use centralized cache set success message
                 var result = Result.Success();
                 result.OnSuccess(() => 
                     _logger.LogDebug("[CACHE] Cache set: Key={Key}, Type={Type}, Expiration={Expiration}", 
@@ -78,8 +87,8 @@ namespace BankingSystemAPI.Infrastructure.Cache
             }
             catch (Exception ex)
             {
-                // Use ResultExtensions for error logging
-                var errorResult = Result.BadRequest($"Cache set error: {ex.Message}");
+                // Use centralized cache set error message
+                var errorResult = Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.CacheSetErrorFormat, ex.Message));
                 errorResult.OnFailure(errors => 
                     _logger.LogError(ex, "[CACHE] Failed to set cache: Key={Key}, Type={Type}", key, typeof(T).Name));
             }
@@ -91,18 +100,20 @@ namespace BankingSystemAPI.Infrastructure.Cache
             {
                 _memoryCache.Remove(key);
                 
-                // Use ResultExtensions for successful removal logging
+                // Use centralized cache remove success message
                 var result = Result.Success();
                 result.OnSuccess(() => 
                     _logger.LogDebug("[CACHE] Cache removed: Key={Key}", key));
             }
             catch (Exception ex)
             {
-                // Use ResultExtensions for error logging
-                var errorResult = Result.BadRequest($"Cache removal error: {ex.Message}");
+                // Use centralized cache removal error message
+                var errorResult = Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.CacheRemovalErrorFormat, ex.Message));
                 errorResult.OnFailure(errors => 
                     _logger.LogWarning(ex, "[CACHE] Failed to remove cache: Key={Key}", key));
             }
         }
+        #endregion
     }
 }
+

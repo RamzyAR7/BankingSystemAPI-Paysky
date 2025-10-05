@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.Interfaces.Messaging;
@@ -5,6 +6,8 @@ using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.AccountSpecification;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccount
 {
@@ -27,9 +30,9 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccount
 
             var spec = new AccountByIdSpecification(request.Id);
             var account = await _uow.AccountRepository.FindAsync(spec);
-            if (account == null) return Result.Failure(new[] { "Account not found." });
+            if (account == null) return Result.Failure(new[] { string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", request.Id) });
 
-            if (account.Balance > 0) return Result.Failure(new[] { "Cannot delete an account with a positive balance." });
+            if (account.Balance > 0) return Result.Failure(new[] { string.Format(ApiResponseMessages.Validation.CannotDeleteAccountPositiveBalanceFormat, account.AccountNumber, account.Balance) });
 
             await _uow.AccountRepository.DeleteAsync(account);
             await _uow.SaveAsync();
@@ -38,3 +41,4 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccount
         }
     }
 }
+

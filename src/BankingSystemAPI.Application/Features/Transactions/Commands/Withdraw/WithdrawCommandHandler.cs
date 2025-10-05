@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Transactions;
@@ -12,6 +13,8 @@ using BankingSystemAPI.Domain.Constant;
 using Microsoft.EntityFrameworkCore;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Exceptions;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
 {
@@ -46,9 +49,8 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
                 {
                     retryCount++;
                     if (retryCount >= MaxRetryCount)
-                        throw new InvalidOperationException("Concurrent update detected. Please try again later.");
+                        throw new InvalidOperationException(ApiResponseMessages.Infrastructure.ConcurrencyConflict);
 
-                    // THIS IS ESSENTIAL - Refreshes RowVersion and other tracked data
                     await _uow.ReloadTrackedEntitiesAsync();
                 }
             }
@@ -58,9 +60,8 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
         {
             var req = request.Req;
 
-            // Validate amount using functional approach
             if (req.Amount <= 0m)
-                return Result<TransactionResDto>.BadRequest("Invalid amount.");
+                return Result<TransactionResDto>.BadRequest(ApiResponseMessages.Validation.TransferAmountGreaterThanZero);
 
             // Chain validations using ResultExtensions
             var accountResult = await ValidateAccountAsync(req.AccountId);
@@ -82,16 +83,6 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
             var account = amountResult.Value!;
             var executionResult = await ExecuteWithdrawalAsync(account, req);
 
-            // Add side effects without changing the return type
-            if (executionResult.IsSuccess)
-            {
-                // Could add success logging here
-            }
-            else
-            {
-                // Could add error logging here
-            }
-
             return executionResult;
         }
 
@@ -99,14 +90,14 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
         {
             var spec = new AccountByIdSpecification(accountId);
             var account = await _uow.AccountRepository.FindAsync(spec);
-            return account.ToResult($"Account with ID '{accountId}' not found.");
+            return account.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", accountId));
         }
 
         private async Task<Result<Account>> ValidateAccountStateAsync(Account account)
         {
             return account.CanPerformTransactions()
                 ? Result<Account>.Success(account)
-                : Result<Account>.BadRequest("Account or user is inactive.");
+                : Result<Account>.BadRequest(ApiResponseMessages.Validation.AccountNotFound);
         }
 
         private async Task<Result<Account>> ValidateBankAsync(Account account)
@@ -117,7 +108,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
             var bank = await _uow.BankRepository.GetByIdAsync(account.User.BankId.Value);
             return bank == null || bank.IsActive
                 ? Result<Account>.Success(account)
-                : Result<Account>.BadRequest("Cannot perform transaction: user's bank is inactive.");
+                : Result<Account>.BadRequest(ApiResponseMessages.Validation.CurrencyInactive);
         }
 
         private Result<Account> ValidateWithdrawalAmount(Account account, decimal amount)
@@ -135,8 +126,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
                     var balanceFormatted = balance >= 0 ? $"${balance:F2}" : $"-${Math.Abs(balance):F2}";
                     
                     return Result<Account>.BadRequest(
-                        $"Insufficient funds. Maximum withdrawal: ${maxAllowed:F2} " +
-                        $"(Balance: {balanceFormatted}, Overdraft available: ${overdraftAvailable:F2})");
+                        string.Format(ApiResponseMessages.BankingErrors.InsufficientFundsFormat, maxAllowed.ToString("C"), balanceFormatted));
                 }
                 return Result<Account>.Success(account);
             }
@@ -144,7 +134,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
             // For other account types (Savings), use balance only - no overdraft
             var availableBalance = account.GetAvailableBalance();
             return amount > availableBalance
-                ? Result<Account>.BadRequest($"Insufficient funds. Available balance: {availableBalance:C}")
+                ? Result<Account>.BadRequest(string.Format(ApiResponseMessages.BankingErrors.InsufficientFundsFormat, amount.ToString("C"), availableBalance.ToString("C")))
                 : Result<Account>.Success(account);
         }
 
@@ -165,7 +155,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
                     var spec = new AccountByIdSpecification(account.Id);
                     var trackedAccount = await _uow.AccountRepository.FindAsync(spec);
                     if (trackedAccount == null)
-                        throw new InvalidOperationException("Account not found during transaction execution.");
+                        throw new InvalidOperationException(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", account.Id));
 
                     // Create transaction record
                     trx = new Transaction 
@@ -193,15 +183,14 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
                     }
                     catch (InvalidOperationException ex)
                     {
-                        // Don't re-throw, instead throw a custom exception that won't be caught by middleware
-                        throw new BusinessRuleException($"Withdrawal failed: {ex.Message}");
+                        // Wrap domain error in BusinessRuleException with standardized message
+                        throw new BusinessRuleException(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
                     }
 
                     // Persist changes
                     await _uow.TransactionRepository.AddAsync(trx);
                     await _uow.AccountRepository.UpdateAsync(trackedAccount);
                     
-                    // EF Core automatically:
                     // - Checks RowVersion in WHERE clause
                     // - Throws DbUpdateConcurrencyException if conflict
                     // - Updates RowVersion on success
@@ -213,14 +202,15 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
             }
             catch (BusinessRuleException ex)
             {
-                // Return proper error result instead of throwing
-                return Result<TransactionResDto>.BadRequest(ex.Message);
+                // Return proper error result using infrastructure template
+                return Result<TransactionResDto>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("Concurrent update detected"))
+            catch (InvalidOperationException ex) when (ex.Message.Contains(ApiResponseMessages.Infrastructure.ConcurrencyConflict))
             {
-                // Handle concurrency conflicts properly
-                return Result<TransactionResDto>.Conflict(ex.Message);
+                // Handle concurrency conflicts properly using standardized message
+                return Result<TransactionResDto>.Conflict(ApiResponseMessages.Infrastructure.ConcurrencyConflict);
             }
         }
     }
 }
+

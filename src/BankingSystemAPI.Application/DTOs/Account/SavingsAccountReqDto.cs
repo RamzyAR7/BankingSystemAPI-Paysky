@@ -1,10 +1,13 @@
-﻿using BankingSystemAPI.Domain.Constant;
+﻿#region Usings
+using BankingSystemAPI.Domain.Constant;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.DTOs.Account
 {
@@ -13,6 +16,17 @@ namespace BankingSystemAPI.Application.DTOs.Account
     /// </summary>
     public class SavingsAccountReqDto
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// Identifier of the user who will own the account.
         /// </summary>
@@ -39,3 +53,4 @@ namespace BankingSystemAPI.Application.DTOs.Account
         public InterestType InterestType { get; set; }
     }
 }
+

@@ -1,8 +1,12 @@
+﻿#region Usings
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Domain.Common
 {
@@ -35,22 +39,22 @@ namespace BankingSystemAPI.Domain.Common
         /// Creates a Not Found result (404) - Resource doesn't exist
         /// </summary>
         public static Result NotFound(string entity, object id) => 
-            Failure($"{entity} with ID '{id}' not found.");
+            Failure(string.Format(ApiResponseMessages.BankingErrors.NotFoundFormat, entity, id));
 
         public static Result NotFound(string message) => 
-            Failure(message.Contains("not found") ? message : $"{message} not found.");
+            Failure(message.Contains("not found", StringComparison.OrdinalIgnoreCase) ? message : string.Format(ApiResponseMessages.BankingErrors.NotFoundFormat, message, ""));
 
         /// <summary>
         /// Creates an Unauthorized result (401) - Authentication required
         /// </summary>
-        public static Result Unauthorized(string message = "Not authenticated. Please login to access this resource.") => 
-            Failure(message);
+        public static Result Unauthorized(string message = null) => 
+            Failure(message ?? ApiResponseMessages.ErrorPatterns.NotAuthenticated);
 
         /// <summary>
         /// Creates a Forbidden result (403) - Insufficient permissions
         /// </summary>
-        public static Result Forbidden(string message = "Access denied. Insufficient permissions for this operation.") => 
-            Failure(message);
+        public static Result Forbidden(string message = null) => 
+            Failure(message ?? ApiResponseMessages.ErrorPatterns.AccessDenied);
 
         /// <summary>
         /// Creates a Bad Request result (400) - Invalid input/request format
@@ -79,31 +83,31 @@ namespace BankingSystemAPI.Domain.Common
         /// Creates a result for insufficient funds scenario
         /// </summary>
         public static Result InsufficientFunds(decimal requested, decimal available) => 
-            Failure($"Insufficient funds. Requested: {requested:C}, Available: {available:C}.");
+            Failure(string.Format(ApiResponseMessages.BankingErrors.InsufficientFundsFormat, requested.ToString("C"), available.ToString("C")));
 
         /// <summary>
         /// Creates a result for inactive account scenario
         /// </summary>
         public static Result AccountInactive(string accountNumber) => 
-            Failure($"Account {accountNumber} is inactive and cannot perform transactions.");
+            Failure(string.Format(ApiResponseMessages.BankingErrors.AccountInactiveFormat, accountNumber));
 
         /// <summary>
         /// Creates a result for duplicate resource scenario
         /// </summary>
         public static Result AlreadyExists(string entity, string identifier) => 
-            Failure($"{entity} '{identifier}' already exists.");
+            Failure(string.Format(ApiResponseMessages.BankingErrors.AlreadyExistsFormat, entity, identifier));
 
         /// <summary>
         /// Creates a result for invalid credentials scenario
         /// </summary>
-        public static Result InvalidCredentials(string message = "Email or password is incorrect.") => 
-            Failure(message);
+        public static Result InvalidCredentials(string message = null) => 
+            Failure(message ?? ApiResponseMessages.ErrorPatterns.InvalidCredentials);
 
         /// <summary>
         /// Creates a result for expired token scenario
         /// </summary>
-        public static Result TokenExpired(string message = "Token has expired. Please login again.") => 
-            Failure(message);
+        public static Result TokenExpired(string message = null) => 
+            Failure(message ?? ApiResponseMessages.ErrorPatterns.TokenExpired);
 
         // Implicit conversion for easier usage
         public static implicit operator bool(Result result) => result.IsSuccess;
@@ -145,16 +149,16 @@ namespace BankingSystemAPI.Domain.Common
         // Semantic factory methods for different HTTP status scenarios
 
         public static new Result<T> NotFound(string entity, object id) => 
-            Failure($"{entity} with ID '{id}' not found.");
+            Failure(string.Format(ApiResponseMessages.BankingErrors.NotFoundFormat, entity, id));
 
         public static new Result<T> NotFound(string message) => 
-            Failure(message.Contains("not found") ? message : $"{message} not found.");
+            Failure(message.Contains("not found", StringComparison.OrdinalIgnoreCase) ? message : string.Format(ApiResponseMessages.BankingErrors.NotFoundFormat, message, ""));
 
-        public static new Result<T> Unauthorized(string message = "Not authenticated. Please login to access this resource.") => 
-            Failure(message);
+        public static new Result<T> Unauthorized(string message = null) => 
+            Failure(message ?? ApiResponseMessages.ErrorPatterns.NotAuthenticated);
 
-        public static new Result<T> Forbidden(string message = "Access denied. Insufficient permissions for this operation.") => 
-            Failure(message);
+        public static new Result<T> Forbidden(string message = null) => 
+            Failure(message ?? ApiResponseMessages.ErrorPatterns.AccessDenied);
 
         public static new Result<T> BadRequest(string message) => 
             Failure(message);
@@ -171,21 +175,22 @@ namespace BankingSystemAPI.Domain.Common
         // Common business scenarios for banking system
 
         public static new Result<T> InsufficientFunds(decimal requested, decimal available) => 
-            Failure($"Insufficient funds. Requested: {requested:C}, Available: {available:C}.");
+            Failure(string.Format(ApiResponseMessages.BankingErrors.InsufficientFundsFormat, requested.ToString("C"), available.ToString("C")));
 
         public static new Result<T> AccountInactive(string accountNumber) => 
-            Failure($"Account {accountNumber} is inactive and cannot perform transactions.");
+            Failure(string.Format(ApiResponseMessages.BankingErrors.AccountInactiveFormat, accountNumber));
 
         public static new Result<T> AlreadyExists(string entity, string identifier) => 
-            Failure($"{entity} '{identifier}' already exists.");
+            Failure(string.Format(ApiResponseMessages.BankingErrors.AlreadyExistsFormat, entity, identifier));
 
-        public static new Result<T> InvalidCredentials(string message = "Email or password is incorrect.") => 
-            Failure(message);
+        public static new Result<T> InvalidCredentials(string message = null) => 
+            Failure(message ?? ApiResponseMessages.ErrorPatterns.InvalidCredentials);
 
-        public static new Result<T> TokenExpired(string message = "Token has expired. Please login again.") => 
-            Failure(message);
+        public static new Result<T> TokenExpired(string message = null) => 
+            Failure(message ?? ApiResponseMessages.ErrorPatterns.TokenExpired);
 
         // Implicit conversion from value
         public static implicit operator Result<T>(T value) => Success(value);
     }
 }
+

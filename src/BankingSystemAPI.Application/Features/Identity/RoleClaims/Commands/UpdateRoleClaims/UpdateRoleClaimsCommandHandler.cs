@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Role;
 using BankingSystemAPI.Application.Interfaces.Identity;
@@ -6,6 +7,8 @@ using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.RoleClaims.Commands.UpdateRoleClaims
 {
@@ -37,7 +40,7 @@ namespace BankingSystemAPI.Application.Features.Identity.RoleClaims.Commands.Upd
             // Business validation: Prevent modifying SuperAdmin role claims
             if (role.Name == UserRole.SuperAdmin.ToString())
             {
-                return Result<RoleClaimsUpdateResultDto>.Forbidden("Cannot modify claims for SuperAdmin role");
+                return Result<RoleClaimsUpdateResultDto>.Forbidden(AuthorizationConstants.ErrorMessages.CannotModifySuperAdminRoleClaims);
             }
 
             // Business validation: For Client role, only allow SuperAdmin to modify its claims
@@ -46,7 +49,7 @@ namespace BankingSystemAPI.Application.Features.Identity.RoleClaims.Commands.Upd
                 var user = _httpContextAccessor.HttpContext?.User;
                 if (user == null || !user.IsInRole(UserRole.SuperAdmin.ToString()))
                 {
-                    return Result<RoleClaimsUpdateResultDto>.Forbidden("Only SuperAdmin can modify claims for Client role");
+                    return Result<RoleClaimsUpdateResultDto>.Forbidden(AuthorizationConstants.ErrorMessages.OnlySuperAdminCanModifyClientRoleClaims);
                 }
             }
 

@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.CheckingAccounts.Queries.GetAllCheckingAccounts
 {
@@ -6,8 +10,13 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Queries.GetAllC
     {
         public GetAllCheckingAccountsQueryValidator()
         {
-            RuleFor(x => x.PageNumber).GreaterThanOrEqualTo(1);
-            RuleFor(x => x.PageSize).GreaterThan(0);
+            RuleFor(x => x.PageNumber)
+                .GreaterThanOrEqualTo(1)
+                .WithMessage(ApiResponseMessages.Validation.PageNumberAndPageSizeGreaterThanZero);
+            RuleFor(x => x.PageSize)
+                .GreaterThan(0)
+                .WithMessage(ApiResponseMessages.Validation.PageNumberAndPageSizeGreaterThanZero);
         }
     }
 }
+

@@ -1,3 +1,4 @@
+﻿#region Usings
 using System.Threading.Tasks;
 using Moq;
 using Xunit;
@@ -13,11 +14,24 @@ using BankingSystemAPI.Application.Interfaces.Specification;
 using System.Collections.Generic;
 using System.Linq;
 using BankingSystemAPI.UnitTests.TestInfrastructure;
+#endregion
+
 
 namespace BankingSystemAPI.UnitTests.UnitTests.Application.Authorization;
 
 public class TransactionAuthorizationServiceTests
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     private readonly Mock<ICurrentUserService> _currentUserMock = new();
     private readonly Mock<IUnitOfWork> _uowMock = new();
     private readonly Mock<IScopeResolver> _scopeResolverMock = new();
@@ -159,3 +173,4 @@ public class TransactionAuthorizationServiceTests
         Assert.True(filtered.IsSuccess);
     }
 }
+

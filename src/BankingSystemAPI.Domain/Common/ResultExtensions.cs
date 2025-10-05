@@ -1,4 +1,7 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
+#endregion
+
 
 namespace BankingSystemAPI.Domain.Extensions
 {
@@ -351,3 +354,4 @@ namespace BankingSystemAPI.Domain.Extensions
         }
     }
 }
+

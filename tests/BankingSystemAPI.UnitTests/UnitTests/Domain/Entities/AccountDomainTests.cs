@@ -1,6 +1,9 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.UnitTests.TestInfrastructure;
 using Xunit;
+#endregion
+
 
 namespace BankingSystemAPI.UnitTests.UnitTests.Domain.Entities;
 
@@ -10,6 +13,17 @@ namespace BankingSystemAPI.UnitTests.UnitTests.Domain.Entities;
 /// </summary>
 public class AccountDomainTests
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     #region CheckingAccount Tests
 
     [Theory]

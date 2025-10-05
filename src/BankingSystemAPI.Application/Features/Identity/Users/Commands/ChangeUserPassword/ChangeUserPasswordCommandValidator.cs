@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUserPassword
 {
@@ -8,35 +12,35 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
         {
             RuleFor(x => x.UserId)
                 .NotEmpty()
-                .WithMessage("User ID is required.");
+                .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "User ID"));
 
             RuleFor(x => x.PasswordRequest)
                 .NotNull()
-                .WithMessage("Password request data is required.");
+                .WithMessage(string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Password request data"));
 
             // Validate ChangePasswordReqDto properties
             When(x => x.PasswordRequest != null, () =>
             {
                 RuleFor(x => x.PasswordRequest.NewPassword)
                     .NotEmpty()
-                    .WithMessage("New password is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "New password"))
                     .MinimumLength(8)
-                    .WithMessage("New password must be at least 8 characters long.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthMinFormat, "New password", 8))
                     .MaximumLength(100)
-                    .WithMessage("New password cannot exceed 100 characters.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthMaxFormat, "New password", 100))
                     .Matches(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)")
-                    .WithMessage("New password must contain at least one lowercase letter, one uppercase letter, and one digit.");
+                    .WithMessage(ApiResponseMessages.Validation.PasswordComplexity);
 
                 RuleFor(x => x.PasswordRequest.ConfirmNewPassword)
                     .NotEmpty()
-                    .WithMessage("Password confirmation is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Password confirmation"))
                     .Equal(x => x.PasswordRequest.NewPassword)
-                    .WithMessage("Password confirmation must match the new password.");
+                    .WithMessage(ApiResponseMessages.Validation.PasswordConfirmationMismatch);
 
                 // Current password validation is optional - business logic will determine if it's required
                 RuleFor(x => x.PasswordRequest.CurrentPassword)
                     .MaximumLength(100)
-                    .WithMessage("Current password cannot exceed 100 characters.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthMaxFormat, "Current password", 100))
                     .When(x => !string.IsNullOrEmpty(x.PasswordRequest.CurrentPassword));
             });
         }

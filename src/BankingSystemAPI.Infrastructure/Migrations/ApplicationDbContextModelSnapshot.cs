@@ -13,6 +13,17 @@ namespace BankingSystemAPI.Infrastructure.Migrations
     [DbContext(typeof(ApplicationDbContext))]
     partial class ApplicationDbContextModelSnapshot : ModelSnapshot
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
@@ -690,3 +701,4 @@ namespace BankingSystemAPI.Infrastructure.Migrations
         }
     }
 }
+

@@ -1,9 +1,14 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.CurrencySpecification;
 using Microsoft.Extensions.Logging;
+using BankingSystemAPI.Domain.Constant;
+using BankingSystemAPI.Domain.Entities;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Currencies.Commands.SetCurrencyActiveStatus
 {
@@ -28,27 +33,29 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.SetCurrencyA
             
             // Add side effects using ResultExtensions
             updateResult.OnSuccess(() => 
-                {
-                    _logger.LogInformation("Currency status updated successfully: ID={CurrencyId}, IsActive={IsActive}", 
-                        request.Id, request.IsActive);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning("Currency status update failed: ID={CurrencyId}, IsActive={IsActive}, Errors={Errors}",
-                        request.Id, request.IsActive, string.Join(", ", errors));
-                });
+            {
+                // Use standardized update message and include structured fields
+                _logger.LogInformation("{Message} CurrencyId={CurrencyId}, IsActive={IsActive}", 
+                    ApiResponseMessages.Update.Currency.Success, request.Id, request.IsActive);
+            })
+            .OnFailure(errors => 
+            {
+                // Use controller-level operation failed logging template for consistency
+                _logger.LogWarning(ApiResponseMessages.Logging.OperationFailedController, 
+                    "currency", "setcurrencyactivestatus", string.Join(", ", errors));
+            });
 
             return updateResult;
         }
 
-        private async Task<Result<Domain.Entities.Currency>> LoadCurrencyAsync(int currencyId)
+        private async Task<Result<Currency>> LoadCurrencyAsync(int currencyId)
         {
             var spec = new CurrencyByIdSpecification(currencyId);
             var currency = await _uow.CurrencyRepository.FindAsync(spec);
-            return currency.ToResult($"Currency with ID '{currencyId}' not found.");
+            return currency.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Currency", currencyId));
         }
 
-        private async Task<Result> UpdateCurrencyStatusAsync(Domain.Entities.Currency currency, bool isActive)
+        private async Task<Result> UpdateCurrencyStatusAsync(Currency currency, bool isActive)
         {
             try
             {
@@ -59,8 +66,9 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.SetCurrencyA
             }
             catch (Exception ex)
             {
-                return Result.BadRequest($"Failed to update currency status: {ex.Message}");
+                return Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
     }
 }
+

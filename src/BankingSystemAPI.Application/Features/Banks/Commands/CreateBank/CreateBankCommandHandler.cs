@@ -1,3 +1,4 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
@@ -7,6 +8,8 @@ using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.BankSpecification;
 using BankingSystemAPI.Domain.Entities;
 using Microsoft.Extensions.Logging;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
 {
@@ -66,7 +69,7 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
         {
             try
             {
-                var entity = _mapper.Map<Domain.Entities.Bank>(dto);
+                var entity = _mapper.Map<Bank>(dto);
                 entity.Name = dto.Name.Trim();
                 entity.CreatedAt = DateTime.UtcNow;
                 entity.IsActive = true; // Set to true by default for new banks
@@ -84,3 +87,4 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
         }
     }
 }
+

@@ -125,8 +125,8 @@
             </summary>
             <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
             <param name="pageSize">Number of items per page. Defaults to 10.</param>
-            <param name="orderBy">Optional. Property name to sort by. Allowed values: "Id", "Name".</param>
-            <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC". Defaults to "ASC".</param>
+            <param name="orderBy">Optional. Property name to sort by. Allowed values: "Id", "Name". If not provided the default ordering may be used by the implementation.</param>
+            <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC" (case-insensitive). Defaults to "ASC" when omitted. If an invalid value is supplied the request will return a 400 Bad Request.</param>
             <returns>
             200 OK with a list of banks when successful.
             401 Unauthorized if the caller is not authenticated.
@@ -312,11 +312,23 @@
             <summary>
             Get paginated list of checking accounts.
             </summary>
+            <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+            <param name="pageSize">Number of items per page. Defaults to 10.</param>
+            <param name="orderBy">Optional. Property name to sort by. Common values: "Id", "AccountNumber", "UserId", "CreatedDate". If not specified a default order will be applied.</param>
+            <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC" (case-insensitive). Defaults to "ASC".</param>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.CheckingAccountController.Create(BankingSystemAPI.Application.DTOs.Account.CheckingAccountReqDto)">
             <summary>
             Create a new checking account.
             </summary>
+            <remarks>
+            Currencies (id => code):
+            - 1 => USD
+            - 2 => EUR
+            - 3 => GBP
+            - 4 => EGP
+            - 5 => SAR
+            </remarks>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.CheckingAccountController.Update(System.Int32,BankingSystemAPI.Application.DTOs.Account.CheckingAccountEditDto)">
             <summary>
@@ -332,6 +344,10 @@
             <summary>
             Get all currencies.
             </summary>
+            <remarks>
+            Returns all currencies. This endpoint does not accept ordering query parameters; a default ordering is applied.
+            To sort results use client-side sorting or request ordering support from the API.
+            </remarks>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.CurrencyController.GetById(System.Int32)">
             <summary>
@@ -372,6 +388,10 @@
             <summary>
             Get all role claims grouped by category.
             </summary>
+            <remarks>
+            Returns role claims grouped by category. This endpoint does not accept ordering query parameters;
+            the grouping order is implementation-defined.
+            </remarks>
         </member>
         <member name="T:BankingSystemAPI.Presentation.Controllers.RoleController">
             <summary>
@@ -382,6 +402,11 @@
             <summary>
             Get all roles.
             </summary>
+            <remarks>
+            This endpoint returns all roles. It does not accept ordering query parameters; a default ordering
+            is applied by the backend. If you need ordering support, please request the feature or use the
+            API's pagination to control result sets.
+            </remarks>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.RoleController.CreateRole(BankingSystemAPI.Application.DTOs.Role.RoleReqDto)">
             <summary>
@@ -402,13 +427,30 @@
             <summary>
             Get paginated list of savings accounts.
             </summary>
+            <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+            <param name="pageSize">Number of items per page. Defaults to 10.</param>
+            <param name="orderBy">Optional. Property name to sort by. Common values: "Id", "AccountNumber", "UserId", "CreatedDate". If omitted the implementation default ordering is used.</param>
+            <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC" (case-insensitive). Defaults to "ASC".</param>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.SavingsAccountController.Create(BankingSystemAPI.Application.DTOs.Account.SavingsAccountReqDto)">
-            <summary>
-            Create a new savings account.
-            </summary>
-            The handler will validate that the currency and user exist and are active and will persist
-            the new savings account. An account number and CreatedDate are auto-generated.
+             <summary>
+             Create a new savings account.
+             </summary>
+             The handler will validate that the currency and user exist and are active and will persist
+             the new savings account. An account number and CreatedDate are auto-generated.
+             <remarks>
+             Currencies (id => code):
+             - 1 => USD
+             - 2 => EUR
+             - 3 => GBP
+             - 4 => EGP
+             - 5 => SAR
+            
+             Interest Types (value => name):
+             - 1 => Monthly (Interest calculated monthly)
+             - 2 => Quarterly (Interest calculated quarterly)
+             - 3 => Annually (Interest calculated annually)
+             </remarks>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.SavingsAccountController.Update(System.Int32,BankingSystemAPI.Application.DTOs.Account.SavingsAccountEditDto)">
             <summary>
@@ -424,11 +466,16 @@
             <summary>
             Get all interest logs with pagination.
             </summary>
+            <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+            <param name="pageSize">Number of items per page. Defaults to 10.</param>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.SavingsAccountController.GetInterestLogsByAccountId(System.Int32,System.Int32,System.Int32)">
             <summary>
             Get all interest logs for a specific account with pagination.
             </summary>
+            <param name="accountId">The account identifier whose interest logs are returned.</param>
+            <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+            <param name="pageSize">Number of items per page. Defaults to 10.</param>
         </member>
         <member name="T:BankingSystemAPI.Presentation.Controllers.TransactionsController">
             <summary>
@@ -440,6 +487,10 @@
             Get paginated transaction history for an account.
             </summary>
             <param name="accountId">Account identifier whose history will be returned.</param>
+            <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+            <param name="pageSize">Number of items per page. Defaults to 20.</param>
+            <param name="orderBy">Optional. Property name to sort by. Defaults to "Timestamp" when not supplied. Common values: "Timestamp", "Amount", "Type".</param>
+            <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC" (case-insensitive). Defaults to "DESC" for histories.</param>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.TransactionsController.GetById(System.Int32)">
             <summary>
@@ -450,6 +501,10 @@
             <summary>
             Get paginated list of all transactions.
             </summary>
+            <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+            <param name="pageSize">Number of items per page. Defaults to 20.</param>
+            <param name="orderBy">Optional. Property name to sort by. Defaults to "Timestamp" when not supplied. Common values: "Timestamp", "Amount", "Type".</param>
+            <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC" (case-insensitive). Defaults to "DESC" for transactions listing.</param>
         </member>
         <member name="T:BankingSystemAPI.Presentation.Controllers.UserController">
             <summary>
@@ -460,6 +515,10 @@
             <summary>
             Get all users with pagination.
             </summary>
+            <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+            <param name="pageSize">Number of items per page. Defaults to 10.</param>
+            <param name="orderBy">Optional. Property name to sort by. Common values: "Id", "UserName", "Email", "CreatedDate" (exact allowed properties depend on the backing entity). Invalid values may cause a Bad Request.</param>
+            <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC" (case-insensitive). Defaults to "ASC" when omitted.</param>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.GetUsersByBankId(System.Int32)">
             <summary>
@@ -477,14 +536,48 @@
             </summary>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.CreateUser(BankingSystemAPI.Application.DTOs.User.UserReqDto)">
-            <summary>
-            Create a new user.
-            </summary>
+             <summary>
+             Create a new user.
+             </summary>
+             <remarks>
+             Roles:
+             - SuperAdmin
+             - Admin
+             - Client
+            
+             Banks (id => name):
+             - 1 => National Bank of Egypt
+             - 2 => Banque Misr
+             - 3 => Commercial International Bank (CIB)
+             - 4 => AlexBank
+             </remarks>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.UpdateUser(System.String,BankingSystemAPI.Application.DTOs.User.UserEditDto)">
-            <summary>
-            Update an existing user.
-            </summary>
+             <summary>
+             Update an existing user.
+             </summary>
+             <remarks>
+             Roles:
+             - SuperAdmin
+             - Admin
+             - Client
+            
+             Banks (id => name):
+             - 1 => National Bank of Egypt
+             - 2 => Banque Misr
+             - 3 => Commercial International Bank (CIB)
+             - 4 => AlexBank
+            
+             Example request body:
+             {
+               "email": "testuser@example.com",
+               "username": "testuser",
+               "fullName": "Test User Updated",
+               "nationalId": "12345678901234",
+               "phoneNumber": "12345678901",
+               "dateOfBirth": "2000-01-01"
+             }
+             </remarks>
         </member>
         <member name="M:BankingSystemAPI.Presentation.Controllers.UserController.ChangeUserPassword(System.String,BankingSystemAPI.Application.DTOs.User.ChangePasswordReqDto)">
             <summary>

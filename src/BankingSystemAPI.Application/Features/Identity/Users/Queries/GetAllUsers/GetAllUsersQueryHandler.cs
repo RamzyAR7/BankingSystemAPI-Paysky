@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.Interfaces.Identity;
@@ -6,6 +7,9 @@ using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Domain.Entities;
 using AutoMapper;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetAllUsers
 {
@@ -29,7 +33,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetAllUse
         {
             if (request.PageNumber <= 0 || request.PageSize <= 0)
             {
-                return Result<IList<UserResDto>>.Failure(new[] { "Page number and page size must be greater than zero." });
+                return Result<IList<UserResDto>>.Failure(new[] { ApiResponseMessages.Validation.PageNumberAndPageSizeGreaterThanZero });
             }
 
             try

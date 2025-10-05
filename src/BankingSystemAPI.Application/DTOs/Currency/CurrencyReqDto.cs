@@ -1,5 +1,8 @@
-﻿using System;
+﻿#region Usings
+using System;
 using System.ComponentModel.DataAnnotations;
+#endregion
+
 
 namespace BankingSystemAPI.Application.DTOs.Currency
 {
@@ -8,6 +11,17 @@ namespace BankingSystemAPI.Application.DTOs.Currency
     /// </summary>
     public class CurrencyReqDto
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// Currency code (e.g., USD).
         /// </summary>
@@ -27,3 +41,4 @@ namespace BankingSystemAPI.Application.DTOs.Currency
         public decimal ExchangeRate { get; set; }
     }
 }
+

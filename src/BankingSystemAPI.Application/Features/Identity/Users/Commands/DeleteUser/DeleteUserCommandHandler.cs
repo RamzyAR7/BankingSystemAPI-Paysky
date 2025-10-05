@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.User;
@@ -6,6 +7,8 @@ using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Domain.Constant;
 using Microsoft.Extensions.Logging;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUser
 {
@@ -52,13 +55,11 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
             // Add side effects using ResultExtensions
             deleteResult.OnSuccess(() => 
                 {
-                    _logger.LogInformation("User deleted successfully: {UserId} by {ActorId}", 
-                        request.UserId, _currentUserService.UserId);
+                    _logger.LogInformation(ApiResponseMessages.Logging.UserDeleted, request.UserId);
                 })
                 .OnFailure(errors => 
                 {
-                    _logger.LogWarning("User deletion failed: {UserId} by {ActorId}. Errors: {Errors}",
-                        request.UserId, _currentUserService.UserId, string.Join(", ", errors));
+                    _logger.LogWarning(ApiResponseMessages.Logging.UserDeletionFailed, request.UserId, string.Join(", ", errors));
                 });
 
             return deleteResult;
@@ -82,7 +83,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
             var actingUserId = _currentUserService.UserId;
             
             return !string.IsNullOrEmpty(actingUserId) && string.Equals(actingUserId, targetUserId, StringComparison.OrdinalIgnoreCase)
-                ? Result.BadRequest("Cannot delete yourself.")
+                ? Result.BadRequest(AuthorizationConstants.ErrorMessages.CannotDeleteSelf)
                 : Result.Success();
         }
 
@@ -97,7 +98,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
         private Result ValidateNoExistingAccounts(UserResDto user)
         {
             return user.Accounts != null && user.Accounts.Any()
-                ? Result.BadRequest("Cannot delete user with existing accounts.")
+                ? Result.BadRequest(ApiResponseMessages.Validation.DeleteUserHasAccounts)
                 : Result.Success();
         }
 

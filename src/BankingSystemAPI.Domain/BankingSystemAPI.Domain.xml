@@ -71,75 +71,6 @@
             Includes semantic factory methods for proper HTTP status code mapping.
             </summary>
         </member>
-        <member name="T:BankingSystemAPI.Domain.Common.SemanticResultExtensions">
-            <summary>
-            Extension methods to create semantic Result objects using ApiResponseMessages constants
-            This provides a bridge between the Result factory methods and consistent error messages
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.NotFoundEntity(System.String,System.Object)">
-            <summary>
-            Creates a NotFound result using consistent message format
-            </summary>
-            <param name="entityName">Name of the entity (e.g., "User", "Account")</param>
-            <param name="id">ID of the entity that was not found</param>
-            <returns>Result with 404 status code mapping</returns>
-        </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.NotFoundEntity``1(System.String,System.Object)" -->
-        <member name="M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.EntityAlreadyExists(System.String,System.String)">
-            <summary>
-            Creates an AlreadyExists result using consistent message format
-            </summary>
-            <param name="entityName">Name of the entity (e.g., "User", "Account")</param>
-            <param name="identifier">Identifier that already exists (e.g., email, account number)</param>
-            <returns>Result with 409 status code mapping</returns>
-        </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.EntityAlreadyExists``1(System.String,System.String)" -->
-        <member name="M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.InsufficientFundsError(System.Decimal,System.Decimal)">
-            <summary>
-            Creates an InsufficientFunds result using consistent message format
-            </summary>
-            <param name="requested">Amount requested</param>
-            <param name="available">Amount available</param>
-            <returns>Result with 409 status code mapping</returns>
-        </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.InsufficientFundsError``1(System.Decimal,System.Decimal)" -->
-        <member name="M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.AccountInactiveError(System.String)">
-            <summary>
-            Creates an AccountInactive result using consistent message format
-            </summary>
-            <param name="accountNumber">Account number that is inactive</param>
-            <returns>Result with 409 status code mapping</returns>
-        </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.AccountInactiveError``1(System.String)" -->
-        <member name="M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.NotAuthenticatedError">
-            <summary>
-            Creates an Unauthorized result using consistent message
-            </summary>
-            <returns>Result with 401 status code mapping</returns>
-        </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.NotAuthenticatedError``1" -->
-        <member name="M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.AccessDeniedError">
-            <summary>
-            Creates a Forbidden result using consistent message
-            </summary>
-            <returns>Result with 403 status code mapping</returns>
-        </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.AccessDeniedError``1" -->
-        <member name="M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.InvalidCredentialsError">
-            <summary>
-            Creates an InvalidCredentials result using consistent message
-            </summary>
-            <returns>Result with 401 status code mapping</returns>
-        </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.InvalidCredentialsError``1" -->
-        <member name="M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.TokenExpiredError">
-            <summary>
-            Creates a TokenExpired result using consistent message
-            </summary>
-            <returns>Result with 401 status code mapping</returns>
-        </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Common.SemanticResultExtensions.TokenExpiredError``1" -->
         <member name="T:BankingSystemAPI.Domain.Extensions.ResultExtensions">
             <summary>
             Extension methods for Result pattern to improve usability
@@ -225,6 +156,16 @@
             These patterns are used by BaseApiController to map errors to proper HTTP status codes
             </summary>
         </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Validation">
+            <summary>
+            Validation and request related messages
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Infrastructure">
+            <summary>
+            Messages used by middleware and infrastructure layers
+            </summary>
+        </member>
         <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Delete">
             <summary>
             Delete operation messages
@@ -289,6 +230,16 @@
             Used by Result.NotFound()
             </summary>
         </member>
+        <member name="F:BankingSystemAPI.Domain.Constant.ApiResponseMessages.BankingErrors.TransfersFromClientsOnly">
+            <summary>
+            Specific message for transfer authorization when source is not client-owned
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Logging">
+            <summary>
+            Centralized structured logging templates
+            </summary>
+        </member>
         <member name="T:BankingSystemAPI.Domain.Constant.AuthorizationConstants">
             <summary>
             Centralized authorization constants organized by functional areas
@@ -315,36 +266,6 @@
             <summary>
             Least restrictive: Full system access
             Applied to: Super Admins, System Administrators
-            </summary>
-        </member>
-        <member name="T:BankingSystemAPI.Domain.Constant.AuthorizationResult">
-            <summary>
-            Defines authorization validation results in order of severity
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.AuthorizationResult.Forbidden">
-            <summary>
-            Operation is explicitly forbidden due to business rules
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.AuthorizationResult.Unauthorized">
-            <summary>
-            User lacks proper authentication
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.AuthorizationResult.NotFound">
-            <summary>
-            Requested resource does not exist or is inaccessible
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.AuthorizationResult.ValidationFailed">
-            <summary>
-            Operation violates data integrity or business constraints
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.AuthorizationResult.Allowed">
-            <summary>
-            Operation is allowed and can proceed
             </summary>
         </member>
         <member name="T:BankingSystemAPI.Domain.Constant.AuthorizationCheckType">
@@ -375,61 +296,6 @@
         <member name="F:BankingSystemAPI.Domain.Constant.AuthorizationCheckType.Administrate">
             <summary>
             Check if user can perform administrative operations
-            </summary>
-        </member>
-        <member name="T:BankingSystemAPI.Domain.Constant.ResourceAccessPattern">
-            <summary>
-            Defines resource access patterns in order of complexity
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.ResourceAccessPattern.SingleResource">
-            <summary>
-            Single resource access by ID
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.ResourceAccessPattern.UserOwnedResources">
-            <summary>
-            Multiple resources owned by same user
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.ResourceAccessPattern.BankScopedResources">
-            <summary>
-            Resources within same bank/organization
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.ResourceAccessPattern.CrossBankResources">
-            <summary>
-            Cross-bank resource access
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.ResourceAccessPattern.SystemWideResources">
-            <summary>
-            System-wide resource access
-            </summary>
-        </member>
-        <member name="T:BankingSystemAPI.Domain.Constant.ValidationPriority">
-            <summary>
-            Defines validation priority levels for authorization checks
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.ValidationPriority.Critical">
-            <summary>
-            Critical security checks (authentication, basic permissions)
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.ValidationPriority.High">
-            <summary>
-            High priority checks (ownership, scope validation)
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.ValidationPriority.Medium">
-            <summary>
-            Medium priority checks (business rules, data integrity)
-            </summary>
-        </member>
-        <member name="F:BankingSystemAPI.Domain.Constant.ValidationPriority.Low">
-            <summary>
-            Low priority checks (logging, audit trail)
             </summary>
         </member>
         <member name="T:BankingSystemAPI.Domain.Constant.InterestType">

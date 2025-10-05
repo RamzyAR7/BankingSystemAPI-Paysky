@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUser;
 using BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUser;
@@ -15,6 +16,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -33,9 +36,13 @@ namespace BankingSystemAPI.Presentation.Controllers
             _mediator = mediator;
         }
 
-        /// <summary>
-        /// Get all users with pagination.
-        /// </summary>
+    /// <summary>
+    /// Get all users with pagination.
+    /// </summary>
+    /// <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+    /// <param name="pageSize">Number of items per page. Defaults to 10.</param>
+    /// <param name="orderBy">Optional. Property name to sort by. Common values: "Id", "UserName", "Email", "CreatedDate" (exact allowed properties depend on the backing entity). Invalid values may cause a Bad Request.</param>
+    /// <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC" (case-insensitive). Defaults to "ASC" when omitted.</param>
         [HttpGet]
         [PermissionFilterFactory(Permission.User.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -92,6 +99,18 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// <summary>
         /// Create a new user.
         /// </summary>
+        /// <remarks>
+        /// Roles:
+        /// - SuperAdmin
+        /// - Admin
+        /// - Client
+        ///
+        /// Banks (id => name):
+        /// - 1 => National Bank of Egypt
+        /// - 2 => Banque Misr
+        /// - 3 => Commercial International Bank (CIB)
+        /// - 4 => AlexBank
+        /// </remarks>
         [HttpPost]
         [PermissionFilterFactory(Permission.User.Create)]
         [ProducesResponseType(StatusCodes.Status201Created)]
@@ -106,6 +125,28 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// <summary>
         /// Update an existing user.
         /// </summary>
+        /// <remarks>
+        /// Roles:
+        /// - SuperAdmin
+        /// - Admin
+        /// - Client
+        ///
+        /// Banks (id => name):
+        /// - 1 => National Bank of Egypt
+        /// - 2 => Banque Misr
+        /// - 3 => Commercial International Bank (CIB)
+        /// - 4 => AlexBank
+        ///
+        /// Example request body:
+        /// {
+        ///   "email": "testuser@example.com",
+        ///   "username": "testuser",
+        ///   "fullName": "Test User Updated",
+        ///   "nationalId": "12345678901234",
+        ///   "phoneNumber": "12345678901",
+        ///   "dateOfBirth": "2000-01-01"
+        /// }
+        /// </remarks>
         [HttpPut("{userId}")]
         [PermissionFilterFactory(Permission.User.Update)]
         [ProducesResponseType(StatusCodes.Status200OK)]

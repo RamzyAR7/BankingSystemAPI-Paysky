@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Domain.Constant;
+﻿#region Usings
+using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using System;
@@ -7,11 +8,24 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using BankingSystemAPI.Infrastructure.Context;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Seeding
 {
     public static class IdentitySeeding
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         public static async Task SeedingRoleAsync(RoleManager<ApplicationRole> _roleManager)
         {
             if (!_roleManager.Roles.Any())
@@ -269,3 +283,4 @@ namespace BankingSystemAPI.Infrastructure.Seeding
         }
     }
 }
+

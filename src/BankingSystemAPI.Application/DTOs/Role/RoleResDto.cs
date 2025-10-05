@@ -1,4 +1,7 @@
-﻿using System.Collections.Generic;
+﻿#region Usings
+using System.Collections.Generic;
+#endregion
+
 
 namespace BankingSystemAPI.Application.DTOs.Role
 {
@@ -7,6 +10,17 @@ namespace BankingSystemAPI.Application.DTOs.Role
     /// </summary>
     public class RoleResDto
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// Role identifier
         /// </summary>
@@ -23,3 +37,4 @@ namespace BankingSystemAPI.Application.DTOs.Role
         public List<string> Claims { get; set; } = new List<string>();
     }
 }
+

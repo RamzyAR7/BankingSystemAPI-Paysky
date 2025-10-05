@@ -1,11 +1,25 @@
+﻿#region Usings
 using BankingSystemAPI.Application.Specifications;
 using BankingSystemAPI.Domain.Entities;
 using System;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Specifications.TransactionSpecification
 {
     public class TransactionsPagedSpecification : PagedSpecification<Transaction>
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         public TransactionsPagedSpecification(int skip, int take, string? orderBy = null, string? orderDir = null)
             : base(skip, take, orderBy ?? "Timestamp", orderDir ?? "DESC", t => t.AccountTransactions)
         {
@@ -14,3 +28,4 @@ namespace BankingSystemAPI.Application.Specifications.TransactionSpecification
         }
     }
 }
+

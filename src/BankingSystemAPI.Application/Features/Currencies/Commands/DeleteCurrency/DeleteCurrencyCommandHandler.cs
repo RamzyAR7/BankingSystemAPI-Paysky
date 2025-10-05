@@ -1,7 +1,11 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.CurrencySpecification;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Currencies.Commands.DeleteCurrency
 {
@@ -16,23 +20,29 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.DeleteCurren
 
         public async Task<Result> Handle(DeleteCurrencyCommand request, CancellationToken cancellationToken)
         {
-            // Note: Input validation (ID > 0) handled by DeleteCurrencyCommandValidator
             // This handler focuses on business logic validation and execution
             
             var spec = new CurrencyByIdSpecification(request.Id);
             var currency = await _uow.CurrencyRepository.FindAsync(spec);
-            if (currency == null) 
-                return Result.Failure(new[] { "Currency not found." });
+            if (currency == null)
+                return Result.NotFound("Currency", request.Id);
 
             // Business validation: Check if currency is in use by accounts
             var accountsUsingCurrency = await _uow.AccountRepository.CountAsync(a => a.CurrencyId == request.Id);
             if (accountsUsingCurrency > 0)
-                return Result.Failure(new[] { "Cannot delete a currency that is in use by one or more accounts." });
+                return Result.BadRequest(ApiResponseMessages.Validation.AnotherBaseCurrencyExists);
 
-            await _uow.CurrencyRepository.DeleteAsync(currency);
-            await _uow.SaveAsync();
-
-            return Result.Success();
+            try
+            {
+                await _uow.CurrencyRepository.DeleteAsync(currency);
+                await _uow.SaveAsync();
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                return Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
+            }
         }
     }
 }
+

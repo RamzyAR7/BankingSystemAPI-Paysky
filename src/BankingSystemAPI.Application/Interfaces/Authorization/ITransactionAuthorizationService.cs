@@ -1,13 +1,27 @@
-﻿using BankingSystemAPI.Domain.Entities;
+﻿#region Usings
+using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Domain.Common;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Interfaces.Authorization
 {
     public interface ITransactionAuthorizationService
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// Validates if the current user can initiate a transfer between the specified accounts
         /// </summary>
@@ -19,3 +33,4 @@ namespace BankingSystemAPI.Application.Interfaces.Authorization
         Task<Result<(IEnumerable<Transaction> Transactions, int TotalCount)>> FilterTransactionsAsync(IQueryable<Transaction> query, int pageNumber = 1, int pageSize = 10);
     }
 }
+

@@ -1,4 +1,7 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Entities;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Specifications.AccountSpecification
 {
@@ -8,6 +11,17 @@ namespace BankingSystemAPI.Application.Specifications.AccountSpecification
     /// </summary>
     public class AccountsByIdsWithCurrencySpecification : BaseSpecification<Account>
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         public AccountsByIdsWithCurrencySpecification(System.Collections.Generic.IEnumerable<int> ids) 
             : base(a => ids.Contains(a.Id))
         {

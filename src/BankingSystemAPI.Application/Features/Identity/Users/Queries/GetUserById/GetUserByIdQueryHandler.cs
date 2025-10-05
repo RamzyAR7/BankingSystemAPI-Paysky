@@ -1,8 +1,11 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Messaging;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserById
 {
@@ -27,9 +30,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserBy
             if(!authResult)
             {
                 return Result<UserResDto>.Failure(authResult.ErrorMessage);
-            }
-          
-
+            }          
             // The UserService now returns Result<UserResDto> - will fail if user not found
             var userResult = await _userService.GetUserByIdAsync(request.UserId);
             

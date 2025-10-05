@@ -1,5 +1,8 @@
-﻿using System;
+﻿#region Usings
+using System;
 using System.Text.Json.Serialization;
+#endregion
+
 
 namespace BankingSystemAPI.Application.DTOs.Transactions
 {
@@ -8,6 +11,17 @@ namespace BankingSystemAPI.Application.DTOs.Transactions
     /// </summary>
     public class TransactionResDto
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// Transaction identifier.
         /// </summary>
@@ -77,3 +91,4 @@ namespace BankingSystemAPI.Application.DTOs.Transactions
         public decimal? Fees { get; set; }
     }
 }
+

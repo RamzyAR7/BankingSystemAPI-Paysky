@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Domain.Common;
@@ -5,6 +6,8 @@ using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Services
 {
@@ -25,6 +28,15 @@ namespace BankingSystemAPI.Infrastructure.Services
             var inputValidation = ValidateInput(dto);
             if (inputValidation.IsFailure)
                 return Result<UserRoleUpdateResultDto>.Failure(inputValidation.Errors);
+
+            // If a role is provided, validate that the role exists before fetching the user
+            if (!string.IsNullOrWhiteSpace(dto.Role))
+            {
+                var targetRoleName = dto.Role.Trim();
+                var targetRole = await _roleManager.FindByNameAsync(targetRoleName);
+                if (targetRole == null)
+                    return Result<UserRoleUpdateResultDto>.BadRequest($"Target role '{targetRoleName}' does not exist.");
+            }
 
             // Get user
             var userResult = await GetUserAsync(dto.UserId);
@@ -88,11 +100,6 @@ namespace BankingSystemAPI.Infrastructure.Services
         {
             var targetRoleName = roleName.Trim();
 
-            // Validate target role exists
-            var targetRole = await _roleManager.FindByNameAsync(targetRoleName);
-            if (targetRole == null)
-                return Result<UserRoleUpdateResultDto>.BadRequest($"Target role '{targetRoleName}' does not exist.");
-
             // Remove existing roles
             var removeResult = await RemoveExistingRolesAsync(user);
             if (removeResult.IsFailure)
@@ -104,12 +111,13 @@ namespace BankingSystemAPI.Infrastructure.Services
                 return Result<UserRoleUpdateResultDto>.Failure(addResult.Errors);
 
             // Update user role FK
-            var updateResult = await UpdateUserRoleForeignKeyAsync(user, targetRole);
+            var targetRole = await _roleManager.FindByNameAsync(targetRoleName);
+            var updateResult = await UpdateUserRoleForeignKeyAsync(user, targetRole!);
             if (updateResult.IsFailure)
                 return Result<UserRoleUpdateResultDto>.Failure(updateResult.Errors);
 
             // Return success result
-            var successResult = CreateSuccessResult(user, targetRole.Name);
+            var successResult = CreateSuccessResult(user, targetRoleName);
             return Result<UserRoleUpdateResultDto>.Success(successResult);
         }
 

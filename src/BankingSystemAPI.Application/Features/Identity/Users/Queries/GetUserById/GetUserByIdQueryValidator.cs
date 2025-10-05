@@ -1,8 +1,12 @@
+﻿#region Usings
 using FluentValidation;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserById
 {
@@ -19,15 +23,9 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserBy
 
             RuleFor(x => x.UserId)
                 .NotEmpty()
-                .WithMessage("User ID is required.")
+                .WithMessage(ApiResponseMessages.Validation.UserIdRequired)
                 .Must(BeValidUserId)
-                .WithMessage("User ID must be a valid format.");
-
-            // Business validation with logging if services are available
-            if (_serviceProvider != null)
-            {
-                ConfigureBusinessValidation();
-            }
+                .WithMessage(ApiResponseMessages.Validation.UserIdInvalidFormat);
         }
 
         private bool BeValidUserId(string userId)
@@ -44,28 +42,22 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserBy
                 
                 var validationResult = userId.Length > 3 && userId.Length <= 450 // Reasonable ID length
                     ? Result.Success()
-                    : Result.BadRequest("Invalid User ID format");
+                    : Result.BadRequest(ApiResponseMessages.Validation.UserIdInvalidFormat);
 
                 validationResult.OnSuccess(() => 
-                    {
-                        logger?.LogDebug("[VALIDATION] User ID format validation passed: {UserId}", userId);
-                    })
-                    .OnFailure(errors => 
-                    {
-                        logger?.LogWarning("[VALIDATION] User ID format validation failed: {UserId}, Errors={Errors}", 
-                            userId, string.Join("|", errors));
-                    });
+                {
+                    logger?.LogDebug("[VALIDATION] User ID format validation passed: {UserId}", userId);
+                })
+                .OnFailure(errors => 
+                {
+                    logger?.LogWarning("[VALIDATION] User ID format validation failed: {UserId}, Errors={Errors}", 
+                        userId, string.Join("|", errors));
+                });
 
                 return validationResult.IsSuccess;
             }
 
             return userId.Length > 3 && userId.Length <= 450;
-        }
-
-        private void ConfigureBusinessValidation()
-        {
-            // Additional business validation can be added here if needed
-            // For example, checking if user exists in database (though this might be overkill for a query validator)
         }
     }
 }

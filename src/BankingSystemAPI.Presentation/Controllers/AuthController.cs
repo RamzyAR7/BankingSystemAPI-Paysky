@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.DTOs.Auth;
+﻿#region Usings
+using BankingSystemAPI.Application.DTOs.Auth;
 using BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login;
 using BankingSystemAPI.Application.Features.Identity.Auth.Commands.Logout;
 using BankingSystemAPI.Application.Features.Identity.Auth.Commands.RefreshToken;
@@ -10,6 +11,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -113,3 +116,4 @@ namespace BankingSystemAPI.Presentation.Controllers
         }
     }
 }
+

@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.DTOs.Account;
+﻿#region Usings
+using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccount;
 using BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts;
 using BankingSystemAPI.Application.Features.Accounts.Commands.SetAccountActiveStatus;
@@ -14,6 +15,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -124,3 +127,4 @@ namespace BankingSystemAPI.Presentation.Controllers
         }
     }
 }
+

@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Logout
 {
@@ -8,7 +12,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Logout
         {
             RuleFor(x => x.UserId)
                 .NotEmpty()
-                .WithMessage("User ID is required.");
+                .WithMessage(ApiResponseMessages.Validation.FieldRequiredFormat.Replace("{0}", "User ID"));
         }
     }
 }

@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Auth;
@@ -6,6 +7,9 @@ using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using Microsoft.Extensions.Logging;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
 {
@@ -46,12 +50,11 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
 
             if (loginResult.IsSuccess)
             {
-                _logger.LogInformation("Login successful for user: {Email}", request.Email);
+                _logger.LogInformation(ApiResponseMessages.Logging.OperationCompletedController, "auth", "login");
             }
             else
             {
-                _logger.LogWarning("Login failed for user: {Email}, Errors: {Errors}",
-                    request.Email, string.Join(", ", loginResult.Errors));
+                _logger.LogWarning(ApiResponseMessages.Logging.OperationFailedController, "auth", "login", string.Join(", ", loginResult.Errors));
             }
 
             return loginResult;
@@ -74,7 +77,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
         {
             return userDto.IsActive
                 ? Result<UserResDto>.Success(userDto)
-                : Result<UserResDto>.Forbidden("User account is inactive. Contact administrator."); // Maps to 403
+                : Result<UserResDto>.Forbidden(ApiResponseMessages.ErrorPatterns.AccessDenied); // Maps to 403
         }
 
         private async Task<Result<UserResDto>> ValidateBankActive(UserResDto userDto)
@@ -90,7 +93,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
 
             return bankActiveResult.Value
                 ? Result<UserResDto>.Success(userDto)
-                : Result<UserResDto>.Forbidden("Cannot login: user's bank is inactive."); // Maps to 403
+                : Result<UserResDto>.Forbidden(ApiResponseMessages.ErrorPatterns.AccessDenied); // Maps to 403
         }
 
         private async Task<Result<UserResDto>> ValidateUserRole(UserResDto userDto)
@@ -102,7 +105,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
             }
 
             return string.IsNullOrEmpty(userRoleResult.Value)
-                ? Result<UserResDto>.Forbidden("User has no role assigned. Contact administrator.") // Maps to 403
+                ? Result<UserResDto>.Forbidden(ApiResponseMessages.ErrorPatterns.AccessDenied) // Maps to 403
                 : Result<UserResDto>.Success(userDto);
         }
 
@@ -127,3 +130,4 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
         }
     }
 }
+

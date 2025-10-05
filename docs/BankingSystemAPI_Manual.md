@@ -1,7 +1,6 @@
 # BankingSystemAPI: Full Application Manual & Technical Book
 
 ---
- 
 ## Table of Contents
 1. Introduction & Vision
 2. Solution Structure & Layered Architecture
@@ -23,7 +22,7 @@
 ---
 
 ## 1. Introduction & Vision
-BankingSystemAPI is a modern, enterprise-grade banking backend built on .NET 8. It supports multi-user, multi-role, secure financial operations, and is designed for extensibility, maintainability, and real-world banking needs.
+BankingSystemAPI is a modern, enterprise-grade banking backend built on .NET 8. The project has been refactored to adopt CQRS (Command Query Responsibility Segregation) implemented via MediatR, a Result&lt;T&gt; pattern for standardized service responses, FluentValidation for request-level validation, and the Specification pattern for composable, testable queries. Pipeline behaviors (validation, caching, logging) and lightweight caching have been introduced to improve performance and keep handlers focused on business logic. It continues to support multi-user, multi-role, secure financial operations and is designed for extensibility, maintainability, and real-world banking needs.
 
 ### Key Features
 - Modular, layered architecture
@@ -72,10 +71,14 @@ tests/
 ```
 
 ### Layer Responsibilities
-- **Presentation**: Handles HTTP requests, applies filters/middleware, returns responses
-- **Application**: Orchestrates business logic, coordinates services, validates data
-- **Domain**: Pure business rules, entities, aggregates, value objects
-- **Infrastructure**: Data persistence, background jobs, external integrations
+
+- **Presentation**: Thin HTTP controllers that delegate Commands and Queries to MediatR. Controllers handle request binding, authorization, and return standardized Result&lt;T&gt; responses (success / failure payloads). They do not contain domain logic.
+
+- **Application**: Implements CQRS. Requests are modeled as Commands and Queries handled by MediatR handlers. This layer contains DTOs, MediatR handlers, FluentValidation validators, pipeline behaviors (ValidationBehavior, optional CachingBehavior, LoggingBehavior), application services, mapping profiles, and modules that orchestrate business operations without direct persistence concerns.
+
+- **Domain**: Pure business rules, entities, aggregates, domain exceptions (e.g., BusinessRuleException), and value objects. Domain contains no framework-specific code and remains the single source of truth for business invariants.
+
+- **Infrastructure**: Data persistence (EF Core), repositories, Unit of Work, Specification implementations used by repository/query handlers, caching implementations, background jobs, identity plumbing, and any external integrations.
 
 ---
 
@@ -275,6 +278,61 @@ To prevent data corruption from simultaneous update operations, the `Account` en
 
 This section provides a deep dive into the core services of the application, explaining their responsibilities, methods, and the logic they encapsulate.
 
+### Patterns & Conventions (CQRS, MediatR, Result&lt;T&gt;, Validation, Specifications, Caching)
+
+This codebase was refactored to follow a clear set of application-level patterns and conventions to improve separation of concerns, testability, and performance. The most important conventions are listed here so developers and reviewers understand how to add new features consistently.
+
+- CQRS via MediatR
+  - All user-facing operations are modeled as either *Commands* (state-changing) or *Queries* (read-only) and sent through MediatR. Controllers are thin and only translate HTTP requests into Commands/Queries.
+  - Typical shapes:
+    - Command: `CreateUserCommand : IRequest<Result&lt;UserDto&gt;>`
+    - Query: `GetUsersQuery : IRequest<Result&lt;PagedResult&lt;UserDto&gt;&gt;>`
+
+- Result&lt;T&gt; Pattern
+  - Handlers return a standardized `Result&lt;T&gt;` (or `Result` for void) which carries either a successful value or a list of errors. This keeps controllers simple: they translate Result objects to appropriate HTTP responses (200/201, 400, 404, 409, etc.).
+
+- FluentValidation and ValidationBehavior
+  - Every Command/Query that accepts input has a corresponding FluentValidation validator (e.g., `CreateUserCommandValidator`).
+  - A `ValidationBehavior<TRequest,TResponse>` runs as a MediatR pipeline behavior and short-circuits requests that fail validation, returning a `Result` containing validation errors.
+
+- Pipeline Behaviors (order and responsibilities)
+  - The typical pipeline order is: **Validation -> Caching (optional) -> Logging -> Handler**.
+  - Behaviors are centralized and reusable (examples in `Application/Behaviors/`).
+
+- Caching
+  - Query handlers may be decorated with a caching behavior or explicitly use an `ICacheService`. Caching keys are deterministic and usually include the query type name and serialized parameters.
+  - Cache duration is configurable per query and may use sliding or absolute expirations depending on the handler.
+
+- Specification Pattern for Queries
+  - Read-side logic uses the Specification pattern to compose filters, pagination, and ordering. Repositories accept specifications (e.g., `PagedSpecification<T>`) and translate them to EF queries. This keeps query logic testable and composable.
+
+- Handler Signature Examples
+  - Handler for a command:
+
+    ```csharp
+    public class CreateUserHandler : IRequestHandler<CreateUserCommand, Result<UserDto>>
+    {
+        public async Task<Result<UserDto>> Handle(CreateUserCommand req, CancellationToken ct)
+        {
+            // ... business logic via services/repositories
+        }
+    }
+    ```
+
+  - Handler for a query:
+
+    ```csharp
+    public class GetUsersHandler : IRequestHandler<GetUsersQuery, Result<PagedResult<UserDto>>>
+    {
+        public async Task<Result<PagedResult<UserDto>>> Handle(GetUsersQuery req, CancellationToken ct)
+        {
+            // build specification, query repository, map to DTOs, return Result
+        }
+    }
+    ```
+
+These conventions are enforced by code structure and examples in the `Application` project. New features should follow the same patterns to maintain consistency.
+
 ---
 
 ### **AuthService**: Authentication and Token Management
@@ -425,6 +483,28 @@ This is a critical infrastructure service that underpins the application's advan
 ---
 
 ## 6. Controllers & API Endpoints
+
+### Recent documentation updates
+
+The codebase documentation has been synchronized with the Postman collection. The following XML documentation remarks were added to controller actions so they appear in generated API docs (Swagger/OpenAPI) when XML comments are enabled:
+
+- `UserController` (`/api/users`)
+  - Create (POST `/api/users`): added roles, banks table, and an example request body in XML remarks.
+  - Update (PUT `/api/users/{userId}`): added roles, banks table, and an example request body in XML remarks.
+
+- `CheckingAccountController` (`/api/checking-accounts`)
+  - Create (POST `/api/checking-accounts`): added currencies table and an example request body in XML remarks.
+
+- `SavingsAccountController` (`/api/savings-accounts`)
+  - Create (POST `/api/savings-accounts`): added currencies table, interest types table, and an example request body in XML remarks.
+
+Notes:
+- These updates only add XML comments above existing controller actions; they do not change API signatures or runtime behavior.
+- To surface these remarks in Swagger UI you must enable XML documentation generation for the Presentation project and configure Swagger to include the generated XML file. See the "Swagger / OpenAPI" section later in this document for instructions (or ask me to apply the project changes and wiring automatically).
+
+- Ordering / sorting documentation:
+  - Many controller GET endpoints that return collections were updated with XML comments documenting the ordering parameters (`orderBy` and `orderDirection`), common allowed fields, and ASC/DESC behavior. Affected controllers include `BankController`, `UserController`, `CheckingAccountController`, `SavingsAccountController`, `TransactionsController`, and related endpoints. These are documentation-only changes; consider adding server-side validation of `orderBy` values to avoid runtime errors for invalid property names.
+
 
 This section details the public API surface of the application, controller by controller. All endpoints are secured by default and require authentication unless marked otherwise.
 

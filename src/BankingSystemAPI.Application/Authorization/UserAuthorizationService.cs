@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.Interfaces.Authorization;
+﻿#region Usings
+using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Authorization.Helpers;
@@ -14,6 +15,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.AuthorizationServices
 {
@@ -551,23 +554,21 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         {
             if (authResult.IsSuccess)
             {
-                _logger.LogDebug(
-                    "{LogCategory} Authorization granted: CheckType={CheckType}, TargetUserId={TargetUserId}, Scope={Scope}, Info={Info}", 
+                _logger.LogDebug(ApiResponseMessages.Logging.AuthorizationGrantedGeneric,
                     AuthorizationConstants.LoggingCategories.ACCESS_GRANTED,
-                    checkType, 
-                    targetUserId, 
-                    scope, 
+                    checkType,
+                    targetUserId,
+                    scope,
                     additionalInfo ?? "N/A");
             }
             else
             {
-                _logger.LogWarning(
-                    "{LogCategory} Authorization denied: CheckType={CheckType}, TargetUserId={TargetUserId}, ActingUserId={ActingUserId}, Scope={Scope}, Errors={Errors}, Info={Info}",
+                _logger.LogWarning(ApiResponseMessages.Logging.AuthorizationDeniedGeneric,
                     AuthorizationConstants.LoggingCategories.ACCESS_DENIED,
                     checkType,
-                    targetUserId, 
-                    _currentUser.UserId, 
-                    scope, 
+                    targetUserId,
+                    _currentUser.UserId,
+                    scope,
                     string.Join(", ", authResult.Errors),
                     additionalInfo ?? "N/A");
             }
@@ -581,43 +582,41 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         {
             if (filterResult.IsSuccess)
             {
-                _logger.LogDebug(
-                    "{LogCategory} User filtering completed: Scope={Scope}, Page={Page}, Size={Size}, ActingUserId={ActingUserId}", 
+                _logger.LogDebug(ApiResponseMessages.Logging.UserFilteringCompleted,
                     AuthorizationConstants.LoggingCategories.AUTHORIZATION_CHECK,
-                    scope, 
-                    pageNumber, 
-                    pageSize, 
+                    scope,
+                    pageNumber,
+                    pageSize,
                     _currentUser.UserId);
             }
             else
             {
-                _logger.LogWarning(
-                    "{LogCategory} User filtering failed: ActingUserId={ActingUserId}, Scope={Scope}, Errors={Errors}",
+                _logger.LogWarning(ApiResponseMessages.Logging.UserFilteringFailed,
                     AuthorizationConstants.LoggingCategories.SYSTEM_ERROR,
-                    _currentUser.UserId, 
-                    scope, 
+                    _currentUser.UserId,
+                    scope,
                     string.Join(", ", filterResult.Errors));
             }
         }
 
         private void LogSelfAccessGranted(AuthorizationCheckType checkType, string targetUserId)
         {
-            _logger.LogDebug(
-                "{LogCategory} Self-access granted: CheckType={CheckType}, UserId={UserId}", 
+            _logger.LogDebug(ApiResponseMessages.Logging.SelfAccessGranted,
                 AuthorizationConstants.LoggingCategories.ACCESS_GRANTED,
-                checkType, 
+                checkType,
                 targetUserId);
         }
 
         private void LogSystemError(string message, Exception? ex = null)
         {
             _logger.LogError(ex,
-                "{LogCategory} {Message}: ActingUserId={ActingUserId}", 
+                "{LogCategory} {Message}: ActingUserId={ActingUserId}",
                 AuthorizationConstants.LoggingCategories.SYSTEM_ERROR,
-                message, 
+                message,
                 _currentUser.UserId);
         }
 
         #endregion
     }
 }
+

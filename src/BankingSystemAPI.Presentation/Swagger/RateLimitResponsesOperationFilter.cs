@@ -1,12 +1,26 @@
+﻿#region Usings
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Linq;
 using Microsoft.AspNetCore.Authorization;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Swagger
 {
     public class RateLimitResponsesOperationFilter : IOperationFilter
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
             var endpointMetadata = context.ApiDescription.ActionDescriptor?.EndpointMetadata;
@@ -30,3 +44,4 @@ namespace BankingSystemAPI.Presentation.Swagger
         }
     }
 }
+

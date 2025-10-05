@@ -1,13 +1,18 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.AccountSpecification;
+using BankingSystemAPI.Application.Specifications.UserSpecifications;
 using System.Collections.Generic;
 using System.Linq;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using Microsoft.EntityFrameworkCore;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByUserId
 {
@@ -31,7 +36,14 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByUs
             // Validate input
             if (string.IsNullOrWhiteSpace(request.UserId))
             {
-                return Result<List<AccountDto>>.Failure(new[] { "UserId is required." });
+                return Result<List<AccountDto>>.Failure(new[] { ApiResponseMessages.Validation.FieldRequiredFormat.Replace("{0}", "UserId") });
+            }
+
+            // Ensure target user exists - return NotFound instead of empty list when user does not exist
+            var targetUser = await _uow.UserRepository.FindAsync(new UserByIdSpecification(request.UserId));
+            if (targetUser == null)
+            {
+                return Result<List<AccountDto>>.NotFound("User", request.UserId);
             }
 
             // Explicit user-level authorization: validate access to the target user
@@ -54,3 +66,4 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByUs
         }
     }
 }
+

@@ -1,4 +1,7 @@
+﻿#region Usings
 using FluentValidation;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetAllTransactions
 {
@@ -11,3 +14,4 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetAllTrans
         }
     }
 }
+

@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Currencies.Commands.SetCurrencyActiveStatus
 {
@@ -6,7 +10,8 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.SetCurrencyA
     {
         public SetCurrencyActiveStatusCommandValidator()
         {
-            RuleFor(x => x.Id).GreaterThan(0).WithMessage("Invalid currency id.");
+            RuleFor(x => x.Id).GreaterThan(0).WithMessage(string.Format(ApiResponseMessages.Validation.InvalidIdFormat, "Currency id"));
         }
     }
 }
+

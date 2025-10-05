@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Domain.Entities;
+﻿#region Usings
+using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Configuration_Classes;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,8 @@ using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Context
 {
@@ -53,3 +56,4 @@ namespace BankingSystemAPI.Infrastructure.Context
         }
     }
 }
+

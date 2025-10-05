@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Application.DTOs.Bank;
 using BankingSystemAPI.Application.Features.Banks.Commands.CreateBank;
 using BankingSystemAPI.Application.Features.Banks.Commands.DeleteBank;
@@ -13,6 +14,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using BankingSystemAPI.Domain.Common;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -39,13 +42,13 @@ namespace BankingSystemAPI.Presentation.Controllers
             _mediator = mediator;
         }
 
-        /// <summary>
-        /// Retrieves a paginated list of banks.
-        /// </summary>
-        /// <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
-        /// <param name="pageSize">Number of items per page. Defaults to 10.</param>
-        /// <param name="orderBy">Optional. Property name to sort by. Allowed values: "Id", "Name".</param>
-        /// <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC". Defaults to "ASC".</param>
+    /// <summary>
+    /// Retrieves a paginated list of banks.
+    /// </summary>
+    /// <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+    /// <param name="pageSize">Number of items per page. Defaults to 10.</param>
+    /// <param name="orderBy">Optional. Property name to sort by. Allowed values: "Id", "Name". If not provided the default ordering may be used by the implementation.</param>
+    /// <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC" (case-insensitive). Defaults to "ASC" when omitted. If an invalid value is supplied the request will return a 400 Bad Request.</param>
         /// <returns>
         /// 200 OK with a list of banks when successful.
         /// 401 Unauthorized if the caller is not authenticated.
@@ -123,8 +126,8 @@ namespace BankingSystemAPI.Presentation.Controllers
             if (dto == null)
                 return BadRequest(new { 
                     success = false, 
-                    errors = new[] { "Bank data is required." },
-                    message = "Bank data is required."
+                    errors = new[] { string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Bank") },
+                    message = string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Bank")
                 });
 
             var result = await _mediator.Send(new CreateBankCommand(dto));
@@ -150,8 +153,8 @@ namespace BankingSystemAPI.Presentation.Controllers
             if (dto == null)
                 return BadRequest(new { 
                     success = false, 
-                    errors = new[] { "Bank data is required." },
-                    message = "Bank data is required."
+                    errors = new[] { string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Bank") },
+                    message = string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Bank")
                 });
 
             var result = await _mediator.Send(new UpdateBankCommand(id, dto));
@@ -196,3 +199,4 @@ namespace BankingSystemAPI.Presentation.Controllers
         }
     }
 }
+

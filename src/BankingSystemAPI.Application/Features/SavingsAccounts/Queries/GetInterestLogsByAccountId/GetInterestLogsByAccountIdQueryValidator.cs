@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetInterestLogsByAccountId
 {
@@ -6,9 +10,10 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetInter
     {
         public GetInterestLogsByAccountIdQueryValidator()
         {
-            RuleFor(x => x.AccountId).GreaterThan(0).WithMessage("Invalid account id.");
+            RuleFor(x => x.AccountId).GreaterThan(0).WithMessage(ApiResponseMessages.Validation.InvalidIdFormat.Replace("{0}", "Account id"));
             RuleFor(x => x.PageNumber).GreaterThanOrEqualTo(1);
             RuleFor(x => x.PageSize).GreaterThan(0);
         }
     }
 }
+

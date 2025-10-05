@@ -1,7 +1,10 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Auth;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Messaging;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.RefreshToken
 {

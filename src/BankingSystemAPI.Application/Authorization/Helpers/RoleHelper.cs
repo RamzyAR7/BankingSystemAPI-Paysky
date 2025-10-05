@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Domain.Common;
+﻿#region Usings
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Domain.Constant;
 using Microsoft.Extensions.Logging;
@@ -7,6 +8,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Authorization.Helpers
 {
@@ -23,13 +26,12 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
         public static bool IsRole(this string? role, UserRole expectedRole)
         {
             var isMatch = string.Equals(role, expectedRole.ToString(), StringComparison.OrdinalIgnoreCase);
-            
+
             // Use ResultExtensions patterns for consistent logging
             var result = Result<bool>.Success(isMatch);
             result.OnSuccess(() => 
                 {
-                    _logger?.LogDebug("[AUTHORIZATION] Role check: {Role} == {ExpectedRole} = {IsMatch}", 
-                        role, expectedRole, isMatch);
+                    _logger?.LogDebug(ApiResponseMessages.Logging.RoleCheck, role, expectedRole, isMatch);
                 });
 
             return isMatch;
@@ -52,18 +54,17 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
             if (string.IsNullOrWhiteSpace(role))
             {
                 var result = Result<bool>.Success(false);
-                result.OnSuccess(() => _logger?.LogDebug("[AUTHORIZATION] Bank admin check failed - null/empty role"));
+                result.OnSuccess(() => _logger?.LogDebug(ApiResponseMessages.Logging.BankAdminCheckFailed));
                 return false;
             }
 
             var isNotClientOrSuperAdmin = !role.IsRole(UserRole.Client) && !role.IsRole(UserRole.SuperAdmin);
-            
+
             // Use ResultExtensions for consistent logging
             var validationResult = Result<bool>.Success(isNotClientOrSuperAdmin);
             validationResult.OnSuccess(() => 
                 {
-                    _logger?.LogDebug("[AUTHORIZATION] Bank admin check: Role={Role}, IsBankAdmin={IsBankAdmin}", 
-                        role, isNotClientOrSuperAdmin);
+                    _logger?.LogDebug(ApiResponseMessages.Logging.BankAdminCheck, role, isNotClientOrSuperAdmin);
                 });
 
             return isNotClientOrSuperAdmin;
@@ -75,16 +76,10 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
         public static Result<bool> ValidateRoleAsync(string? role, UserRole expectedRole)
         {
             var validation = ValidateRoleInput(role, expectedRole);
-            
+
             validation.OnSuccess(() => 
                 {
-                    _logger?.LogDebug("[AUTHORIZATION] Role validation successful: {Role} validated against {ExpectedRole}", 
-                        role, expectedRole);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger?.LogWarning("[AUTHORIZATION] Role validation failed: {Role}, ExpectedRole: {ExpectedRole}, Errors: {Errors}",
-                        role, expectedRole, string.Join(", ", errors));
+                    _logger?.LogDebug(ApiResponseMessages.Logging.RoleValidationSuccessful, role, expectedRole);
                 });
 
             return validation;
@@ -130,3 +125,4 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
         }
     }
 }
+

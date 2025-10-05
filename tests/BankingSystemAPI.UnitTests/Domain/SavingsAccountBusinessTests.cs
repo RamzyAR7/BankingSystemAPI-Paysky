@@ -1,5 +1,8 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.UnitTests.TestInfrastructure;
+#endregion
+
 
 namespace BankingSystemAPI.UnitTests.Domain;
 

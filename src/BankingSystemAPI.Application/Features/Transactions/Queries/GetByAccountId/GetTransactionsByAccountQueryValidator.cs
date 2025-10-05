@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetByAccountId
 {
@@ -8,15 +12,16 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetByAccoun
         {
             RuleFor(x => x.AccountId)
                 .GreaterThan(0)
-                .WithMessage("AccountId must be a positive integer.");
+                .WithMessage(string.Format(ApiResponseMessages.Validation.InvalidIdFormat, "AccountId"));
 
             RuleFor(x => x.PageNumber)
                 .GreaterThanOrEqualTo(1)
-                .WithMessage("PageNumber must be at least 1.");
+                .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthMinFormat, "Page number", 1));
 
             RuleFor(x => x.PageSize)
                 .GreaterThan(0)
-                .WithMessage("PageSize must be a positive integer.");
+                .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Page size"));
         }
     }
 }
+

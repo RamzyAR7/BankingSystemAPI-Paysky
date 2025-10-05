@@ -1,6 +1,9 @@
+﻿#region Usings
 using Microsoft.AspNetCore.Identity;
 using System.Collections.Generic;
 using BankingSystemAPI.Application.DTOs.User;
+#endregion
+
 
 namespace BankingSystemAPI.Application.DTOs.User
 {
@@ -9,6 +12,17 @@ namespace BankingSystemAPI.Application.DTOs.User
     /// </summary>
     public class UserRoleUpdateResultDto
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// User identifier
         /// </summary>
@@ -30,3 +44,4 @@ namespace BankingSystemAPI.Application.DTOs.User
         public UserRoleResDto? UserRole { get; set; }
     }
 }
+

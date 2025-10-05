@@ -1,3 +1,4 @@
+﻿#region Usings
 using System;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Logging;
@@ -9,6 +10,9 @@ using Microsoft.AspNetCore.Http;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Filters
 {
@@ -62,7 +66,7 @@ namespace BankingSystemAPI.Presentation.Filters
             };
 
             var prettyRequest = JsonSerializer.Serialize(requestInfo, new JsonSerializerOptions { WriteIndented = true });
-            _logger.LogInformation("Incoming request:\n{Request}", prettyRequest);
+            _logger.LogInformation(ApiResponseMessages.Logging.IncomingRequest, prettyRequest);
 
             var originalColor = Console.ForegroundColor;
             try
@@ -156,16 +160,16 @@ namespace BankingSystemAPI.Presentation.Filters
             };
 
             var prettyResponse = JsonSerializer.Serialize(responseInfo, new JsonSerializerOptions { WriteIndented = true });
-            _logger.LogInformation("Outgoing response:\n{Response}", prettyResponse);
+            _logger.LogInformation(ApiResponseMessages.Logging.OutgoingResponse, prettyResponse);
 
             // Add summary line for key fields if available
             if (username != null || resultRoles != null || userId != null)
             {
-                _logger.LogInformation("Response summary: StatusCode={StatusCode}, Username={Username}, Roles={Roles}, UserId={UserId}", statusCode, username ?? userId, resultRoles ?? (roles != null ? string.Join(",", roles) : null), userId);
+                _logger.LogInformation(ApiResponseMessages.Logging.ResponseSummary, statusCode, username ?? userId, resultRoles ?? (roles != null ? string.Join(",", roles) : null), userId);
             }
             if (exception != null)
             {
-                _logger.LogError(exception, "Exception occurred during request execution: {Message}", errorMessage);
+                _logger.LogError(ApiResponseMessages.Logging.ExceptionOccurred, exception, errorMessage);
             }
 
             try
@@ -191,3 +195,4 @@ namespace BankingSystemAPI.Presentation.Filters
         }
     }
 }
+

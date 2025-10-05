@@ -1,3 +1,4 @@
+﻿#region Usings
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using BankingSystemAPI.Infrastructure.Context;
@@ -8,6 +9,8 @@ using AutoMapper;
 using Moq;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Cache;
+#endregion
+
 
 namespace BankingSystemAPI.UnitTests.TestInfrastructure;
 
@@ -16,6 +19,17 @@ namespace BankingSystemAPI.UnitTests.TestInfrastructure;
 /// </summary>
 public abstract class TestBase : IDisposable
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     protected readonly ApplicationDbContext Context;
     protected readonly IUnitOfWork UnitOfWork;
     protected readonly IMapper Mapper;

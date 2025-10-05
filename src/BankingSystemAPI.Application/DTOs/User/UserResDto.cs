@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.DTOs.Role;
+﻿
+using BankingSystemAPI.Application.DTOs.Role;
 using BankingSystemAPI.Application.DTOs.Account;
 using System;
 using System.Collections.Generic;
@@ -71,3 +72,4 @@ namespace BankingSystemAPI.Application.DTOs.User
         public IList<AccountDto> Accounts { get; set; } = new List<AccountDto>();
     }
 }
+

@@ -1,9 +1,12 @@
+﻿#region Usings
 using BankingSystemAPI.Application.Interfaces.Repositories;
 using BankingSystemAPI.Application.Interfaces.Specification;
 using BankingSystemAPI.Infrastructure.Context;
 using BankingSystemAPI.Infrastructure.SpecificationEvaluatorClass;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
@@ -12,6 +15,17 @@ namespace BankingSystemAPI.Infrastructure.Repositories
     /// </summary>
     public abstract class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : class
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         protected readonly ApplicationDbContext _context;
         protected readonly DbSet<T> _dbSet;
 

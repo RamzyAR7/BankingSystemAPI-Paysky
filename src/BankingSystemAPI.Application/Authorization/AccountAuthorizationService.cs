@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.Interfaces.Authorization;
+﻿#region Usings
+using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Authorization.Helpers;
@@ -13,6 +14,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.AuthorizationServices
 {
@@ -22,6 +25,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
     /// </summary>
     public class AccountAuthorizationService : IAccountAuthorizationService
     {
+
         #region Private Fields - Organized by Responsibility
 
         // Core Dependencies
@@ -219,7 +223,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             return scope switch
             {
                 AccessScope.Global => Result.Success(),
-                AccessScope.Self => Result.Forbidden("Clients cannot modify other users' accounts."),
+                AccessScope.Self => Result.Forbidden(AuthorizationConstants.ErrorMessages.ClientsModifyOthersBlocked),
                 AccessScope.BankLevel => await ValidateBankLevelModificationAsync(account, actingUser),
                 _ => Result.Forbidden(AuthorizationConstants.ErrorMessages.UnknownAccessScope)
             };
@@ -234,7 +238,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             return scope switch
             {
                 AccessScope.Global => Result.Success(),
-                AccessScope.Self => Result.Forbidden("Clients cannot create accounts for other users."),
+                AccessScope.Self => Result.Forbidden(AuthorizationConstants.ErrorMessages.ClientsCreateUsersBlocked),
                 AccessScope.BankLevel => await ValidateBankLevelCreationAsync(targetUserId),
                 _ => Result.Forbidden(AuthorizationConstants.ErrorMessages.UnknownAccessScope)
             };
@@ -293,7 +297,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             // Layer 3: Role-based access validation
             var roleValidationResult = await ValidateTargetUserRoleForCreationAsync(targetUserId);
             if (roleValidationResult.IsFailure)
-                return roleValidationResult;
+                return Result.Forbidden(AuthorizationConstants.ErrorMessages.AccountCreationAllowedForClients);
 
             // Layer 4: Bank isolation validation
             return BankGuard.ValidateSameBank(actingUserResult.Value!.BankId, targetUserResult.Value!.BankId);
@@ -321,18 +325,18 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 AccountModificationOperation.Edit => 
                     Result.Forbidden(AuthorizationConstants.ErrorMessages.CannotModifyOwnAccount),
                 AccountModificationOperation.Delete => 
-                    Result.Forbidden("Users cannot delete their own accounts."),
+                    Result.Forbidden(AuthorizationConstants.ErrorMessages.CannotDeleteSelf),
                 
                 // HIGH RISK: Account status changes
                 AccountModificationOperation.Freeze or AccountModificationOperation.Unfreeze => 
-                    Result.Forbidden("Users cannot freeze or unfreeze their own accounts."),
+                    Result.Forbidden(AuthorizationConstants.ErrorMessages.CannotFreezeOrUnfreezeOwnAccount),
                 
                 // LOW RISK: Financial transactions (allowed)
                 AccountModificationOperation.Deposit or AccountModificationOperation.Withdraw => 
                     Result.Success(),
                 
                 // Default: Operation not permitted
-                _ => Result.Forbidden("Operation not permitted on own account.")
+                _ => Result.Forbidden(AuthorizationConstants.ErrorMessages.CannotModifyOwnAccount)
             };
         }
 
@@ -349,7 +353,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             var ownerRole = await _uow.RoleRepository.GetRoleByUserIdAsync(accountOwnerId);
             return RoleHelper.IsClient(ownerRole?.Name)
                 ? Result.Success()
-                : Result.Forbidden("Only Client accounts can be modified.");
+                : Result.Forbidden(AuthorizationConstants.ErrorMessages.OnlyClientsCanBeModified);
         }
 
         /// <summary>
@@ -361,7 +365,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             var ownerRole = await _uow.RoleRepository.GetRoleByUserIdAsync(accountOwnerId);
             return RoleHelper.IsClient(ownerRole?.Name)
                 ? Result.Success()
-                : Result.Forbidden("You can only view accounts belonging to Client users.");
+                : Result.Forbidden(AuthorizationConstants.ErrorMessages.AdminsViewClientsOnly);
         }
 
         /// <summary>
@@ -373,7 +377,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             var targetRole = await _uow.RoleRepository.GetRoleByUserIdAsync(targetUserId);
             return RoleHelper.IsClient(targetRole?.Name)
                 ? Result.Success()
-                : Result.Forbidden("Can only create accounts for Client users.");
+                : Result.Forbidden(AuthorizationConstants.ErrorMessages.AccountCreationAllowedForClients);
         }
 
         #endregion
@@ -409,7 +413,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             {
                 LogSystemError("Failed to filter accounts", ex);
                 return Result<(IEnumerable<Account> Accounts, int TotalCount)>
-                    .BadRequest($"Failed to filter accounts: {ex.Message}");
+                    .BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
@@ -579,23 +583,21 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         {
             if (authResult.IsSuccess)
             {
-                _logger.LogDebug(
-                    "{LogCategory} Account authorization granted: CheckType={CheckType}, TargetId={TargetId}, Scope={Scope}, Info={Info}", 
+                _logger.LogDebug(ApiResponseMessages.Logging.AuthorizationGranted,
                     AuthorizationConstants.LoggingCategories.ACCESS_GRANTED,
-                    checkType, 
-                    targetId, 
-                    scope, 
+                    checkType,
+                    targetId,
+                    scope,
                     additionalInfo ?? "N/A");
             }
             else
             {
-                _logger.LogWarning(
-                    "{LogCategory} Account authorization denied: CheckType={CheckType}, TargetId={TargetId}, ActingUserId={ActingUserId}, Scope={Scope}, Errors={Errors}, Info={Info}",
+                _logger.LogWarning(ApiResponseMessages.Logging.AuthorizationDenied,
                     AuthorizationConstants.LoggingCategories.ACCESS_DENIED,
                     checkType,
-                    targetId, 
-                    _currentUser.UserId, 
-                    scope, 
+                    targetId,
+                    _currentUser.UserId,
+                    scope,
                     string.Join(", ", authResult.Errors),
                     additionalInfo ?? "N/A");
             }
@@ -609,21 +611,19 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         {
             if (filterResult.IsSuccess)
             {
-                _logger.LogDebug(
-                    "{LogCategory} Account filtering completed: Role={Role}, Page={Page}, Size={Size}, ActingUserId={ActingUserId}", 
+                _logger.LogDebug(ApiResponseMessages.Logging.AccountFilteringCompleted,
                     AuthorizationConstants.LoggingCategories.AUTHORIZATION_CHECK,
-                    roleName, 
-                    pageNumber, 
-                    pageSize, 
+                    roleName,
+                    pageNumber,
+                    pageSize,
                     _currentUser.UserId);
             }
             else
             {
-                _logger.LogWarning(
-                    "{LogCategory} Account filtering failed: ActingUserId={ActingUserId}, Role={Role}, Errors={Errors}",
+                _logger.LogWarning(ApiResponseMessages.Logging.AccountFilteringFailed,
                     AuthorizationConstants.LoggingCategories.SYSTEM_ERROR,
-                    _currentUser.UserId, 
-                    roleName, 
+                    _currentUser.UserId,
+                    roleName,
                     string.Join(", ", filterResult.Errors));
             }
         }
@@ -632,41 +632,39 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         {
             if (filterResult.IsSuccess)
             {
-                _logger.LogDebug(
-                    "{LogCategory} Account query filtering applied: Role={Role}, ActingUserId={ActingUserId}", 
+                _logger.LogDebug(ApiResponseMessages.Logging.AccountQueryFilteringApplied,
                     AuthorizationConstants.LoggingCategories.AUTHORIZATION_CHECK,
-                    roleName, 
+                    roleName,
                     _currentUser.UserId);
             }
             else
             {
-                _logger.LogWarning(
-                    "{LogCategory} Account query filtering failed: ActingUserId={ActingUserId}, Role={Role}, Errors={Errors}",
+                _logger.LogWarning(ApiResponseMessages.Logging.AccountQueryFilteringFailed,
                     AuthorizationConstants.LoggingCategories.SYSTEM_ERROR,
-                    _currentUser.UserId, 
-                    roleName, 
+                    _currentUser.UserId,
+                    roleName,
                     string.Join(", ", filterResult.Errors));
             }
         }
 
         private void LogSelfAccessGranted(AuthorizationCheckType checkType, string targetId)
         {
-            _logger.LogDebug(
-                "{LogCategory} Self-access granted: CheckType={CheckType}, AccountId={AccountId}", 
+            _logger.LogDebug(ApiResponseMessages.Logging.SelfAccessGranted,
                 AuthorizationConstants.LoggingCategories.ACCESS_GRANTED,
-                checkType, 
+                checkType,
                 targetId);
         }
 
         private void LogSystemError(string message, Exception? ex = null)
         {
             _logger.LogError(ex,
-                "{LogCategory} {Message}: ActingUserId={ActingUserId}", 
+                "{LogCategory} {Message}: ActingUserId={ActingUserId}",
                 AuthorizationConstants.LoggingCategories.SYSTEM_ERROR,
-                message, 
+                message,
                 _currentUser.UserId);
         }
 
         #endregion
     }
 }
+

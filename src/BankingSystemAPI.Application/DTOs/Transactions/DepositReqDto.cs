@@ -1,9 +1,12 @@
-﻿using System;
+﻿#region Usings
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.DTOs.Transactions
 {
@@ -12,6 +15,17 @@ namespace BankingSystemAPI.Application.DTOs.Transactions
     /// </summary>
     public class DepositReqDto
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// Target account identifier.
         /// </summary>
@@ -25,3 +39,4 @@ namespace BankingSystemAPI.Application.DTOs.Transactions
         public decimal Amount { get; set; }
     }
 }
+

@@ -1,16 +1,30 @@
-﻿using BankingSystemAPI.Application.Interfaces.Repositories;
+﻿#region Usings
+using BankingSystemAPI.Application.Interfaces.Repositories;
 using BankingSystemAPI.Application.Interfaces;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using BankingSystemAPI.Application.Specifications;
 using BankingSystemAPI.Application.Specifications.UserSpecifications;
+#endregion
+
 
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class RoleRepository : GenericRepository<ApplicationRole, string>, IRoleRepository
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         private static readonly Func<ApplicationDbContext, string, string> _compiledGetRoleIdByUserId =
             EF.CompileQuery((ApplicationDbContext ctx, string userId) =>
                 ctx.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.RoleId).FirstOrDefault());
@@ -113,3 +127,4 @@ namespace BankingSystemAPI.Infrastructure.Repositories
         }
     }
 }
+

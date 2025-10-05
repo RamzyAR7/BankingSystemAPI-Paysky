@@ -1,9 +1,12 @@
+﻿#region Usings
 using BankingSystemAPI.Application.DTOs.Currency;
 using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.DTOs.Bank;
 using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.DTOs.Transactions;
 using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.UnitTests.TestInfrastructure;
 
@@ -12,6 +15,17 @@ namespace BankingSystemAPI.UnitTests.TestInfrastructure;
 /// </summary>
 public static class TestDtoBuilder
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     public static CurrencyReqDtoBuilder Currency() => new();
     public static UserReqDtoBuilder User() => new();
     public static UserEditDtoBuilder UserEdit() => new();
@@ -25,6 +39,17 @@ public static class TestDtoBuilder
 
 public class CurrencyReqDtoBuilder
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     private readonly CurrencyReqDto _dto = new() { Code = "USD", ExchangeRate = 1m, IsBase = false };
 
     public CurrencyReqDtoBuilder WithCode(string code) { _dto.Code = code; return this; }
@@ -35,6 +60,17 @@ public class CurrencyReqDtoBuilder
 
 public class UserReqDtoBuilder  
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     private readonly UserReqDto _dto = new()
     {
         Username = "testuser",
@@ -67,6 +103,17 @@ public class UserReqDtoBuilder
 
 public class UserEditDtoBuilder
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     private readonly UserEditDto _dto = new()
     {
         Username = "testuser",
@@ -88,6 +135,17 @@ public class UserEditDtoBuilder
 
 public class BankReqDtoBuilder
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     private readonly BankReqDto _dto = new() { Name = "Test Bank" };
 
     public BankReqDtoBuilder WithName(string name) { _dto.Name = name; return this; }
@@ -96,6 +154,17 @@ public class BankReqDtoBuilder
 
 public class CheckingAccountReqDtoBuilder
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     private readonly CheckingAccountReqDto _dto = new()
     {
         UserId = Guid.NewGuid().ToString(),
@@ -113,6 +182,17 @@ public class CheckingAccountReqDtoBuilder
 
 public class SavingsAccountReqDtoBuilder
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     private readonly SavingsAccountReqDto _dto = new()
     {
         UserId = Guid.NewGuid().ToString(),
@@ -131,6 +211,17 @@ public class SavingsAccountReqDtoBuilder
 
 public class DepositReqDtoBuilder
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     private readonly DepositReqDto _dto = new() { AccountId = 1, Amount = 100m };
 
     public DepositReqDtoBuilder ToAccount(int accountId) { _dto.AccountId = accountId; return this; }
@@ -140,6 +231,17 @@ public class DepositReqDtoBuilder
 
 public class WithdrawReqDtoBuilder
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     private readonly WithdrawReqDto _dto = new() { AccountId = 1, Amount = 50m };
 
     public WithdrawReqDtoBuilder FromAccount(int accountId) { _dto.AccountId = accountId; return this; }
@@ -149,6 +251,17 @@ public class WithdrawReqDtoBuilder
 
 public class TransferReqDtoBuilder
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     private readonly TransferReqDto _dto = new() { SourceAccountId = 1, TargetAccountId = 2, Amount = 100m };
 
     public TransferReqDtoBuilder FromAccount(int sourceId) { _dto.SourceAccountId = sourceId; return this; }

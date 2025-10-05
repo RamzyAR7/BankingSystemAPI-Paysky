@@ -1,3 +1,4 @@
+﻿#region Usings
 using Microsoft.AspNetCore.Http;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
@@ -6,6 +7,8 @@ using BankingSystemAPI.Application.Interfaces.Identity;
 using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Authorization
 {
@@ -127,3 +130,4 @@ namespace BankingSystemAPI.Application.Authorization
         }
     }
 }
+

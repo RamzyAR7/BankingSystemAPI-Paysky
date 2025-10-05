@@ -1,3 +1,4 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Application.DTOs.Bank;
 using BankingSystemAPI.Application.Features.Banks.Commands.CreateBank;
@@ -9,6 +10,8 @@ using BankingSystemAPI.UnitTests.TestInfrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
+#endregion
+
 
 namespace BankingSystemAPI.UnitTests.UnitTests.Application.Features.Banks;
 
@@ -18,6 +21,17 @@ namespace BankingSystemAPI.UnitTests.UnitTests.Application.Features.Banks;
 /// </summary>
 public class BankFeatureTests : TestBase
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     private readonly CreateBankCommandHandler _createHandler;
     private readonly UpdateBankCommandHandler _updateHandler;
     private readonly DeleteBankCommandHandler _deleteHandler;

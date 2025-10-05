@@ -1,12 +1,26 @@
+﻿#region Usings
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Linq;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Swagger
 {
     public class AuthResponsesOperationFilter : IOperationFilter
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
             // Use endpoint metadata to detect authorization and allow-anonymous
@@ -36,3 +50,4 @@ namespace BankingSystemAPI.Presentation.Swagger
         }
     }
 }
+

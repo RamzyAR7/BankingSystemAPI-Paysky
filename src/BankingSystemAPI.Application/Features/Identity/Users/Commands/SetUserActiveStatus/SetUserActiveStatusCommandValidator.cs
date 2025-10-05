@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.SetUserActiveStatus
 {
@@ -8,10 +12,10 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.SetUserA
         {
             RuleFor(x => x.UserId)
                 .NotEmpty()
-                .WithMessage("User ID is required.");
+                .WithMessage(ApiResponseMessages.Validation.UserIdRequired);
             RuleFor(x => x.IsActive)
                 .NotNull()
-                .WithMessage("Active status must be specified.");
+                .WithMessage(ApiResponseMessages.Validation.FieldRequiredFormat.Replace("{0}", "Active status"));
         }
     }
 }

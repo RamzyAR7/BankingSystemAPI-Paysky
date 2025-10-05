@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
 {
@@ -10,16 +14,17 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
     {
         public WithdrawCommandValidator()
         {
-            RuleFor(x => x.Req).NotNull().WithMessage("Request body is required.");
+            RuleFor(x => x.Req).NotNull().WithMessage(string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Request body"));
 
             When(x => x.Req != null, () =>
             {
                 RuleFor(x => x.Req.Amount)
-                    .GreaterThan(0).WithMessage("Withdrawal amount must be greater than zero.");
+                    .GreaterThan(0).WithMessage(ApiResponseMessages.Validation.TransferAmountGreaterThanZero);
 
                 RuleFor(x => x.Req.AccountId)
-                    .GreaterThan(0).WithMessage("Account ID is required.");
+                    .GreaterThan(0).WithMessage(string.Format(ApiResponseMessages.Validation.InvalidIdFormat, "Account ID"));
             });
         }
     }
 }
+

@@ -1,4 +1,7 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿#region Usings
+using System.ComponentModel.DataAnnotations;
+#endregion
+
 
 namespace BankingSystemAPI.Application.DTOs.Role
 {
@@ -7,6 +10,17 @@ namespace BankingSystemAPI.Application.DTOs.Role
     /// </summary>
     public class RoleReqDto
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// Role name
         /// </summary>
@@ -15,3 +29,4 @@ namespace BankingSystemAPI.Application.DTOs.Role
         public string Name { get; set; } = string.Empty;
     }
 }
+

@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserByUsername
 {
@@ -8,7 +12,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserBy
         {
             RuleFor(x => x.Username)
                 .NotEmpty()
-                .WithMessage("Username is required.");
+                .WithMessage(ApiResponseMessages.Validation.FieldRequiredFormat.Replace("{0}", "Username"));
         }
     }
 }

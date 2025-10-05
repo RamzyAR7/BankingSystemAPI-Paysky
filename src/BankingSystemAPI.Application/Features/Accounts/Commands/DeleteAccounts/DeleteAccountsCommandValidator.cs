@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts
 {
@@ -6,7 +10,8 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts
     {
         public DeleteAccountsCommandValidator()
         {
-            RuleFor(x => x.Ids).NotNull().WithMessage("At least one account id must be provided.");
+            RuleFor(x => x.Ids).NotNull().WithMessage(ApiResponseMessages.Validation.AtLeastOneAccountIdRequired);
         }
     }
 }
+

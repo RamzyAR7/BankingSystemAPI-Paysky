@@ -1,3 +1,4 @@
+﻿#region Usings
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -9,6 +10,9 @@ using System.Threading.Tasks;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Presentation.Helpers;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Middlewares
 {
@@ -48,7 +52,7 @@ namespace BankingSystemAPI.Presentation.Middlewares
                 // Use ResultExtensions for successful request logging with performance tracking
                 var successResult = Result.Success();
                 successResult.OnSuccess(() => 
-                    _logger.LogDebug("[MIDDLEWARE] Request completed successfully: RequestId={RequestId}, Path={Path}, Method={Method}, StatusCode={StatusCode}", 
+                    _logger.LogDebug(ApiResponseMessages.Logging.MiddlewareRequestCompleted, 
                         requestId, context.Request.Path, context.Request.Method, context.Response.StatusCode));
             }
             catch (Exception ex)
@@ -81,9 +85,9 @@ namespace BankingSystemAPI.Presentation.Middlewares
             // Ensure response hasn't been started
             if (context.Response.HasStarted)
             {
-                var startedResult = Result.BadRequest("Response has already started");
+                var startedResult = Result.BadRequest(ApiResponseMessages.Validation.ResponseAlreadyStarted);
                 startedResult.OnFailure(errors => 
-                    _logger.LogWarning("[MIDDLEWARE] Cannot handle exception - response already started: RequestId={RequestId}", requestId));
+                    _logger.LogWarning(ApiResponseMessages.Logging.MiddlewareExceptionProcessingFailed, requestId, string.Join(", ", errors)));
                 return;
             }
 
@@ -94,10 +98,9 @@ namespace BankingSystemAPI.Presentation.Middlewares
             var exceptionProcessingResult = await ProcessExceptionAsync(context, exception, requestId);
             
             exceptionProcessingResult.OnSuccess(() => 
-                _logger.LogDebug("[MIDDLEWARE] Exception processed successfully: RequestId={RequestId}", requestId))
+                _logger.LogDebug(ApiResponseMessages.Logging.MiddlewareRequestCompleted, requestId))
                 .OnFailure(errors => 
-                _logger.LogError("[MIDDLEWARE] Failed to process exception: RequestId={RequestId}, Errors={Errors}", 
-                    requestId, string.Join(", ", errors)));
+                    _logger.LogError(ApiResponseMessages.Logging.MiddlewareExceptionProcessingFailed, requestId, string.Join(", ", errors)));
         }
 
         private async Task<Result> ProcessExceptionAsync(HttpContext context, Exception exception, string requestId)
@@ -127,9 +130,9 @@ namespace BankingSystemAPI.Presentation.Middlewares
             }
             catch (Exception ex)
             {
-                var processingError = Result.BadRequest($"Exception processing failed: {ex.Message}");
+                var processingError = Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
                 processingError.OnFailure(errors => 
-                    _logger.LogCritical(ex, "[MIDDLEWARE] Critical error in exception processing: RequestId={RequestId}", requestId));
+                    _logger.LogCritical(ApiResponseMessages.Logging.MiddlewareCriticalProcessingError, ex, requestId));
                 return processingError;
             }
         }
@@ -139,17 +142,16 @@ namespace BankingSystemAPI.Presentation.Middlewares
             var logResult = Result.Success();
             logResult.OnSuccess(() =>
             {
-                const string logMessage = "[MIDDLEWARE] Exception handled: RequestId={RequestId}, Path={Path}, Method={Method}, ExceptionType={ExceptionType}, Message={Message}";
+                // Use centralized middleware handled template
                 var logArgs = new object[] { requestId, context.Request.Path, context.Request.Method, exception.GetType().Name, message };
 
-                // Use pattern matching for cleaner code in .NET 8
                 _ = logLevel switch
                 {
-                    LogLevel.Error => LogAndReturn(() => _logger.LogError(exception, logMessage, logArgs)),
-                    LogLevel.Warning => LogAndReturn(() => _logger.LogWarning(exception, logMessage, logArgs)),
-                    LogLevel.Information => LogAndReturn(() => _logger.LogInformation(exception, logMessage, logArgs)),
-                    LogLevel.Critical => LogAndReturn(() => _logger.LogCritical(exception, logMessage, logArgs)),
-                    _ => LogAndReturn(() => _logger.LogDebug(exception, logMessage, logArgs))
+                    LogLevel.Error => LogAndReturn(() => _logger.LogError(exception, ApiResponseMessages.Logging.MiddlewareExceptionHandled, logArgs)),
+                    LogLevel.Warning => LogAndReturn(() => _logger.LogWarning(exception, ApiResponseMessages.Logging.MiddlewareExceptionHandled, logArgs)),
+                    LogLevel.Information => LogAndReturn(() => _logger.LogInformation(exception, ApiResponseMessages.Logging.MiddlewareExceptionHandled, logArgs)),
+                    LogLevel.Critical => LogAndReturn(() => _logger.LogCritical(exception, ApiResponseMessages.Logging.MiddlewareExceptionHandled, logArgs)),
+                    _ => LogAndReturn(() => _logger.LogDebug(exception, ApiResponseMessages.Logging.MiddlewareExceptionHandled, logArgs))
                 };
             });
 
@@ -169,99 +171,97 @@ namespace BankingSystemAPI.Presentation.Middlewares
                 {
                     // Database/Infrastructure exceptions
                     DbUpdateConcurrencyException => ((int)HttpStatusCode.Conflict, 
-                        "A concurrency conflict occurred. Please refresh and try again.", LogLevel.Warning),
+                        ApiResponseMessages.Infrastructure.ConcurrencyConflict, LogLevel.Warning),
                     
                     DbUpdateException dbEx => ((int)HttpStatusCode.BadRequest, 
                         GetDatabaseErrorMessage(dbEx), LogLevel.Error),
                     
                     TimeoutException => ((int)HttpStatusCode.RequestTimeout, 
-                        "The request timed out. Please try again.", LogLevel.Warning),
+                        ApiResponseMessages.Infrastructure.RequestTimedOut, LogLevel.Warning),
                     
                     // Authentication/Authorization exceptions
                     UnauthorizedAccessException => ((int)HttpStatusCode.Unauthorized, 
-                        "Access denied. Please authenticate and try again.", LogLevel.Warning),
+                        ApiResponseMessages.Infrastructure.AccessDeniedAuthenticate, LogLevel.Warning),
                     
                     // Validation/Input exceptions  
                     ArgumentNullException argEx => ((int)HttpStatusCode.BadRequest, 
-                        $"Invalid request parameters: {argEx.ParamName ?? "unknown"}", LogLevel.Warning),
+                        string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, argEx.ParamName ?? "unknown"), LogLevel.Warning),
                     
                     ArgumentException argEx => ((int)HttpStatusCode.BadRequest, 
-                        $"Invalid request parameters: {argEx.ParamName ?? "unknown"}", LogLevel.Warning),
+                        string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, argEx.ParamName ?? "unknown"), LogLevel.Warning),
                     
                     InvalidOperationException => ((int)HttpStatusCode.BadRequest, 
-                        "The requested operation is not valid in the current state.", LogLevel.Warning),
+                        ApiResponseMessages.Infrastructure.InvalidOperation, LogLevel.Warning),
                     
                     // JSON/Serialization exceptions
                     JsonException => ((int)HttpStatusCode.BadRequest, 
-                        "Invalid JSON format in request.", LogLevel.Warning),
+                        ApiResponseMessages.Infrastructure.InvalidJsonFormat, LogLevel.Warning),
                     
                     // System resource exceptions
                     OutOfMemoryException => ((int)HttpStatusCode.InternalServerError, 
-                        "The system is experiencing high load. Please try again later.", LogLevel.Error),
+                        ApiResponseMessages.Infrastructure.SystemHighLoad, LogLevel.Error),
                     
                     StackOverflowException => ((int)HttpStatusCode.InternalServerError, 
-                        "A system error occurred. Please contact support.", LogLevel.Error),
+                        ApiResponseMessages.Infrastructure.SystemErrorContact, LogLevel.Error),
                     
                     // Network/HTTP exceptions
                     HttpRequestException => ((int)HttpStatusCode.BadGateway, 
-                        "External service unavailable. Please try again later.", LogLevel.Warning),
+                        ApiResponseMessages.Infrastructure.ExternalServiceUnavailable, LogLevel.Warning),
                     
                     TaskCanceledException => ((int)HttpStatusCode.RequestTimeout, 
-                        "The request was cancelled or timed out.", LogLevel.Warning),
+                        ApiResponseMessages.Infrastructure.RequestCancelled, LogLevel.Warning),
                     
                     OperationCanceledException => ((int)HttpStatusCode.RequestTimeout, 
-                        "The operation was cancelled.", LogLevel.Warning),
+                        ApiResponseMessages.Infrastructure.OperationCancelled, LogLevel.Warning),
                     
                     // File system exceptions
                     DirectoryNotFoundException => ((int)HttpStatusCode.InternalServerError, 
-                        "A required resource was not found on the server.", LogLevel.Error),
+                        ApiResponseMessages.Infrastructure.RequiredResourceNotFound, LogLevel.Error),
                     
                     FileNotFoundException => ((int)HttpStatusCode.InternalServerError, 
-                        "A required file was not found on the server.", LogLevel.Error),
+                        ApiResponseMessages.Infrastructure.RequiredFileNotFound, LogLevel.Error),
                     
                     // Default for unhandled exceptions
                     _ => ((int)HttpStatusCode.InternalServerError, 
-                        "An unexpected error occurred. Please try again or contact support if the problem persists.", LogLevel.Error)
+                        ApiResponseMessages.Infrastructure.UnexpectedErrorDetailed, LogLevel.Error)
                 };
 
                 return Result<(int StatusCode, string Message, LogLevel LogLevel)>.Success(result);
             }
             catch (Exception ex)
             {
-                return Result<(int StatusCode, string Message, LogLevel LogLevel)>.BadRequest($"Failed to categorize exception: {ex.Message}");
+                return Result<(int StatusCode, string Message, LogLevel LogLevel)>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
         private static string GetDatabaseErrorMessage(DbUpdateException dbEx)
         {
-            // Enhanced database error message extraction with better performance
             var innerMessage = dbEx.InnerException?.Message ?? string.Empty;
             
-            // Use ReadOnlySpan for better string operations in .NET 8
             ReadOnlySpan<char> messageSpan = innerMessage.AsSpan();
             
             if (messageSpan.Contains("UNIQUE constraint".AsSpan(), StringComparison.OrdinalIgnoreCase) ||
                 messageSpan.Contains("duplicate key".AsSpan(), StringComparison.OrdinalIgnoreCase))
             {
-                return "A record with the same information already exists.";
+                return ApiResponseMessages.Infrastructure.DbUniqueConstraintViolation;
             }
             
             if (messageSpan.Contains("FOREIGN KEY constraint".AsSpan(), StringComparison.OrdinalIgnoreCase))
             {
-                return "The operation violates data relationships. Please check related records.";
+                return ApiResponseMessages.Infrastructure.DbForeignKeyViolation;
             }
 
             if (messageSpan.Contains("CHECK constraint".AsSpan(), StringComparison.OrdinalIgnoreCase))
             {
-                return "The operation violates data validation rules.";
+                return ApiResponseMessages.Infrastructure.DbCheckConstraintViolation;
             }
 
             if (messageSpan.Contains("NOT NULL constraint".AsSpan(), StringComparison.OrdinalIgnoreCase))
             {
-                return "Required information is missing. Please provide all required fields.";
+                return ApiResponseMessages.Infrastructure.DbNotNullViolation;
             }
 
-            return "A database error occurred while processing your request.";
+            return ApiResponseMessages.Infrastructure.DbGenericError;
         }
 
         private static ErrorDetails CreateErrorResponse(int statusCode, string message, string requestId)
@@ -279,32 +279,27 @@ namespace BankingSystemAPI.Presentation.Middlewares
         {
             try
             {
-                // Use pre-compiled JSON options for better performance
                 var payload = JsonSerializer.Serialize(error, JsonOptions);
                 await context.Response.WriteAsync(payload);
 
-                // Use ResultExtensions for successful response writing
                 var responseResult = Result.Success();
                 responseResult.OnSuccess(() => 
-                    _logger.LogDebug("[MIDDLEWARE] Error response written successfully: RequestId={RequestId}, StatusCode={StatusCode}, Size={Size}", 
-                        requestId, error.Code, payload.Length));
+                    // Use structured logging with matching placeholders to avoid FormatException
+                    _logger.LogDebug("Error response written. RequestId={RequestId}, Code={Code}, PayloadLength={Length}", requestId, error.Code, payload.Length));
                 
                 return responseResult;
             }
             catch (Exception ex)
             {
-                // Use ResultExtensions for response writing errors
-                var errorResult = Result.BadRequest($"Failed to write error response: {ex.Message}");
+                var errorResult = Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
                 errorResult.OnFailure(errors => 
-                    _logger.LogError(ex, "[MIDDLEWARE] Failed to write error response: RequestId={RequestId}", requestId));
+                    _logger.LogError(ex, ApiResponseMessages.Logging.MiddlewareCriticalProcessingError, requestId));
                 return errorResult;
             }
         }
 
         private static Exception GetInnermostException(Exception ex)
         {
-            // Enhanced exception unwrapping with protection against circular references
-            // Optimized for .NET 8 with better performance
             var current = ex;
             var visited = new HashSet<Exception>(ReferenceEqualityComparer.Instance);
             
@@ -321,3 +316,4 @@ namespace BankingSystemAPI.Presentation.Middlewares
         }
     }
 }
+

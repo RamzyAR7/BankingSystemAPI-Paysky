@@ -1,10 +1,13 @@
-﻿using BankingSystemAPI.Application.DTOs.Role;
+﻿#region Usings
+using BankingSystemAPI.Application.DTOs.Role;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -34,11 +37,12 @@ namespace BankingSystemAPI.Presentation.Controllers
         {
             if (dto == null || string.IsNullOrWhiteSpace(dto.RoleName) || dto.Claims == null)
             {
+                var msg = ApiResponseMessages.Validation.RoleNameAndClaimsRequired;
                 return BadRequest(new
                 {
                     success = false,
-                    errors = new[] { "Role name and claims are required." },
-                    message = "Role name and claims are required."
+                    errors = new[] { msg },
+                    message = msg
                 });
             }
 
@@ -46,9 +50,13 @@ namespace BankingSystemAPI.Presentation.Controllers
             return HandleResult(result);
         }
 
-        /// <summary>
-        /// Get all role claims grouped by category.
-        /// </summary>
+    /// <summary>
+    /// Get all role claims grouped by category.
+    /// </summary>
+    /// <remarks>
+    /// Returns role claims grouped by category. This endpoint does not accept ordering query parameters;
+    /// the grouping order is implementation-defined.
+    /// </remarks>
         [HttpGet("GetAllClaims")]
         [PermissionFilterFactory(Permission.RoleClaims.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -60,3 +68,4 @@ namespace BankingSystemAPI.Presentation.Controllers
         }
     }
 }
+

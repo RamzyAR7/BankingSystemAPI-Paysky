@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿#region Usings
+using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Domain.Entities
 {
@@ -25,3 +28,4 @@ namespace BankingSystemAPI.Domain.Entities
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     }
 }
+

@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Application.DTOs.Transactions;
 using BankingSystemAPI.Application.Features.Transactions.Commands.Deposit;
 using BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw;
@@ -9,6 +10,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using MediatR;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -20,6 +23,17 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiExplorerSettings(GroupName = "AccountTransactions")]
     public class AccountTransactionsController : BaseApiController
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         private readonly IMediator _mediator;
 
         public AccountTransactionsController(IMediator mediator)
@@ -104,3 +118,4 @@ namespace BankingSystemAPI.Presentation.Controllers
         }
     }
 }
+

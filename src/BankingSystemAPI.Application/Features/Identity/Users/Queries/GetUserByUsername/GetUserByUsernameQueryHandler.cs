@@ -1,8 +1,11 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Messaging;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserByUsername
 {

@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Domain.Common;
@@ -5,6 +6,9 @@ using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using BankingSystemAPI.Application.Specifications.CurrencySpecification;
 using Microsoft.Extensions.Caching.Memory;
+using BankingSystemAPI.Domain.Entities;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Services
 {
@@ -140,9 +144,9 @@ namespace BankingSystemAPI.Application.Services
             }
         }
 
-        private async Task<Domain.Entities.Currency?> GetCurrencyFromCacheAsync(string cacheKey, Func<Task<Domain.Entities.Currency?>> factory)
+        private async Task<Currency?> GetCurrencyFromCacheAsync(string cacheKey, Func<Task<Currency?>> factory)
         {
-            if (_cache.TryGetValue(cacheKey, out Domain.Entities.Currency? cached))
+            if (_cache.TryGetValue(cacheKey, out Currency? cached))
             {
                 return cached;
             }
@@ -204,10 +208,11 @@ namespace BankingSystemAPI.Application.Services
 
         private class CurrencyPair
         {
-            public Domain.Entities.Currency FromCurrency { get; set; } = null!;
-            public Domain.Entities.Currency ToCurrency { get; set; } = null!;
+            public Currency FromCurrency { get; set; } = null!;
+            public Currency ToCurrency { get; set; } = null!;
         }
 
         #endregion
     }
 }
+

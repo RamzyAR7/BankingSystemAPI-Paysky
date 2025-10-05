@@ -1,4 +1,7 @@
-﻿using System;
+﻿#region Usings
+using System;
+#endregion
+
 
 namespace BankingSystemAPI.Application.DTOs.User
 {
@@ -7,6 +10,17 @@ namespace BankingSystemAPI.Application.DTOs.User
     /// </summary>
     public class UserReqDto
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// Email address of user.
         /// </summary>
@@ -58,3 +72,4 @@ namespace BankingSystemAPI.Application.DTOs.User
         public string PasswordConfirm { get; set; }
     }
 }
+

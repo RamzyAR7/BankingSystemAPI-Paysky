@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Application.Features.Identity.Roles.Commands.CreateRole;
 using BankingSystemAPI.Application.DTOs.Role;
 using BankingSystemAPI.Application.Interfaces.Identity;
@@ -7,6 +8,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+#endregion
+
 
 namespace BankingSystemAPI.UnitTests.UnitTests.Application.Features.Identity.Roles.Commands;
 
@@ -15,6 +18,17 @@ namespace BankingSystemAPI.UnitTests.UnitTests.Application.Features.Identity.Rol
 /// </summary>
 public class CreateRoleCommandHandlerTests
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     private readonly Mock<IRoleService> _mockRoleService;
     private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
     private readonly Mock<ILogger<CreateRoleCommandHandler>> _mockLogger;

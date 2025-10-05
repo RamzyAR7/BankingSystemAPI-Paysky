@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Role;
@@ -5,6 +6,8 @@ using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Domain.Constant;
 using Microsoft.Extensions.Logging;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Roles.Queries.GetAllRoles
 {
@@ -26,7 +29,6 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Queries.GetAllRol
 
         public async Task<Result<List<RoleResDto>>> Handle(GetAllRolesQuery request, CancellationToken cancellationToken)
         {
-            // Chain authorization and role retrieval using ResultExtensions
             var authorizationResult = await ValidateAuthorizationAsync();
             if (authorizationResult.IsFailure)
                 return Result<List<RoleResDto>>.Failure(authorizationResult.Errors);
@@ -36,13 +38,11 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Queries.GetAllRol
             // Add side effects using ResultExtensions
             rolesResult.OnSuccess(() => 
                 {
-                    _logger.LogDebug("Roles retrieved successfully: Count={Count}, UserId={UserId}", 
-                        rolesResult.Value!.Count, _currentUserService.UserId);
+                    _logger.LogDebug(ApiResponseMessages.Logging.RoleRetrieved, rolesResult.Value!.Count);
                 })
                 .OnFailure(errors => 
                 {
-                    _logger.LogWarning("Roles retrieval failed: UserId={UserId}, Errors={Errors}",
-                        _currentUserService.UserId, string.Join(", ", errors));
+                    _logger.LogWarning(ApiResponseMessages.Logging.RoleRetrieveFailed, string.Join(", ", errors));
                 });
 
             return rolesResult;
@@ -56,21 +56,19 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Queries.GetAllRol
                 var authorizationResult = ValidateRolePermissions(userRole.Name);
                 
                 authorizationResult.OnSuccess(() => 
-                    {
-                        _logger.LogDebug("[AUTHORIZATION] Role retrieval authorized: UserId={UserId}, Role={Role}", 
-                            _currentUserService.UserId, userRole.Name);
-                    })
-                    .OnFailure(errors => 
-                    {
-                        _logger.LogWarning("[AUTHORIZATION] Role retrieval denied: UserId={UserId}, Role={Role}, Errors={Errors}",
-                            _currentUserService.UserId, userRole.Name, string.Join(", ", errors));
-                    });
+                {
+                    _logger.LogDebug(ApiResponseMessages.Logging.OperationCompletedController, _currentUserService.UserId, userRole.Name);
+                })
+                .OnFailure(errors => 
+                {
+                    _logger.LogWarning(ApiResponseMessages.Logging.OperationFailedController, _currentUserService.UserId, userRole.Name, string.Join(", ", errors));
+                });
 
                 return authorizationResult;
             }
             catch (Exception ex)
             {
-                return Result.BadRequest($"Failed to validate authorization: {ex.Message}");
+                return Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
@@ -81,7 +79,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Queries.GetAllRol
 
             return (isSuperAdmin || isAdmin)
                 ? Result.Success()
-                : Result.Forbidden("Insufficient permissions to view roles.");
+                : Result.Forbidden(ApiResponseMessages.ErrorPatterns.AccessDenied);
         }
 
         private async Task<Result<List<RoleResDto>>> RetrieveRolesAsync()

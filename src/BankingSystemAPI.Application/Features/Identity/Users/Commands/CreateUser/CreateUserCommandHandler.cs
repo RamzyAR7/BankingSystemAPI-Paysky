@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.User;
@@ -6,6 +7,8 @@ using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Domain.Constant;
 using Microsoft.Extensions.Logging;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUser
 {
@@ -49,12 +52,11 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
             // Add side effects using ResultExtensions
             createResult.OnSuccess(() => 
                 {
-                    _logger.LogInformation("User created successfully: {Username}", request.UserRequest.Username);
+                    _logger.LogInformation(ApiResponseMessages.Logging.UserCreated, request.UserRequest.Username);
                 })
                 .OnFailure(errors => 
                 {
-                    _logger.LogWarning("User creation failed for {Username}. Errors: {Errors}",
-                        request.UserRequest.Username, string.Join(", ", errors));
+                    _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailed, request.UserRequest.Username, string.Join(", ", errors));
                 });
 
             return createResult;

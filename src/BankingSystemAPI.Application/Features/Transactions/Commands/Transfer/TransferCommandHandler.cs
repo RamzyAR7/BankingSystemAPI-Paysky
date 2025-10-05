@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Transactions;
@@ -9,6 +10,8 @@ using BankingSystemAPI.Domain.Constant;
 using Microsoft.Extensions.Logging;
 using BankingSystemAPI.Application.Interfaces.Services;
 using BankingSystemAPI.Application.Interfaces.Authorization;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
 {
@@ -72,15 +75,15 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
 
             // Add side effects using ResultExtensions
             transferResult.OnSuccess(() => 
-                {
-                    _logger.LogInformation("Transfer successful. Source: {SourceId}, Target: {TargetId}, Amount: {Amount}",
-                        req.SourceAccountId, req.TargetAccountId, req.Amount);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning("Transfer failed. Source: {SourceId}, Target: {TargetId}, Amount: {Amount}, Errors: {Errors}",
-                        req.SourceAccountId, req.TargetAccountId, req.Amount, string.Join(", ", errors));
-                });
+            {
+                _logger.LogInformation(ApiResponseMessages.Logging.TransactionTransferSuccess,
+                    req.SourceAccountId, req.TargetAccountId, req.Amount);
+            })
+            .OnFailure(errors => 
+            {
+                _logger.LogWarning(ApiResponseMessages.Logging.TransactionTransferFailed,
+                    req.SourceAccountId, req.TargetAccountId, req.Amount, string.Join(", ", errors));
+            });
 
             return transferResult;
         }
@@ -89,8 +92,8 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
         {
             var validations = new[]
             {
-                req.Amount <= 0m ? Result.ValidationFailed("Transfer amount must be greater than zero.") : Result.Success(),
-                req.SourceAccountId == req.TargetAccountId ? Result.ValidationFailed("Source and target accounts must be different.") : Result.Success()
+                req.Amount <= 0m ? Result.ValidationFailed(ApiResponseMessages.Validation.TransferAmountGreaterThanZero) : Result.Success(),
+                req.SourceAccountId == req.TargetAccountId ? Result.ValidationFailed(ApiResponseMessages.Validation.SourceAndTargetAccountsMustDiffer) : Result.Success()
             };
 
             return ResultExtensions.ValidateAll(validations);
@@ -102,7 +105,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
             {
                 // For transfer operations, we need tracking enabled and Currency navigation loaded
                 var accountIds = new[] { req.SourceAccountId, req.TargetAccountId };
-                var spec = new BankingSystemAPI.Application.Specifications.AccountSpecification.AccountsByIdsWithCurrencySpecification(accountIds);
+                var spec = new Specifications.AccountSpecification.AccountsByIdsWithCurrencySpecification(accountIds);
                 
                 var accounts = await _uow.AccountRepository.ListAsync(spec);
                 
@@ -111,17 +114,23 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
                 var tgt = accountsList.FirstOrDefault(a => a.Id == req.TargetAccountId);
 
                 if (src == null)
+                {
+                    _logger.LogError(ApiResponseMessages.Logging.TransactionLoadAccountsFailed, req.SourceAccountId, req.TargetAccountId);
                     return Result<AccountPair>.NotFound("Account", req.SourceAccountId);
+                }
 
                 if (tgt == null)
+                {
+                    _logger.LogError(ApiResponseMessages.Logging.TransactionLoadAccountsFailed, req.SourceAccountId, req.TargetAccountId);
                     return Result<AccountPair>.NotFound("Account", req.TargetAccountId);
+                }
 
                 return Result<AccountPair>.Success(new AccountPair { Source = src, Target = tgt });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load accounts for transfer: Source={SourceId}, Target={TargetId}", req.SourceAccountId, req.TargetAccountId);
-                return Result<AccountPair>.BadRequest($"Failed to load accounts: {ex.Message}");
+                _logger.LogError(ex, ApiResponseMessages.Logging.TransactionLoadAccountsFailed, req.SourceAccountId, req.TargetAccountId);
+                return Result<AccountPair>.BadRequest(string.Format(ApiResponseMessages.Logging.TransactionValidateBanksFailed, ex.Message));
             }
         }
 
@@ -138,11 +147,11 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
                     : Result.Success(),
                     
                 accounts.Source.User?.IsActive != true 
-                    ? Result.Conflict("Cannot perform transaction: source account holder is inactive.") // Maps to 409
+                    ? Result.Conflict(AuthorizationConstants.ErrorMessages.InactiveAccountAccess) // Maps to 409
                     : Result.Success(),
                     
                 accounts.Target.User?.IsActive != true 
-                    ? Result.Conflict("Cannot perform transaction: target account holder is inactive.") // Maps to 409
+                    ? Result.Conflict(AuthorizationConstants.ErrorMessages.InactiveAccountAccess) // Maps to 409
                     : Result.Success()
             };
 
@@ -179,13 +188,13 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
                     if (banks.TryGetValue(bankId, out var bank) && !bank.IsActive)
                     {
                         if (bankId == accounts.Source.User.BankId)
-                            bankValidations.Add(Result.Conflict("Cannot perform transaction: source user's bank is inactive."));
+                            bankValidations.Add(Result.Conflict(ApiResponseMessages.Status.Bank.Deactivated));
                         if (bankId == accounts.Target.User.BankId)
-                            bankValidations.Add(Result.Conflict("Cannot perform transaction: target user's bank is inactive."));
+                            bankValidations.Add(Result.Conflict(ApiResponseMessages.Status.Bank.Deactivated));
                     }
                     else if (!banks.ContainsKey(bankId))
                     {
-                        bankValidations.Add(Result.BadRequest($"Bank with ID {bankId} not found."));
+                        bankValidations.Add(Result.BadRequest(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Bank", bankId)));
                     }
                     else
                     {
@@ -197,8 +206,8 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to validate banks for transfer");
-                return Result.BadRequest("Failed to validate bank status.");
+                _logger.LogError(ex, ApiResponseMessages.Logging.TransactionValidateBanksFailed, ex.Message);
+                return Result.BadRequest(ApiResponseMessages.Infrastructure.DbGenericError);
             }
         }
 
@@ -218,7 +227,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
             }
             catch (Exception ex)
             {
-                return Result.Forbidden($"Authorization failed: {ex.Message}");
+                return Result.Forbidden(AuthorizationConstants.ErrorMessages.SystemError);
             }
         }
 
@@ -249,7 +258,6 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
             {
                 var trx = await ExecuteTransferLogicAsync(req, accounts.Source, accounts.Target);
                 
-                // EF Core automatically:
                 // - Checks RowVersion in WHERE clause for both accounts
                 // - Throws DbUpdateConcurrencyException if any conflict occurs
                 // - Updates RowVersion on successful commits
@@ -261,7 +269,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
             catch (Exception ex)
             {
                 await _uow.RollbackAsync();
-                return Result<TransactionResDto>.BadRequest($"Transfer execution failed: {ex.Message}");
+                return Result<TransactionResDto>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
@@ -323,7 +331,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
             }
             catch (InvalidOperationException ex)
             {
-                throw new InvalidOperationException($"Transfer failed: {ex.Message}");
+                throw new InvalidOperationException(string.Format(ApiResponseMessages.BankingErrors.AccountInactiveFormat, src.Id));
             }
 
             // Persist changes - EF Core will automatically handle RowVersion for both accounts
@@ -342,3 +350,4 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
         }
     }
 }
+

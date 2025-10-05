@@ -1,3 +1,4 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Account;
@@ -9,6 +10,8 @@ using System.Collections.Generic;
 using System.Linq;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using Microsoft.EntityFrameworkCore;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.CheckingAccounts.Queries.GetAllCheckingAccounts
 {
@@ -45,3 +48,4 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Queries.GetAllC
         }
     }
 }
+

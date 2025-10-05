@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.Interfaces.Authorization;
+﻿#region Usings
+using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
@@ -9,11 +10,24 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Authorization.Helpers
 {
     public class ScopeResolver : IScopeResolver
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         private readonly ICurrentUserService _currentUser;
         private readonly ILogger<ScopeResolver> _logger;
 
@@ -34,7 +48,7 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
                 var result = Result<AccessScope>.Success(scope);
                 result.OnSuccess(() => 
                     {
-                        _logger.LogDebug("[AUTHORIZATION] Access scope resolved: UserId={UserId}, Role={Role}, Scope={Scope}", 
+                        _logger.LogDebug(ApiResponseMessages.Logging.ScopeResolved, 
                             _currentUser.UserId, role.Name, scope);
                     });
 
@@ -43,11 +57,10 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
             catch (Exception ex)
             {
                 // Use ResultExtensions for error handling
-                var errorResult = Result<AccessScope>.BadRequest($"Failed to resolve access scope: {ex.Message}");
+                var errorResult = Result<AccessScope>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
                 errorResult.OnFailure(errors => 
                     {
-                        _logger.LogError(ex, "[AUTHORIZATION] Failed to resolve access scope for user: {UserId}", 
-                            _currentUser.UserId);
+                        _logger.LogError(ex, ApiResponseMessages.Logging.ScopeResolveFailed, _currentUser.UserId, ex.Message);
                     });
                 
                 // Default to most restrictive scope on error
@@ -89,3 +102,4 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
         }
     }
 }
+

@@ -1,6 +1,10 @@
+﻿#region Usings
 using FluentValidation;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.Interfaces.Identity;
+using static BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUser.CreateUserCommand;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUser
 {
@@ -22,55 +26,55 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
         {
             RuleFor(x => x.UserRequest)
                 .NotNull()
-                .WithMessage("User request cannot be null.");
+                .WithMessage(ApiResponseMessages.Validation.UserRequestCannotBeNull);
 
             When(x => x.UserRequest != null, () =>
             {
                 RuleFor(x => x.UserRequest.Username)
                     .NotEmpty()
-                    .WithMessage("Username is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Username"))
                     .MaximumLength(50)
-                    .WithMessage("Username cannot exceed 50 characters.");
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthMaxFormat, "Username", 50));
 
                 RuleFor(x => x.UserRequest.Email)
                     .NotEmpty()
-                    .WithMessage("Email is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Email"))
                     .EmailAddress()
-                    .WithMessage("Invalid email address.");
+                    .WithMessage(ApiResponseMessages.Validation.InvalidEmailAddress);
 
                 RuleFor(x => x.UserRequest.Password)
                     .NotEmpty()
-                    .WithMessage("Password is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Password"))
                     .MinimumLength(8)
-                    .WithMessage("Password must be at least 8 characters long.");
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthMinFormat, "Password", 8));
 
                 RuleFor(x => x.UserRequest.NationalId)
                     .NotEmpty()
-                    .WithMessage("National ID is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "National ID"))
                     .Length(10, 20)
-                    .WithMessage("National ID must be between 10 and 20 characters.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthRangeFormat, "National ID", 10, 20))
                     .Matches(@"^\d+$")
-                    .WithMessage("National ID must contain only digits.");
+                    .WithMessage(ApiResponseMessages.Validation.NationalIdDigits);
 
                 RuleFor(x => x.UserRequest.FullName)
                     .NotEmpty()
-                    .WithMessage("Full name is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Full name"))
                     .MaximumLength(200)
-                    .WithMessage("Full name cannot exceed 200 characters.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthMaxFormat, "Full name", 200))
                     .Matches(@"^[a-zA-Z\s]+$")
-                    .WithMessage("Full name can only contain letters and spaces.");
+                    .WithMessage(ApiResponseMessages.Validation.FullNameLettersOnly);
 
                 RuleFor(x => x.UserRequest.DateOfBirth)
                     .NotEmpty()
-                    .WithMessage("Date of birth is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Date of birth"))
                     .Must(BeValidAge)
-                    .WithMessage("User must be at least 18 years old and not older than 100 years.");
+                    .WithMessage(ApiResponseMessages.Validation.AgeRange);
 
                 RuleFor(x => x.UserRequest.PhoneNumber)
                     .NotEmpty()
-                    .WithMessage("Phone number is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Phone number"))
                     .Matches(@"^\+?[1-9]\d{1,14}$")
-                    .WithMessage("Invalid phone number format. Must be 11-15 digits, optionally starting with +.");
+                    .WithMessage(ApiResponseMessages.Validation.InvalidPhoneNumberFormat);
 
                 // Role validation - only required for SuperAdmin users
                 ConfigureRoleValidation();
@@ -108,15 +112,15 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
                             return !string.IsNullOrWhiteSpace(role);
                         }
                     })
-                    .WithMessage("Role is required for SuperAdmin users.")
+                    .WithMessage(ApiResponseMessages.Validation.RoleRequiredForSuperAdmin)
                     .WithErrorCode("ROLE_REQUIRED_FOR_SUPERADMIN");
 
                 // Format validation when role is provided
                 RuleFor(x => x.UserRequest.Role)
                     .MaximumLength(100)
-                    .WithMessage("Role name cannot exceed 100 characters.")
+                    .WithMessage(ApiResponseMessages.Validation.RoleNameCannotExceed)
                     .Must(BeValidRoleFormat)
-                    .WithMessage("Role name can only contain letters, numbers, and spaces.")
+                    .WithMessage(ApiResponseMessages.Validation.RoleNameInvalidFormat)
                     .When(x => !string.IsNullOrWhiteSpace(x.UserRequest.Role));
             }
             else
@@ -124,11 +128,11 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
                 // Fallback: when no current user service, require role (backward compatibility)
                 RuleFor(x => x.UserRequest.Role)
                     .NotEmpty()
-                    .WithMessage("Role is required.")
+                    .WithMessage(ApiResponseMessages.Validation.RoleRequiredForSuperAdmin)
                     .MaximumLength(100)
-                    .WithMessage("Role name cannot exceed 100 characters.")
+                    .WithMessage(ApiResponseMessages.Validation.RoleNameCannotExceed)
                     .Must(BeValidRoleFormat)
-                    .WithMessage("Role name can only contain letters, numbers, and spaces.");
+                    .WithMessage(ApiResponseMessages.Validation.RoleNameInvalidFormat);
             }
         }
 
@@ -163,7 +167,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
                             return !bankId.HasValue || bankId.Value > 0;
                         }
                     })
-                    .WithMessage("Bank ID must be greater than 0 when provided.")
+                    .WithMessage(ApiResponseMessages.Validation.BankIdMustBeGreaterThanZero)
                     .WithErrorCode("INVALID_BANK_ID");
             }
             else
@@ -171,7 +175,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
                 // Fallback: standard BankId validation
                 RuleFor(x => x.UserRequest.BankId)
                     .GreaterThan(0)
-                    .WithMessage("Bank ID must be greater than 0.")
+                    .WithMessage(ApiResponseMessages.Validation.BankIdMustBeGreaterThanZero)
                     .When(x => x.UserRequest.BankId.HasValue);
             }
         }

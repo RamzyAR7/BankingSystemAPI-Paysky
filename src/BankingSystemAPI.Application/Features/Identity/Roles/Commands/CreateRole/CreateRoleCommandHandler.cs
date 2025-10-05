@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Role;
@@ -6,6 +7,9 @@ using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.CreateRole
 {
@@ -43,12 +47,11 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.CreateRo
             // Add side effects using ResultExtensions
             createResult.OnSuccess(() => 
                 {
-                    _logger.LogInformation("Role created successfully: {RoleName}", request.Name);
+                    _logger.LogInformation(ApiResponseMessages.Logging.RoleCreated, request.Name);
                 })
                 .OnFailure(errors => 
                 {
-                    _logger.LogWarning("Role creation failed for: {RoleName}. Errors: {Errors}",
-                        request.Name, string.Join(", ", errors));
+                    _logger.LogWarning(ApiResponseMessages.Logging.RoleCreateFailed, request.Name, string.Join(", ", errors));
                 });
 
             return createResult;
@@ -58,7 +61,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.CreateRo
         {
             var roleExists = await _roleManager.RoleExistsAsync(roleName);
             return roleExists
-                ? Result.BadRequest($"Role '{roleName}' already exists.")
+                ? Result.Failure(string.Format("Role '{0}' already exists.", roleName))
                 : Result.Success();
         }
 

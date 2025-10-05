@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿#region Usings
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.Collections.Generic;
@@ -6,6 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BankingSystemAPI.Domain.Entities;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Configuration_Classes
 {
@@ -24,3 +27,4 @@ namespace BankingSystemAPI.Infrastructure.Configuration_Classes
         }
     }
 }
+

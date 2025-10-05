@@ -1,7 +1,10 @@
-﻿using BankingSystemAPI.Application.DTOs.User;
+﻿#region Usings
+using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Domain.Common;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Interfaces.Identity
 {
@@ -19,6 +22,6 @@ namespace BankingSystemAPI.Application.Interfaces.Identity
         Task<Result<bool>> DeleteRangeOfUsersAsync(IEnumerable<string> userIds);
         Task<Result> SetUserActiveStatusAsync(string userId, bool isActive);
         Task<Result<IList<UserResDto>>> GetUsersByBankIdAsync(int bankId);
-        Task<Result<IList<UserResDto>>> GetUsersByBankNameAsync(string bankName);
     }
 }
+

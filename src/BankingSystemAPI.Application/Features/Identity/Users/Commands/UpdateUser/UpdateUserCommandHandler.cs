@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.User;
@@ -6,6 +7,8 @@ using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Domain.Constant;
 using Microsoft.Extensions.Logging;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUser
 {
@@ -44,15 +47,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
             
             // Add side effects using ResultExtensions
             updateResult.OnSuccess(() => 
-                {
-                    _logger.LogInformation("User updated successfully: {UserId}, Username: {Username}", 
-                        request.UserId, request.UserEdit.Username);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning("User update failed for: {UserId}. Errors: {Errors}",
-                        request.UserId, string.Join(", ", errors));
-                });
+            {
+                _logger.LogInformation(ApiResponseMessages.Logging.UserUpdated, request.UserId);
+            })
+            .OnFailure(errors => 
+            {
+                _logger.LogWarning(ApiResponseMessages.Logging.UserUpdateFailed, request.UserId, string.Join(", ", errors));
+            });
 
             return updateResult;
         }
@@ -66,7 +67,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
             }
             catch (Exception ex)
             {
-                return Result.Forbidden($"Authorization failed: {ex.Message}");
+                return Result.Forbidden(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
@@ -89,7 +90,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
             var conflicts = CheckForConflicts(request, usersInSameBank);
             
             return conflicts.Any()
-                ? Result<UpdateValidationContext>.BadRequest($"Another user with conflicting {string.Join(", ", conflicts)} already exists in this bank.")
+                ? Result<UpdateValidationContext>.BadRequest(string.Format(ApiResponseMessages.Validation.UserConflictExistsFormat, string.Join(", ", conflicts)))
                 : Result<UpdateValidationContext>.Success(new UpdateValidationContext 
                 { 
                     ExistingUser = existingUser,

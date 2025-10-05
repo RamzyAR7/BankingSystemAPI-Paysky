@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
@@ -7,6 +8,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Banks.Commands.SetBankActiveStatus
 {
@@ -26,7 +30,7 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.SetBankActiveStat
             var bank = await _uow.BankRepository.FindAsync(spec);
 
             if (bank == null)
-                return Result.Failure(new[] { $"Bank with ID '{request.id}' not found." });
+                return Result.Failure(new[] { string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Bank", request.id) });
 
             bank.IsActive = request.isActive;
 
@@ -37,3 +41,4 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.SetBankActiveStat
         }
     }
 }
+

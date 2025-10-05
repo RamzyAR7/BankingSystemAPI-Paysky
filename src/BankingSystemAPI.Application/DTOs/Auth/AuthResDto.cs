@@ -1,6 +1,9 @@
-﻿using System;
+﻿#region Usings
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+#endregion
+
 
 namespace BankingSystemAPI.Application.DTOs.Auth
 {
@@ -9,6 +12,17 @@ namespace BankingSystemAPI.Application.DTOs.Auth
     /// </summary>
     public class AuthResDto
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// Optional message to return to the client.
         /// </summary>
@@ -61,3 +75,4 @@ namespace BankingSystemAPI.Application.DTOs.Auth
         public DateTime AbsoluteExpiresOn { get; set; }
     }
 }
+

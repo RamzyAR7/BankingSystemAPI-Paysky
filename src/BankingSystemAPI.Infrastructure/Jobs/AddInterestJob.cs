@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.Interfaces.UnitOfWork;
+﻿#region Usings
+using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Linq.Expressions;
 using System.Linq;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Jobs
 {
@@ -24,9 +27,9 @@ namespace BankingSystemAPI.Infrastructure.Jobs
         {
             var originalColor = Console.ForegroundColor;
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"[AddInterestJob] started at {DateTime.UtcNow:u}");
+            Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobStartedFormat, nameof(AddInterestJob), DateTime.UtcNow));
             Console.ForegroundColor = originalColor;
-            _logger.LogInformation("AddInterestJob started at {StartTime}", DateTime.UtcNow);
+            _logger.LogInformation(ApiResponseMessages.Infrastructure.JobStartedFormat, nameof(AddInterestJob), DateTime.UtcNow);
 
             const int batchSize = 100; // Tune as needed for your DB
             while (!stoppingToken.IsCancellationRequested)
@@ -34,9 +37,9 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                 var runTime = DateTime.UtcNow;
                 var jobStart = DateTime.UtcNow;
                 Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine($"[AddInterestJob] run started at {runTime:u}");
+                Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobRunStartedFormat, nameof(AddInterestJob), runTime));
                 Console.ForegroundColor = originalColor;
-                _logger.LogInformation("AddInterestJob run started at {RunTime}", runTime);
+                _logger.LogInformation(ApiResponseMessages.Infrastructure.JobRunStartedFormat, nameof(AddInterestJob), runTime);
 
                 using var scope = _scopeFactory.CreateScope();
                 var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -90,9 +93,9 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                                         accountBase.ApplyInterest(interestAmount, DateTime.UtcNow);
                                         await uow.AccountRepository.UpdateAsync(accountBase);
                                         batchApplied++;
-                                        _logger.LogInformation("Applied interest {Amount} to Savings Id={AccountId}, Number={AccountNumber}", interestAmount, accountBase.Id, accountBase.AccountNumber);
+                                        _logger.LogInformation(ApiResponseMessages.Infrastructure.JobAppliedInterestFormat, nameof(AddInterestJob), interestAmount, accountBase.Id, accountBase.AccountNumber, DateTime.UtcNow);
                                         Console.ForegroundColor = ConsoleColor.Green;
-                                        Console.WriteLine($"[AddInterestJob] Applied interest {interestAmount:C} to Savings Id={accountBase.Id}, Number={accountBase.AccountNumber} at {DateTime.UtcNow:u}");
+                                        Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobAppliedInterestFormat, nameof(AddInterestJob), interestAmount, accountBase.Id, accountBase.AccountNumber, DateTime.UtcNow));
                                         Console.ForegroundColor = originalColor;
                                     }
                                 }
@@ -129,17 +132,17 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                                 }
                                 if (!success)
                                 {
-                                    _logger.LogError(exAccount, "Failed to process interest for account Id={AccountId} after retries", accountBase.Id);
+                                    _logger.LogError(exAccount, ApiResponseMessages.Infrastructure.JobErrorProcessingAccountFormat, nameof(AddInterestJob), accountBase.Id, exAccount.Message);
                                     Console.ForegroundColor = ConsoleColor.Yellow;
-                                    Console.WriteLine($"[AddInterestJob] Error processing account Id={accountBase.Id}: {exAccount.Message}");
+                                    Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobErrorProcessingAccountFormat, nameof(AddInterestJob), accountBase.Id, exAccount.Message));
                                     Console.ForegroundColor = originalColor;
                                 }
                             }
                             catch (Exception exAccount)
                             {
-                                _logger.LogError(exAccount, "Failed to process interest for account Id={AccountId}", accountBase.Id);
+                                _logger.LogError(exAccount, ApiResponseMessages.Infrastructure.JobErrorProcessingAccountFormat, nameof(AddInterestJob), accountBase.Id, exAccount.Message);
                                 Console.ForegroundColor = ConsoleColor.Yellow;
-                                Console.WriteLine($"[AddInterestJob] Error processing account Id={accountBase.Id}: {exAccount.Message}");
+                                Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobErrorProcessingAccountFormat, nameof(AddInterestJob), accountBase.Id, exAccount.Message));
                                 Console.ForegroundColor = originalColor;
                             }
                         }
@@ -148,7 +151,7 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                         await uow.SaveAsync();
                         appliedCount += batchApplied;
                         var batchEnd = DateTime.UtcNow;
-                        _logger.LogInformation("Batch {BatchNumber} processed {BatchCount} accounts, applied {BatchApplied} interest, duration {Duration}s", batchNumber, savingsAccounts.Count, batchApplied, (batchEnd - batchStart).TotalSeconds);
+                        _logger.LogInformation(ApiResponseMessages.Logging.BatchProcessed, batchNumber, savingsAccounts.Count, batchApplied, (batchEnd - batchStart).TotalSeconds);
 
                         // Move to next page
                         pageNumber++;
@@ -161,9 +164,9 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                     }
 
                     var jobEnd = DateTime.UtcNow;
-                    _logger.LogInformation("AddInterestJob run completed. TotalAccounts={Total}, Applied={Applied}, Duration={Duration}s", totalAccounts, appliedCount, (jobEnd - jobStart).TotalSeconds);
+                    _logger.LogInformation(ApiResponseMessages.Infrastructure.JobRunCompletedFormat, nameof(AddInterestJob), totalAccounts, appliedCount, DateTime.UtcNow, (jobEnd - jobStart).TotalSeconds);
                     Console.ForegroundColor = ConsoleColor.Cyan;
-                    Console.WriteLine($"[AddInterestJob] run completed. TotalAccounts={totalAccounts}, Applied={appliedCount} at {DateTime.UtcNow:u}, Duration={(jobEnd - jobStart).TotalSeconds}s");
+                    Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobRunCompletedFormat, nameof(AddInterestJob), totalAccounts, appliedCount, DateTime.UtcNow, (jobEnd - jobStart).TotalSeconds));
                     Console.ForegroundColor = originalColor;
 
                     // Run every 5 minutes for testing if any account uses every5minutes
@@ -174,14 +177,14 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
                     // graceful shutdown
-                    _logger.LogInformation("AddInterestJob stopping due to cancellation.");
+                    _logger.LogInformation(string.Format(ApiResponseMessages.Infrastructure.JobStoppingDueToCancellation, nameof(AddInterestJob)));
                     break;
                 }
                 catch (Exception exRun)
                 {
-                    _logger.LogError(exRun, "AddInterestJob run failed");
+                    _logger.LogError(exRun, ApiResponseMessages.Infrastructure.JobRunFailedFormat, nameof(AddInterestJob));
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"[AddInterestJob] run failed: {exRun.Message}");
+                    Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobRunFailedFormat, nameof(AddInterestJob)) + $": {exRun.Message}");
                     Console.ForegroundColor = originalColor;
 
                     // Backoff a bit on error to avoid tight error loops
@@ -191,3 +194,4 @@ namespace BankingSystemAPI.Infrastructure.Jobs
         }
     }
 }
+

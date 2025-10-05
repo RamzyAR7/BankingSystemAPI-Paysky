@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Account;
@@ -9,6 +10,9 @@ using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
 using Microsoft.Extensions.Logging;
+using System;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateSavingsAccount
 {
@@ -58,13 +62,11 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
             // Add side effects using ResultExtensions
             updateResult.OnSuccess(() => 
                 {
-                    _logger.LogInformation("Savings account updated successfully: AccountId={AccountId}, UserId={UserId}, CurrencyId={CurrencyId}", 
-                        request.Id, request.Req.UserId, request.Req.CurrencyId);
+                    _logger.LogInformation(ApiResponseMessages.Logging.SavingsAccountUpdated, request.Id, request.Req.UserId, request.Req.CurrencyId);
                 })
                 .OnFailure(errors => 
                 {
-                    _logger.LogWarning("Savings account update failed: AccountId={AccountId}, UserId={UserId}, Errors={Errors}",
-                        request.Id, request.Req.UserId, string.Join(", ", errors));
+                    _logger.LogWarning(ApiResponseMessages.Logging.SavingsAccountUpdateFailed, request.Id, request.Req.UserId, string.Join(", ", errors));
                 });
 
             return updateResult;
@@ -81,7 +83,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
             }
             catch (Exception ex)
             {
-                return Result.Forbidden($"Authorization failed: {ex.Message}");
+                return Result.Forbidden(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
@@ -94,11 +96,11 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
                 
                 return account is SavingsAccount savingsAccount
                     ? Result<SavingsAccount>.Success(savingsAccount)
-                    : Result<SavingsAccount>.BadRequest("Savings account not found.");
+                    : Result<SavingsAccount>.BadRequest(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Savings account", accountId));
             }
             catch (Exception ex)
             {
-                return Result<SavingsAccount>.BadRequest($"Failed to load savings account: {ex.Message}");
+                return Result<SavingsAccount>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
@@ -106,7 +108,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
         {
             return string.Equals(requestedUserId, account.UserId, StringComparison.OrdinalIgnoreCase)
                 ? Result.Success()
-                : Result.BadRequest("Specified user does not own this account.");
+                : Result.BadRequest(ApiResponseMessages.Validation.AccountOwnershipRequired);
         }
 
         private async Task<Result<Currency>> ValidateCurrencyAsync(int currencyId)
@@ -115,14 +117,14 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
             {
                 var currency = await _uow.CurrencyRepository.GetByIdAsync(currencyId);
                 
-                return currency.ToResult($"Currency with ID '{currencyId}' not found.")
+                return currency.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Currency", currencyId))
                     .Bind(c => c.IsActive 
                         ? Result<Currency>.Success(c) 
-                        : Result<Currency>.BadRequest("Cannot set account to an inactive currency."));
+                        : Result<Currency>.BadRequest(ApiResponseMessages.Validation.CurrencyInactive));
             }
             catch (Exception ex)
             {
-                return Result<Currency>.BadRequest($"Failed to validate currency: {ex.Message}");
+                return Result<Currency>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
@@ -133,7 +135,22 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
                 // Apply updates
                 account.UserId = updateData.UserId;
                 account.CurrencyId = updateData.CurrencyId;
-                account.InterestRate = updateData.InterestRate;
+
+                // Convert percentage input (e.g., 30 -> 0.30) if user provided percentage rather than decimal
+                decimal newInterestRate = updateData.InterestRate;
+                if (newInterestRate > 1.0000m)
+                {
+                    newInterestRate = newInterestRate / 100m;
+                }
+
+                // Validate interest rate after conversion
+                if (newInterestRate < 0.0000m || newInterestRate > 1.0000m)
+                {
+                    return Result<SavingsAccountDto>.BadRequest(ApiResponseMessages.Validation.InterestRateRange);
+                }
+
+                // Round to 4 decimal places to match database precision/scale
+                account.InterestRate = Math.Round(newInterestRate, 4, MidpointRounding.AwayFromZero);
 
                 // Persist changes
                 await _uow.AccountRepository.UpdateAsync(account);
@@ -147,7 +164,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
             }
             catch (Exception ex)
             {
-                return Result<SavingsAccountDto>.BadRequest($"Failed to update savings account: {ex.Message}");
+                return Result<SavingsAccountDto>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
     }

@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.DTOs.User;
+﻿#region Usings
+using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Domain.Common;
@@ -8,6 +9,9 @@ using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Services
 {
@@ -38,7 +42,6 @@ namespace BankingSystemAPI.Infrastructure.Services
 
         public async Task<Result<UserResDto>> GetUserByUsernameAsync(string username)
         {
-            // Validate input using ResultExtensions
             var validationResult = ValidateStringInput(username, "Username");
             if (validationResult.IsFailure)
                 return Result<UserResDto>.Failure(validationResult.Errors);
@@ -49,20 +52,17 @@ namespace BankingSystemAPI.Infrastructure.Services
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.UserName == username);
 
-            var result = user.ToResult("User not found.")
+            var result = user.ToResult(ApiResponseMessages.Validation.UserNotFound)
                 .Map(u => _mapper.Map<UserResDto>(u));
 
-            // Add side effects using ResultExtensions
-            result.OnSuccess(() => _logger.LogDebug("User retrieved successfully by username: {Username}", username))
-                  .OnFailure(errors => _logger.LogWarning("Failed to retrieve user by username: {Username}, Errors: {Errors}", 
-                      username, string.Join(", ", errors)));
+            result.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.UserRetrievedByUsername, username))
+                  .OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByUsernameFailed, username, string.Join(", ", errors)));
 
             return result;
         }
 
         public async Task<Result<UserResDto>> GetUserByIdAsync(string userId)
         {
-            // Validate input using ResultExtensions
             var validationResult = ValidateStringInput(userId, "User ID");
             if (validationResult.IsFailure)
                 return Result<UserResDto>.Failure(validationResult.Errors);
@@ -73,20 +73,17 @@ namespace BankingSystemAPI.Infrastructure.Services
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
-            var result = user.ToResult("User not found.")
+            var result = user.ToResult(ApiResponseMessages.Validation.UserNotFound)
                 .Map(u => _mapper.Map<UserResDto>(u));
 
-            // Add side effects using ResultExtensions
-            result.OnSuccess(() => _logger.LogDebug("User retrieved successfully by ID: {UserId}", userId))
-                  .OnFailure(errors => _logger.LogWarning("Failed to retrieve user by ID: {UserId}, Errors: {Errors}", 
-                      userId, string.Join(", ", errors)));
+            result.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.UserRetrievedById, userId))
+                  .OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByIdFailed, userId, string.Join(", ", errors)));
 
             return result;
         }
 
         public async Task<Result<UserResDto>> GetUserByEmailAsync(string email)
         {
-            // Validate input using ResultExtensions
             var validationResult = ValidateStringInput(email, "Email");
             if (validationResult.IsFailure)
                 return Result<UserResDto>.Failure(validationResult.Errors);
@@ -97,13 +94,11 @@ namespace BankingSystemAPI.Infrastructure.Services
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Email == email);
 
-            var result = user.ToResult("User not found.")
+            var result = user.ToResult(ApiResponseMessages.Validation.UserNotFound)
                 .Map(u => _mapper.Map<UserResDto>(u));
 
-            // Add side effects using ResultExtensions
-            result.OnSuccess(() => _logger.LogDebug("User retrieved successfully by email: {Email}", email))
-                  .OnFailure(errors => _logger.LogWarning("Failed to retrieve user by email: {Email}, Errors: {Errors}", 
-                      email, string.Join(", ", errors)));
+            result.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.UserRetrievedByEmail, email))
+                  .OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByEmailFailed, email, string.Join(", ", errors)));
 
             return result;
         }
@@ -114,7 +109,6 @@ namespace BankingSystemAPI.Infrastructure.Services
 
         public async Task<Result<string?>> GetUserRoleAsync(string userId)
         {
-            // Validate input using ResultExtensions
             var validationResult = ValidateStringInput(userId, "User ID");
             if (validationResult.IsFailure)
                 return Result<string?>.Failure(validationResult.Errors);
@@ -125,13 +119,11 @@ namespace BankingSystemAPI.Infrastructure.Services
             
             if (user == null)
             {
-                var result = Result<string?>.Failure("User not found.");
-                result.OnFailure(errors => _logger.LogWarning("Failed to retrieve user role for ID: {UserId}, Errors: {Errors}", 
-                    userId, string.Join(", ", errors)));
+                var result = Result<string?>.Failure(ApiResponseMessages.Validation.UserNotFound);
+                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRoleRetrieveFailed, userId, string.Join(", ", errors)));
                 return result;
             }
 
-            // First try to get role from the Role navigation property
             string? roleName = null;
             if (user.Role != null && !string.IsNullOrEmpty(user.Role.Name))
             {
@@ -139,25 +131,17 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
             else
             {
-                // Fallback to ASP.NET Identity role system if navigation property is not available
                 var roles = await _userManager.GetRolesAsync(user);
                 roleName = roles.FirstOrDefault();
             }
 
             var successResult = Result<string?>.Success(roleName);
-            successResult.OnSuccess(() => _logger.LogDebug("User role retrieved successfully for ID: {UserId}", userId));
+            successResult.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.UserRoleRetrieved, userId));
             return successResult;
         }
 
         public async Task<Result<IList<UserResDto>>> GetUsersByBankIdAsync(int bankId)
         {
-            if (bankId <= 0)
-            {
-                var validationResult = Result<IList<UserResDto>>.BadRequest("Bank ID must be greater than zero.");
-                validationResult.OnFailure(errors => _logger.LogWarning("Invalid bank ID for user retrieval: {BankId}", bankId));
-                return validationResult;
-            }
-
             var users = await _userManager.Users
                 .Include(u => u.Accounts).ThenInclude(a => a.Currency)
                 .Include(u => u.Bank)
@@ -168,30 +152,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             var userDtos = _mapper.Map<List<UserResDto>>(users);
             var result = Result<IList<UserResDto>>.Success(userDtos);
             
-            // Add side effects using ResultExtensions
-            result.OnSuccess(() => _logger.LogDebug("Retrieved {Count} users for bank ID: {BankId}", users.Count, bankId));
-            return result;
-        }
-
-        public async Task<Result<IList<UserResDto>>> GetUsersByBankNameAsync(string bankName)
-        {
-            // Validate input using ResultExtensions
-            var validationResult = ValidateStringInput(bankName, "Bank name");
-            if (validationResult.IsFailure)
-                return Result<IList<UserResDto>>.Failure(validationResult.Errors);
-
-            var users = await _userManager.Users
-                .Include(u => u.Accounts).ThenInclude(a => a.Currency)
-                .Include(u => u.Bank)
-                .Include(u => u.Role)
-                .Where(u => u.Bank != null && u.Bank.Name == bankName)
-                .ToListAsync();
-
-            var userDtos = _mapper.Map<List<UserResDto>>(users);
-            var result = Result<IList<UserResDto>>.Success(userDtos);
-            
-            // Add side effects using ResultExtensions
-            result.OnSuccess(() => _logger.LogDebug("Retrieved {Count} users for bank name: {BankName}", users.Count, bankName));
+            result.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.UsersRetrievedForBankId, users.Count, bankId));
             return result;
         }
 
@@ -199,8 +160,8 @@ namespace BankingSystemAPI.Infrastructure.Services
         {
             if (bankId <= 0)
             {
-                var validationResult = Result<bool>.BadRequest("Bank ID must be greater than zero.");
-                validationResult.OnFailure(errors => _logger.LogWarning("Invalid bank ID for active status check: {BankId}", bankId));
+                var validationResult = Result<bool>.BadRequest(ApiResponseMessages.Validation.BankIdGreaterThanZero);
+                validationResult.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByIdFailed, bankId, "Invalid BankId"));
                 return validationResult;
             }
 
@@ -211,7 +172,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             
             var isActive = contextBank?.IsActive ?? false;
             var result = Result<bool>.Success(isActive);
-            result.OnSuccess(() => _logger.LogDebug("Bank active status checked for ID: {BankId}, IsActive: {IsActive}", bankId, isActive));
+            result.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.BankActiveStatusChecked, bankId, isActive));
             return result;
         }
 
@@ -221,92 +182,80 @@ namespace BankingSystemAPI.Infrastructure.Services
 
         public async Task<Result<UserResDto>> CreateUserAsync(UserReqDto user)
         {
-            // Check for existing user first - return failure results instead of throwing exceptions
             var existingUser = await _userManager.FindByNameAsync(user.Username);
             if (existingUser != null)
             {
-                var result = Result<UserResDto>.BadRequest("Username already exists.");
-                result.OnFailure(errors => _logger.LogWarning("User creation failed - username exists: {Username}", user.Username));
+                var result = Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.UsernameAlreadyExists);
+                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailedUsernameExists, user.Username));
                 return result;
             }
 
             existingUser = await _userManager.FindByEmailAsync(user.Email);
             if (existingUser != null)
             {
-                var result = Result<UserResDto>.BadRequest("Email already exists.");
-                result.OnFailure(errors => _logger.LogWarning("User creation failed - email exists: {Email}", user.Email));
+                var result = Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.EmailAlreadyExists);
+                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailedEmailExists, user.Email));
                 return result;
             }
 
-            // Map to entity using AutoMapper
             var entity = _mapper.Map<ApplicationUser>(user);
             
-            // Set additional properties that might not be mapped
             entity.BankId = user.BankId;
             entity.IsActive = true;
             
-            // Get and set role BEFORE creating user
             ApplicationRole? targetRole = null;
             if (!string.IsNullOrEmpty(user.Role))
             {
                 targetRole = await _roleManager.FindByNameAsync(user.Role);
                 if (targetRole == null)
                 {
-                    var result = Result<UserResDto>.BadRequest($"Role '{user.Role}' does not exist.");
-                    result.OnFailure(errors => _logger.LogWarning("User creation failed - role not found: {Role}", user.Role));
+                    var result = Result<UserResDto>.BadRequest(string.Format(ApiResponseMessages.BankingErrors.NotFoundFormat, "Role", user.Role));
+                    result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailedRoleNotFound, user.Role));
                     return result;
                 }
                 
-                // Set the RoleId foreign key BEFORE creating the user
                 entity.RoleId = targetRole.Id;
             }
             else
             {
-                // If no role specified, set RoleId to empty string (satisfies required FK constraint)
                 entity.RoleId = string.Empty;
             }
 
-            // Create user with the RoleId properly set
             var identityResult = await _userManager.CreateAsync(entity, user.Password!);
             if (!identityResult.Succeeded)
             {
                 var errors = identityResult.Errors.Select(e => e.Description);
                 var result = Result<UserResDto>.Failure(errors);
-                result.OnFailure(errs => _logger.LogError("User creation failed for {Username}: {Errors}", user.Username, string.Join(", ", errs)));
+                result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.UserCreationFailed, user.Username, string.Join(", ", errs)));
                 return result;
             }
 
-            // Add to AspNetUserRoles table for ASP.NET Identity consistency
             if (targetRole != null && !string.IsNullOrEmpty(targetRole.Name))
             {
                 var roleResult = await _userManager.AddToRoleAsync(entity, targetRole.Name);
                 if (!roleResult.Succeeded)
                 {
-                    // Cleanup: Delete the created user if role assignment fails
                     await _userManager.DeleteAsync(entity);
                     var errors = roleResult.Errors.Select(e => e.Description);
                     var result = Result<UserResDto>.Failure(errors);
-                    result.OnFailure(errs => _logger.LogError("User role assignment failed for {Username}: {Errors}", user.Username, string.Join(", ", errs)));
+                    result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.UserCreationFailed, user.Username, string.Join(", ", errs)));
                     return result;
                 }
             }
 
-            // Get created user with relations for mapping
             var createdUser = await _userManager.Users
                 .Include(u => u.Bank)
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Id == entity.Id);
 
-            // Map result using AutoMapper
             var userDto = _mapper.Map<UserResDto>(createdUser ?? entity);
             var successResult = Result<UserResDto>.Success(userDto);
-            successResult.OnSuccess(() => _logger.LogInformation("User created successfully: {Username}", user.Username));
+            successResult.OnSuccess(() => _logger.LogInformation(ApiResponseMessages.Logging.UserCreated, user.Username));
             return successResult;
         }
 
         public async Task<Result<UserResDto>> UpdateUserAsync(string userId, UserEditDto user)
         {
-            // Validate input using ResultExtensions
             var validationResult = ValidateStringInput(userId, "User ID");
             if (validationResult.IsFailure)
                 return Result<UserResDto>.Failure(validationResult.Errors);
@@ -319,12 +268,11 @@ namespace BankingSystemAPI.Infrastructure.Services
 
             if (existingUser == null)
             {
-                var result = Result<UserResDto>.BadRequest("User not found.");
-                result.OnFailure(errors => _logger.LogWarning("User update failed - user not found: {UserId}", userId));
+                var result = Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.UserNotFound);
+                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByIdFailed, userId, string.Join(", ", errors)));
                 return result;
             }
 
-            // Map changes
             _mapper.Map(user, existingUser);
 
             var identityResult = await _userManager.UpdateAsync(existingUser);
@@ -332,13 +280,13 @@ namespace BankingSystemAPI.Infrastructure.Services
             {
                 var errors = identityResult.Errors.Select(e => e.Description);
                 var result = Result<UserResDto>.Failure(errors);
-                result.OnFailure(errs => _logger.LogError("User update failed for {UserId}: {Errors}", userId, string.Join(", ", errs)));
+                result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.UserUpdateFailed, userId, string.Join(", ", errs)));
                 return result;
             }
 
             var userDto = _mapper.Map<UserResDto>(existingUser);
             var successResult = Result<UserResDto>.Success(userDto);
-            successResult.OnSuccess(() => _logger.LogInformation("User updated successfully: {UserId}", userId));
+            successResult.OnSuccess(() => _logger.LogInformation(ApiResponseMessages.Logging.UserUpdated, userId));
             return successResult;
         }
 
@@ -356,8 +304,8 @@ namespace BankingSystemAPI.Infrastructure.Services
 
             if (existingUser == null)
             {
-                var result = Result<UserResDto>.BadRequest("User not found.");
-                result.OnFailure(errors => _logger.LogWarning("Password change failed - user not found: {UserId}", userId));
+                var result = Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.UserNotFound);
+                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByIdFailed, userId, string.Join(", ", errors)));
                 return result;
             }
 
@@ -378,13 +326,13 @@ namespace BankingSystemAPI.Infrastructure.Services
             {
                 var errors = changeResult.Errors.Select(e => e.Description);
                 var result = Result<UserResDto>.Failure(errors);
-                result.OnFailure(errs => _logger.LogError("Password change failed for {UserId}: {Errors}", userId, string.Join(", ", errs)));
+                result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.PasswordChangeFailed, userId, string.Join(", ", errs)));
                 return result;
             }
 
             var userDto = _mapper.Map<UserResDto>(existingUser);
             var successResult = Result<UserResDto>.Success(userDto);
-            successResult.OnSuccess(() => _logger.LogInformation("Password changed successfully for user: {UserId}", userId));
+            successResult.OnSuccess(() => _logger.LogInformation(ApiResponseMessages.Logging.PasswordChanged, userId));
             return successResult;
         }
 
@@ -403,8 +351,8 @@ namespace BankingSystemAPI.Infrastructure.Services
 
             if (existingUser == null)
             {
-                var result = Result<UserResDto>.BadRequest("User not found.");
-                result.OnFailure(errors => _logger.LogWarning("User deletion failed - user not found: {UserId}", userId));
+                var result = Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.UserNotFound);
+                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByIdFailed, userId, string.Join(", ", errors)));
                 return result;
             }
 
@@ -415,12 +363,12 @@ namespace BankingSystemAPI.Infrastructure.Services
             {
                 var errors = identityResult.Errors.Select(e => e.Description);
                 var result = Result<UserResDto>.Failure(errors);
-                result.OnFailure(errs => _logger.LogError("User deletion failed for {UserId}: {Errors}", userId, string.Join(", ", errs)));
+                result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.UserDeletionFailed, userId, string.Join(", ", errs)));
                 return result;
             }
 
             var successResult = Result<UserResDto>.Success(userDto);
-            successResult.OnSuccess(() => _logger.LogInformation("User deleted successfully: {UserId}", userId));
+            successResult.OnSuccess(() => _logger.LogInformation(ApiResponseMessages.Logging.UserDeleted, userId));
             return successResult;
         }
 
@@ -429,8 +377,8 @@ namespace BankingSystemAPI.Infrastructure.Services
             var userIdsList = userIds.ToList();
             if (!userIdsList.Any())
             {
-                var result = Result<bool>.BadRequest("No user IDs provided.");
-                result.OnFailure(errors => _logger.LogWarning("Bulk user deletion failed - no IDs provided"));
+                var result = Result<bool>.BadRequest(ApiResponseMessages.Validation.NoUserIdsProvided);
+                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.BulkUserDeletionFailed, "NoIds", string.Join(", ", errors)));
                 return result;
             }
 
@@ -444,14 +392,14 @@ namespace BankingSystemAPI.Infrastructure.Services
                     {
                         var errors = identityResult.Errors.Select(e => e.Description);
                         var result = Result<bool>.Failure(errors);
-                        result.OnFailure(errs => _logger.LogError("Bulk user deletion failed for {UserId}: {Errors}", userId, string.Join(", ", errs)));
+                        result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.BulkUserDeletionFailed, userId, string.Join(", ", errs)));
                         return result;
                     }
                 }
             }
 
             var successResult = Result<bool>.Success(true);
-            successResult.OnSuccess(() => _logger.LogInformation("Bulk user deletion completed for {Count} users", userIdsList.Count));
+            successResult.OnSuccess(() => _logger.LogInformation(ApiResponseMessages.Logging.BulkUserDeletionCompleted, userIdsList.Count));
             return successResult;
         }
 
@@ -465,8 +413,17 @@ namespace BankingSystemAPI.Infrastructure.Services
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
-                var result = Result.BadRequest("User not found.");
-                result.OnFailure(errors => _logger.LogWarning("Set user active status failed - user not found: {UserId}", userId));
+                var result = Result.BadRequest(ApiResponseMessages.Validation.UserNotFound);
+                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByIdFailed, userId, string.Join(", ", errors)));
+                return result;
+            }
+
+            // Prevent deactivation of SuperAdmin users
+            var roles = await _userManager.GetRolesAsync(user);
+            if (roles != null && roles.Any(r => string.Equals(r, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase)) && !isActive)
+            {
+                var result = Result.Failure(ApiResponseMessages.Validation.SuperAdminCannotBeDeactivated);
+                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.SetUserActiveStatusFailed, userId, string.Join(", ", errors)));
                 return result;
             }
 
@@ -477,12 +434,12 @@ namespace BankingSystemAPI.Infrastructure.Services
             {
                 var errors = identityResult.Errors.Select(e => e.Description);
                 var result = Result.Failure(errors);
-                result.OnFailure(errs => _logger.LogError("Set user active status failed for {UserId}: {Errors}", userId, string.Join(", ", errs)));
+                result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.SetUserActiveStatusFailed, userId, string.Join(", ", errs)));
                 return result;
             }
 
             var successResult = Result.Success();
-            successResult.OnSuccess(() => _logger.LogInformation("User active status changed to {IsActive} for user: {UserId}", isActive, userId));
+            successResult.OnSuccess(() => _logger.LogInformation(ApiResponseMessages.Logging.SetUserActiveStatusChanged, isActive, userId));
             return successResult;
         }
 
@@ -493,10 +450,11 @@ namespace BankingSystemAPI.Infrastructure.Services
         private Result ValidateStringInput(string input, string fieldName)
         {
             return string.IsNullOrWhiteSpace(input)
-                ? Result.BadRequest($"{fieldName} cannot be null or empty.")
+                ? Result.BadRequest(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, fieldName))
                 : Result.Success();
         }
 
         #endregion
     }
 }
+

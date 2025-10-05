@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.User;
@@ -6,6 +7,8 @@ using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Domain.Constant;
 using Microsoft.Extensions.Logging;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUserPassword
 {
@@ -13,7 +16,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
     {
         private readonly IUserService _userService;
         private readonly ICurrentUserService _currentUserService;
-        private readonly IUserAuthorizationService _userAuthorizationService;
+        private readonly IUserAuthorizationService _userAuthorization_service;
         private readonly ILogger<ChangeUserPasswordCommandHandler> _logger;
 
         public ChangeUserPasswordCommandHandler(
@@ -24,7 +27,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
         {
             _userService = userService;
             _currentUserService = currentUserService;
-            _userAuthorizationService = userAuthorizationService;
+            _userAuthorization_service = userAuthorizationService;
             _logger = logger;
         }
 
@@ -34,7 +37,8 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             var authResult = await ValidateAuthorizationAsync(request.UserId);
             if (authResult.IsFailure)
             {
-                _logger.LogWarning("Password change authorization failed for user {UserId} by {ActorId}: {Errors}", 
+                // Use structured logging with matching placeholders to avoid FormatException
+                _logger.LogWarning("Password change authorization failed for user {TargetUserId} by {ActorId}: {Errors}",
                     request.UserId, _currentUserService.UserId, string.Join(", ", authResult.Errors));
                 return Result<UserResDto>.Failure(authResult.Errors);
             }
@@ -43,7 +47,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             var contextResult = await GetPasswordChangeContextAsync(request.UserId);
             if (contextResult.IsFailure)
             {
-                _logger.LogWarning("Failed to get password change context for user {UserId}: {Errors}", 
+                _logger.LogWarning("Failed to get password change context for user {TargetUserId}: {Errors}",
                     request.UserId, string.Join(", ", contextResult.Errors));
                 return Result<UserResDto>.Failure(contextResult.Errors);
             }
@@ -54,13 +58,11 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             // Add side effects using ResultExtensions
             changeResult.OnSuccess(() => 
             {
-                _logger.LogInformation("Password changed successfully for user: {UserId} by {ActorId}", 
-                    request.UserId, _currentUserService.UserId);
+                _logger.LogInformation(ApiResponseMessages.Logging.PasswordChanged, request.UserId);
             })
             .OnFailure(errors => 
             {
-                _logger.LogWarning("Password change failed for user: {UserId} by {ActorId}. Errors: {Errors}",
-                    request.UserId, _currentUserService.UserId, string.Join(", ", errors));
+                _logger.LogWarning(ApiResponseMessages.Logging.PasswordChangeFailed, request.UserId, string.Join(", ", errors));
             });
 
             return changeResult;
@@ -70,12 +72,12 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
         {
             try
             {
-                var authResult = await _userAuthorizationService.CanModifyUserAsync(userId, UserModificationOperation.ChangePassword);
+                var authResult = await _userAuthorization_service.CanModifyUserAsync(userId, UserModificationOperation.ChangePassword);
                 return authResult;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Result.Forbidden($"Authorization failed: {ex.Message}");
+                return Result.Forbidden(ApiResponseMessages.Validation.NotAuthorizedToChangePassword);
             }
         }
 
@@ -84,6 +86,8 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             // Get acting user context
             var actingUserId = _currentUserService.UserId;
             var actingRole = await _currentUserService.GetRoleFromStoreAsync();
+            var actingRoleName = actingRole?.Name ?? string.Empty;
+            var actingBankId = _currentUserService.BankId;
             
             // Get target user information
             var targetUserResult = await _userService.GetUserByIdAsync(userId);
@@ -94,14 +98,39 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             if (targetRoleResult.IsFailure)
                 return Result<PasswordChangeContext>.Failure(targetRoleResult.Errors);
 
+            var targetUser = targetUserResult.Value!;
+            var targetRoleName = targetRoleResult.Value;
+
+            var isSelf = !string.IsNullOrEmpty(actingUserId) && string.Equals(actingUserId, userId, StringComparison.OrdinalIgnoreCase);
+
+            // Enforce additional policy: Admins can only change their own password or reset client passwords in same bank
+            var isActingAdmin = string.Equals(actingRoleName, UserRole.Admin.ToString(), StringComparison.OrdinalIgnoreCase);
+            var isTargetAdmin = string.Equals(targetRoleName, UserRole.Admin.ToString(), StringComparison.OrdinalIgnoreCase);
+            var isTargetClient = string.Equals(targetRoleName, UserRole.Client.ToString(), StringComparison.OrdinalIgnoreCase);
+
+            if (isActingAdmin && !isSelf)
+            {
+                // Admin cannot change another admin's password
+                if (isTargetAdmin)
+                {
+                    return Result<PasswordChangeContext>.Forbidden(ApiResponseMessages.Validation.NotAuthorizedToChangePassword);
+                }
+
+                // Admin can only change client passwords within the same bank
+                if (!isTargetClient || actingBankId != targetUser.BankId)
+                {
+                    return Result<PasswordChangeContext>.Forbidden(ApiResponseMessages.Validation.NotAuthorizedToChangePassword);
+                }
+            }
+
             var context = new PasswordChangeContext
             {
                 ActingUserId = actingUserId,
-                ActingRole = actingRole.Name,
+                ActingRole = actingRoleName,
                 TargetUserId = userId,
-                TargetRole = targetRoleResult.Value,
-                TargetUser = targetUserResult.Value!,
-                IsSelf = !string.IsNullOrEmpty(actingUserId) && string.Equals(actingUserId, userId, StringComparison.OrdinalIgnoreCase)
+                TargetRole = targetRoleName,
+                TargetUser = targetUser,
+                IsSelf = isSelf
             };
 
             return Result<PasswordChangeContext>.Success(context);
@@ -118,11 +147,11 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
 
             // Validate current password requirement
             if (rules.RequiresCurrentPassword && string.IsNullOrWhiteSpace(request.PasswordRequest.CurrentPassword))
-                return Result<UserResDto>.BadRequest("Current password is required to change your password.");
+                return Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.CurrentPasswordRequired);
 
             // Validate password confirmation early
             if (request.PasswordRequest.NewPassword != request.PasswordRequest.ConfirmNewPassword)
-                return Result<UserResDto>.BadRequest("The new password and confirmation password do not match. Please ensure both passwords are identical.");
+                return Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.PasswordsDoNotMatch);
 
             // Create ChangePasswordReqDto with business rules applied
             var changePasswordDto = new ChangePasswordReqDto
@@ -139,8 +168,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             if (result.IsFailure)
             {
                 // Log the original error for debugging purposes
-                _logger.LogWarning("Password change failed for user {UserId}: {Errors}", 
-                    request.UserId, string.Join(", ", result.Errors));
+                _logger.LogWarning(ApiResponseMessages.Logging.PasswordChangeFailed, request.UserId, string.Join(", ", result.Errors));
 
                 // Check for common password change error patterns and provide specific messages
                 var enhancedErrors = EnhancePasswordChangeErrors(result.Errors, context, rules);
@@ -181,7 +209,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             if (!isClient && isTargetClient) return Result.Success();
 
             // All other cases are unauthorized
-            return Result.Forbidden("You are not authorized to change this user's password.");
+            return Result.Forbidden(ApiResponseMessages.Validation.NotAuthorizedToChangePassword);
         }
 
         private bool DetermineCurrentPasswordRequirement(PasswordChangeContext context, bool isSuperAdmin, bool isClient, bool isTargetClient)
@@ -211,7 +239,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
                 // ASP.NET Identity returns "Incorrect password." for wrong current password
                 if (error.Equals("Incorrect password.", StringComparison.OrdinalIgnoreCase))
                 {
-                    enhancedErrors.Add("The current password is incorrect. Please check your password and try again.");
+                    enhancedErrors.Add(ApiResponseMessages.Validation.IncorrectCurrentPassword);
                 }
                 // Keep other errors as-is for simplicity
                 else

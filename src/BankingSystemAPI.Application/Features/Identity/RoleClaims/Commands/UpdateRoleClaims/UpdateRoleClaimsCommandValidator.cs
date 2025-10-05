@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.RoleClaims.Commands.UpdateRoleClaims
 {
@@ -8,11 +12,11 @@ namespace BankingSystemAPI.Application.Features.Identity.RoleClaims.Commands.Upd
         {
             RuleFor(x => x.RoleId)
                 .NotEmpty()
-                .WithMessage("Role ID is required.");
+                .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Role ID"));
 
             RuleFor(x => x.Claims)
                 .NotNull()
-                .WithMessage("Claims collection cannot be null.");
+                .WithMessage(ApiResponseMessages.Validation.ClaimsListRequired);
         }
     }
 }

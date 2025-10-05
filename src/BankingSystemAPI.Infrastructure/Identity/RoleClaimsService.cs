@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.DTOs.Role;
+﻿#region Usings
+using BankingSystemAPI.Application.DTOs.Role;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
@@ -8,6 +9,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Services
 {
@@ -62,7 +65,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                var errorMessage = $"Failed to retrieve claims by group: {ex.Message}";
+                var errorMessage = string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message);
                 _logger.LogError(ex, errorMessage);
                 return Result<ICollection<RoleClaimsResDto>>.BadRequest(errorMessage);
             }
@@ -70,19 +73,19 @@ namespace BankingSystemAPI.Infrastructure.Services
 
         private async Task<Result<UpdateRoleClaimsDto>> ValidateInputAsync(UpdateRoleClaimsDto dto)
         {
-            return dto.ToResult("Role claims data is required.")
+            return dto.ToResult(string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Role claims"))
                 .Bind(d => string.IsNullOrWhiteSpace(d.RoleName)
-                    ? Result<UpdateRoleClaimsDto>.BadRequest("Role name cannot be null or empty.")
+                    ? Result<UpdateRoleClaimsDto>.BadRequest(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Role name"))
                     : Result<UpdateRoleClaimsDto>.Success(d))
                 .Bind(d => d.Claims == null
-                    ? Result<UpdateRoleClaimsDto>.BadRequest("Claims list cannot be null.")
+                    ? Result<UpdateRoleClaimsDto>.BadRequest(ApiResponseMessages.Validation.ClaimsListRequired)
                     : Result<UpdateRoleClaimsDto>.Success(d));
         }
 
         private async Task<Result<ApplicationRole>> FindRoleAsync(string roleName)
         {
             var role = await _roleManager.FindByNameAsync(roleName);
-            return role.ToResult($"Role '{roleName}' not found.");
+            return role.ToResult(string.Format(ApiResponseMessages.BankingErrors.NotFoundFormat, "Role", roleName));
         }
 
         private async Task<Result<ApplicationRole>> RemoveExistingClaimsAsync(ApplicationRole role)
@@ -144,6 +147,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 {
                     var permissions = GetPermissionsForController(controller);
                     
+
                     result.Add(new RoleClaimsResDto
                     {
                         Name = controller.ToString(),
@@ -155,7 +159,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                return Result<ICollection<RoleClaimsResDto>>.BadRequest($"Failed to build claims by group: {ex.Message}");
+                return Result<ICollection<RoleClaimsResDto>>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
@@ -219,3 +223,4 @@ namespace BankingSystemAPI.Infrastructure.Services
         }
     }
 }
+

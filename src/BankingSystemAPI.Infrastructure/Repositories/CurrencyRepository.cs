@@ -1,15 +1,29 @@
-﻿using BankingSystemAPI.Application.Interfaces.Repositories;
+﻿#region Usings
+using BankingSystemAPI.Application.Interfaces.Repositories;
 using BankingSystemAPI.Application.Interfaces;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using BankingSystemAPI.Application.Specifications;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class CurrencyRepository : GenericRepository<Currency, int>, ICurrencyRepository
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         private readonly ICacheService _cache;
 
         public CurrencyRepository(ApplicationDbContext context, ICacheService cache) : base(context)
@@ -78,3 +92,4 @@ namespace BankingSystemAPI.Infrastructure.Repositories
         }
     }
 }
+

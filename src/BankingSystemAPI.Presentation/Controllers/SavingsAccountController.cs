@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.DTOs.Account;
+﻿#region Usings
+using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateSavingsAccount;
 using BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateSavingsAccount;
 using BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetAllSavingsAccounts;
@@ -10,6 +11,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -21,6 +24,17 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiExplorerSettings(GroupName = "SavingsAccounts")]
     public class SavingsAccountController : BaseApiController
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         private readonly IMediator _mediator;
 
         public SavingsAccountController(IMediator mediator)
@@ -28,9 +42,13 @@ namespace BankingSystemAPI.Presentation.Controllers
             _mediator = mediator;
         }
 
-        /// <summary>
-        /// Get paginated list of savings accounts.
-        /// </summary>
+    /// <summary>
+    /// Get paginated list of savings accounts.
+    /// </summary>
+    /// <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+    /// <param name="pageSize">Number of items per page. Defaults to 10.</param>
+    /// <param name="orderBy">Optional. Property name to sort by. Common values: "Id", "AccountNumber", "UserId", "CreatedDate". If omitted the implementation default ordering is used.</param>
+    /// <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC" (case-insensitive). Defaults to "ASC".</param>
         [HttpGet]
         [PermissionFilterFactory(Permission.SavingsAccount.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -46,6 +64,19 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         /// The handler will validate that the currency and user exist and are active and will persist
         /// the new savings account. An account number and CreatedDate are auto-generated.
+        /// <remarks>
+        /// Currencies (id => code):
+        /// - 1 => USD
+        /// - 2 => EUR
+        /// - 3 => GBP
+        /// - 4 => EGP
+        /// - 5 => SAR
+        ///
+        /// Interest Types (value => name):
+        /// - 1 => Monthly (Interest calculated monthly)
+        /// - 2 => Quarterly (Interest calculated quarterly)
+        /// - 3 => Annually (Interest calculated annually)
+        /// </remarks>
         [HttpPost]
         [PermissionFilterFactory(Permission.SavingsAccount.Create)]
         [ProducesResponseType(StatusCodes.Status201Created)]
@@ -74,10 +105,12 @@ namespace BankingSystemAPI.Presentation.Controllers
             return HandleUpdateResult(result);
         }
 
-        /// <summary>
-        /// Get all interest logs with pagination.
-        /// </summary>
-        [HttpGet("interest-logs")]
+    /// <summary>
+    /// Get all interest logs with pagination.
+    /// </summary>
+    /// <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+    /// <param name="pageSize">Number of items per page. Defaults to 10.</param>
+    [HttpGet("interest-logs")]
         [PermissionFilterFactory(Permission.SavingsAccount.ReadAllInterestRate)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -87,10 +120,13 @@ namespace BankingSystemAPI.Presentation.Controllers
             return HandleResult(result);
         }
 
-        /// <summary>
-        /// Get all interest logs for a specific account with pagination.
-        /// </summary>
-        [HttpGet("{accountId:int}/interest-logs")]
+    /// <summary>
+    /// Get all interest logs for a specific account with pagination.
+    /// </summary>
+    /// <param name="accountId">The account identifier whose interest logs are returned.</param>
+    /// <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+    /// <param name="pageSize">Number of items per page. Defaults to 10.</param>
+    [HttpGet("{accountId:int}/interest-logs")]
         [PermissionFilterFactory(Permission.SavingsAccount.ReadInterestRateById)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -101,3 +137,4 @@ namespace BankingSystemAPI.Presentation.Controllers
         }
     }
 }
+

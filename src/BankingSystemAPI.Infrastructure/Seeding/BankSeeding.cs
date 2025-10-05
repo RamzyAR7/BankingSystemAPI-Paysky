@@ -1,11 +1,25 @@
-﻿using BankingSystemAPI.Domain.Entities;
+﻿#region Usings
+using BankingSystemAPI.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Seeding
 {
     public static class BankSeeding
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         public static async Task SeedAsync(DbContext context)
         {
             // Prevent reseeding if banks already exist
@@ -25,3 +39,4 @@ namespace BankingSystemAPI.Infrastructure.Seeding
         }
     }
 }
+

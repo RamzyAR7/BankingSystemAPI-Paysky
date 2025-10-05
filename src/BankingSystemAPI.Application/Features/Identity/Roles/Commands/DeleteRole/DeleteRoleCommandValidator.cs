@@ -1,6 +1,9 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Constant;
 using FluentValidation;
 using System.Text.RegularExpressions;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRole
 {
@@ -26,27 +29,27 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRo
         {
             RuleFor(x => x.RoleId)
                 .NotNull()
-                .WithMessage("Role ID cannot be null.")
+                .WithMessage(ApiResponseMessages.Validation.FieldRequiredFormat.Replace("{0}", "Role ID"))
                 .WithErrorCode("ROLE_ID_NULL")
 
                 .NotEmpty()
-                .WithMessage("Role ID is required and cannot be empty.")
+                .WithMessage(ApiResponseMessages.Validation.FieldRequiredFormat.Replace("{0}", "Role ID"))
                 .WithErrorCode("ROLE_ID_EMPTY")
 
                 .Length(36, 36)
-                .WithMessage("Role ID must be exactly 36 characters long (GUID format).")
+                .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthRangeFormat, "Role ID", 36, 36))
                 .WithErrorCode("ROLE_ID_INVALID_LENGTH")
 
                 .Must(BeValidGuidFormat)
-                .WithMessage("Role ID must be a valid GUID format.")
+                .WithMessage(ApiResponseMessages.Validation.InvalidIdFormat.Replace("{0}", "Role ID"))
                 .WithErrorCode("ROLE_ID_INVALID_FORMAT")
 
                 .Must(NotContainInvalidCharacters)
-                .WithMessage("Role ID contains invalid characters. Only alphanumeric characters and hyphens are allowed.")
+                .WithMessage(ApiResponseMessages.Validation.InvalidPhoneNumberFormat)
                 .WithErrorCode("ROLE_ID_INVALID_CHARS")
 
                 .Must(NotBeProtectedRole)
-                .WithMessage("Cannot delete protected system roles (SuperAdmin, Admin, Client).")
+                .WithMessage(ApiResponseMessages.Validation.ProtectedRoleDeletionNotAllowed)
                 .WithErrorCode("ROLE_ID_SYSTEM_ROLE");
         }
 

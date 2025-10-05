@@ -1,3 +1,4 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
@@ -8,6 +9,9 @@ using BankingSystemAPI.Application.Specifications.CurrencySpecification;
 using BankingSystemAPI.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Currencies.Commands.CreateCurrency
 {
@@ -25,10 +29,7 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.CreateCurren
         }
 
         public async Task<Result<CurrencyDto>> Handle(CreateCurrencyCommand request, CancellationToken cancellationToken)
-        {
-            // Note: Input validation (null checks, empty code, exchange rate > 0) handled by CreateCurrencyCommandValidator
-            // This handler focuses on business logic validation and execution
-            
+        {   
             // Business validation: Check base currency business rule
             var baseValidationResult = await ValidateBaseCurrencyRuleAsync(request.Currency);
             if (baseValidationResult.IsFailure)
@@ -61,7 +62,7 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.CreateCurren
             
             return existingBase == null
                 ? Result.Success()
-                : Result.BadRequest("A base currency already exists. Clear it before creating another base currency.");
+                : Result.BadRequest(ApiResponseMessages.Validation.AnotherBaseCurrencyExists);
         }
 
         private async Task<Result<CurrencyDto>> CreateCurrencyAsync(CurrencyReqDto reqDto)
@@ -77,8 +78,9 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.CreateCurren
             }
             catch (Exception ex)
             {
-                return Result<CurrencyDto>.BadRequest($"Failed to create currency: {ex.Message}");
+                return Result<CurrencyDto>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
     }
 }
+

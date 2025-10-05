@@ -1,8 +1,12 @@
+﻿#region Usings
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Middlewares
 {
@@ -36,8 +40,8 @@ namespace BankingSystemAPI.Presentation.Middlewares
                 var path = context.Request.Path;
                 var status = context.Response?.StatusCode;
 
-                // Log structured message
-                _logger.LogInformation("RequestTiming: {Method} {Path} responded {StatusCode} in {Elapsed} ms", method, path, status, elapsed);
+                // Log structured message using centralized format
+                _logger.LogInformation(ApiResponseMessages.Infrastructure.RequestTimingLogFormat, method, path, status, elapsed);
 
                 // Console colored output to differentiate timing logs
                 var original = Console.ForegroundColor;
@@ -51,7 +55,7 @@ namespace BankingSystemAPI.Presentation.Middlewares
                     else
                         Console.ForegroundColor = ConsoleColor.Magenta; // fast
 
-                    Console.WriteLine($"[Timing] {DateTime.UtcNow:u} - {method} {path} => {status} in {elapsed} ms");
+                    Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.RequestTimingConsoleFormat, DateTime.UtcNow, method, path, status, elapsed));
                 }
                 finally
                 {
@@ -61,3 +65,4 @@ namespace BankingSystemAPI.Presentation.Middlewares
         }
     }
 }
+

@@ -1,8 +1,11 @@
+﻿#region Usings
 using BankingSystemAPI.Application.Interfaces.Repositories;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.UnitOfWork
 {
@@ -11,6 +14,17 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
     /// </summary>
     public class UnitOfWork : IUnitOfWork, IDisposable
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         // Repositories
         public IUserRepository UserRepository { get; }
         public IRoleRepository RoleRepository { get; }
@@ -161,6 +175,17 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
 
         public void DetachEntity<T>(T entity) where T : class
         {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
             if (entity == null) return;
             
             var entry = _context.Entry(entity);

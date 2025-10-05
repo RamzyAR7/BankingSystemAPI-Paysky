@@ -1,12 +1,16 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Account;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.AccountSpecification;
+using BankingSystemAPI.Application.Specifications.UserSpecifications;
 using System.Collections.Generic;
 using System.Linq;
 using BankingSystemAPI.Application.Interfaces.Authorization;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByNationalId
 {
@@ -25,6 +29,13 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByNa
 
         public async Task<Result<List<AccountDto>>> Handle(GetAccountsByNationalIdQuery request, CancellationToken cancellationToken)
         {
+            // Ensure a user exists with this national id
+            var targetUser = await _uow.UserRepository.FindAsync(new UserByNationalIdSpecification(request.NationalId));
+            if (targetUser == null)
+            {
+                return Result<List<AccountDto>>.NotFound("User", request.NationalId);
+            }
+
             var spec = new AccountsByNationalIdSpecification(request.NationalId);
             var accounts = await _uow.AccountRepository.ListAsync(spec);
 
@@ -41,3 +52,4 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByNa
         }
     }
 }
+

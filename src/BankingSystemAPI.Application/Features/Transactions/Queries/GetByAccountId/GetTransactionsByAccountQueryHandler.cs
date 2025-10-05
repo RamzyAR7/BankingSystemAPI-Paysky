@@ -1,3 +1,4 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Transactions;
@@ -6,6 +7,8 @@ using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Specifications.TransactionSpecification;
 using BankingSystemAPI.Domain.Entities;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetByAccountId
 {
@@ -48,3 +51,4 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetByAccoun
         }
     }
 }
+

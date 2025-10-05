@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.Interfaces.Repositories;
+﻿#region Usings
+using BankingSystemAPI.Application.Interfaces.Repositories;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
@@ -10,11 +11,24 @@ using System.Text;
 using System.Threading.Tasks;
 using BankingSystemAPI.Application.Specifications;
 using BankingSystemAPI.Application.Specifications.AccountSpecification;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class AccountRepository : GenericRepository<Account, int>, IAccountRepository
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         public AccountRepository(ApplicationDbContext context) : base(context)
         {
         }
@@ -76,3 +90,4 @@ namespace BankingSystemAPI.Infrastructure.Repositories
         }
     }
 }
+

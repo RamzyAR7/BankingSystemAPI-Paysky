@@ -1,3 +1,4 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.InterestLog;
@@ -6,6 +7,8 @@ using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.AccountSpecification;
 using System.Linq;
 using BankingSystemAPI.Application.Interfaces.Authorization;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetInterestLogsByAccountId
 {
@@ -41,3 +44,4 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetInter
         }
     }
 }
+

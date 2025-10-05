@@ -1,12 +1,26 @@
-﻿using BankingSystemAPI.Application.DTOs.Role;
+﻿#region Usings
+using BankingSystemAPI.Application.DTOs.Role;
 using BankingSystemAPI.Domain.Common;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Interfaces.Identity
 {
     public interface IRoleService
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         Task<Result<List<RoleResDto>>> GetAllRolesAsync();
         Task<Result<RoleUpdateResultDto>> CreateRoleAsync(RoleReqDto roleName);
         Task<Result<RoleUpdateResultDto>> DeleteRoleAsync(string roleId);
@@ -20,3 +34,4 @@ namespace BankingSystemAPI.Application.Interfaces.Identity
         Task<Result<bool>> IsRoleInUseAsync(string roleId);
     }
 }
+

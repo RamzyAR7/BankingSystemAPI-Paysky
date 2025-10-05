@@ -1,8 +1,11 @@
+﻿#region Usings
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -13,6 +16,17 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiController]
     public abstract class BaseApiController : ControllerBase
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         private ILogger? _logger;
         
         protected ILogger Logger => _logger ??= HttpContext.RequestServices.GetService<ILogger<BaseApiController>>()!;
@@ -42,7 +56,27 @@ namespace BankingSystemAPI.Presentation.Controllers
             if (result.IsSuccess)
             {
                 LogSuccess();
-                return Ok(new { success = true, message = GetSuccessMessage() });
+
+                // Determine action context to exclude certain update types from returning the data payload
+                var actionName = GetActionName();
+                var controllerName = GetControllerName();
+
+                var isPasswordAction = actionName.Contains("password", StringComparison.OrdinalIgnoreCase) ||
+                                        actionName.Contains("changepassword", StringComparison.OrdinalIgnoreCase);
+
+                var isStatusAction = actionName.Contains("active", StringComparison.OrdinalIgnoreCase) ||
+                                     actionName.Contains("status", StringComparison.OrdinalIgnoreCase) ||
+                                     actionName.Contains("setactive", StringComparison.OrdinalIgnoreCase) ||
+                                     controllerName.Contains("active", StringComparison.OrdinalIgnoreCase);
+
+                if (isPasswordAction || isStatusAction)
+                {
+                    // Keep legacy behavior for password and active/status endpoints
+                    return Ok(new { success = true, message = GetSuccessMessage() });
+                }
+
+                // Default: include the updated object under `data` along with success and message
+                return Ok(new { success = true, message = GetSuccessMessage(), data = result.Value });
             }
 
             LogFailure(result.Errors);
@@ -417,7 +451,7 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         private void LogSuccess()
         {
-            Logger.LogInformation("Operation completed successfully. Controller: {Controller}, Action: {Action}", 
+            Logger.LogInformation(ApiResponseMessages.Logging.OperationCompletedController, 
                 GetControllerName(), GetActionName());
         }
 
@@ -426,7 +460,7 @@ namespace BankingSystemAPI.Presentation.Controllers
         /// </summary>
         private void LogFailure(IReadOnlyList<string> errors)
         {
-            Logger.LogWarning("Operation failed. Controller: {Controller}, Action: {Action}, Errors: {Errors}",
+            Logger.LogWarning(ApiResponseMessages.Logging.OperationFailedController,
                 GetControllerName(), GetActionName(), string.Join(", ", errors));
         }
 
@@ -535,3 +569,4 @@ namespace BankingSystemAPI.Presentation.Controllers
         }
     }
 }
+

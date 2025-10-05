@@ -1,4 +1,5 @@
-﻿using System;
+﻿#region Usings
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -6,6 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Domain.Entities
 {
@@ -15,6 +18,7 @@ namespace BankingSystemAPI.Domain.Entities
     /// </summary>
     public class CheckingAccount : Account
     {
+        #region Properties
         /// <summary>
         /// Maximum overdraft amount allowed for this checking account.
         /// Must be non-negative.
@@ -29,7 +33,9 @@ namespace BankingSystemAPI.Domain.Entities
         /// </summary>
         public override AccountType AccountType => AccountType.Checking;
 
+        #endregion
 
+        #region Methods
         /// <summary>
         /// Gets the maximum amount that can be withdrawn including overdraft facility.
         /// This is what should be used for withdrawal validation.
@@ -130,5 +136,7 @@ namespace BankingSystemAPI.Domain.Entities
                 return $"Balance: {Balance:C} (Overdraft available: {OverdraftLimit:C})";
             }
         }
+        #endregion
     }
 }
+

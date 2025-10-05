@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUser
 {
@@ -8,54 +12,54 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
         {
             RuleFor(x => x.UserId)
                 .NotEmpty()
-                .WithMessage("User ID is required.");
+                .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "User ID"));
 
             RuleFor(x => x.UserEdit)
                 .NotNull()
-                .WithMessage("User edit data is required.");
+                .WithMessage(string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "User edit data"));
 
             // Validate UserEditDto properties
             When(x => x.UserEdit != null, () =>
             {
                 RuleFor(x => x.UserEdit.Username)
                     .NotEmpty()
-                    .WithMessage("Username is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Username"))
                     .MaximumLength(50)
-                    .WithMessage("Username cannot exceed 50 characters.");
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthMaxFormat, "Username", 50));
 
                 RuleFor(x => x.UserEdit.Email)
                     .NotEmpty()
-                    .WithMessage("Email is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Email"))
                     .EmailAddress()
-                    .WithMessage("Invalid email address.");
+                    .WithMessage(ApiResponseMessages.Validation.InvalidEmailAddress);
 
                 RuleFor(x => x.UserEdit.NationalId)
                     .NotEmpty()
-                    .WithMessage("National ID is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "National ID"))
                     .Length(10, 20)
-                    .WithMessage("National ID must be between 10 and 20 characters.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthRangeFormat, "National ID", 10, 20))
                     .Matches(@"^\d+$")
-                    .WithMessage("National ID must contain only digits.");
+                    .WithMessage(ApiResponseMessages.Validation.NationalIdDigits);
 
                 RuleFor(x => x.UserEdit.FullName)
                     .NotEmpty()
-                    .WithMessage("Full name is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Full name"))
                     .MaximumLength(200)
-                    .WithMessage("Full name cannot exceed 200 characters.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthMaxFormat, "Full name", 200))
                     .Matches(@"^[a-zA-Z\s]+$")
-                    .WithMessage("Full name can only contain letters and spaces.");
+                    .WithMessage(ApiResponseMessages.Validation.FullNameLettersOnly);
 
                 RuleFor(x => x.UserEdit.DateOfBirth)
                     .NotEmpty()
-                    .WithMessage("Date of birth is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Date of birth"))
                     .Must(BeValidAge)
-                    .WithMessage("User must be at least 18 years old and not older than 100 years.");
+                    .WithMessage(ApiResponseMessages.Validation.AgeRange);
 
                 RuleFor(x => x.UserEdit.PhoneNumber)
                     .NotEmpty()
-                    .WithMessage("Phone number is required.")
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Phone number"))
                     .Matches(@"^\+?[1-9]\d{1,14}$")
-                    .WithMessage("Invalid phone number format. Must be 11-15 digits, optionally starting with +.");
+                    .WithMessage(ApiResponseMessages.Validation.InvalidPhoneNumberFormat);
             });
         }
 
@@ -63,7 +67,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
         {
             var today = DateOnly.FromDateTime(DateTime.Today);
             var age = today.Year - dateOfBirth.Year;
-            
+
             if (dateOfBirth > today.AddYears(-age))
                 age--;
 

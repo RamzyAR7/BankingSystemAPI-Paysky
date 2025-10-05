@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Application.Authorization;
 using BankingSystemAPI.Application.AuthorizationServices;
 using BankingSystemAPI.Application.Authorization.Helpers;
@@ -34,6 +35,9 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,7 +67,7 @@ builder.Services.AddRateLimiter(options =>
         context.HttpContext.Response.Headers["Retry-After"] = "60";
         context.HttpContext.Response.ContentType = "application/json";
         context.HttpContext.Response.StatusCode = 429;
-        var payload = JsonSerializer.Serialize(new { code = 429, message = "Too many requests. Please try again later." });
+        var payload = JsonSerializer.Serialize(new { code = 429, message = ApiResponseMessages.Infrastructure.RateLimitExceeded });
         await context.HttpContext.Response.WriteAsync(payload, ct);
     };
 
@@ -302,21 +306,21 @@ builder.Services.AddAuthentication(options =>
 
             if (string.IsNullOrEmpty(uid) || string.IsNullOrEmpty(tokenStamp))
             {
-                ctx.Fail("Invalid token");
+                ctx.Fail(AuthorizationConstants.ErrorMessages.InvalidToken);
                 return;
             }
 
             var user = await userManager.FindByIdAsync(uid);
             if (user == null)
             {
-                ctx.Fail("User not found");
+                ctx.Fail(ApiResponseMessages.Validation.UserNotFound);
                 return;
             }
 
             var currentStamp = await userManager.GetSecurityStampAsync(user);
             if (!string.Equals(tokenStamp, currentStamp, StringComparison.Ordinal))
             {
-                ctx.Fail("Token security stamp mismatch");
+                ctx.Fail(AuthorizationConstants.ErrorMessages.InvalidToken);
                 return;
             }
         }
@@ -346,7 +350,7 @@ using (var scope = app.Services.CreateScope())
         var rolesExist = await roleManager.Roles.AnyAsync();
         if (!rolesExist)
         {
-            logger.LogWarning("Role seeding completed but no roles were found. Skipping user, currency, and bank seeding.");
+            logger.LogWarning(ApiResponseMessages.Logging.SeedingNoRolesFound);
         }
         else
         {
@@ -359,13 +363,13 @@ using (var scope = app.Services.CreateScope())
         await BankSeeding.SeedAsync(db);
 
         Console.ForegroundColor = ConsoleColor.Green;
-        logger.LogInformation("Seeding data completed.");
+        logger.LogInformation(ApiResponseMessages.Logging.SeedingCompleted);
         Console.ResetColor();
     }
     catch (Exception ex)
     {
         Console.ForegroundColor = ConsoleColor.Red;
-        logger.LogError(ex, "An error occurred seeding the DB.");
+        logger.LogError(ex, ApiResponseMessages.Logging.SeedingFailed, ex.Message);
         Console.ResetColor();
     }
 }
@@ -395,3 +399,4 @@ app.MapControllers();
 
 // After building services, expose ServiceProvider for legacy constructors
 app.Run();
+

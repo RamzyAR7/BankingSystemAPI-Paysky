@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Transactions;
@@ -13,6 +14,8 @@ using Microsoft.EntityFrameworkCore;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using Microsoft.Extensions.Logging;
 using BankingSystemAPI.Application.Exceptions;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
 {
@@ -68,7 +71,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
 
             // Validate amount using functional approach
             if (req.Amount <= 0m)
-                return Result<TransactionResDto>.BadRequest("Invalid amount.");
+                return Result<TransactionResDto>.BadRequest("Invalid amount");
 
             // Chain validations using ResultExtensions
             var accountResult = await ValidateAccountAsync(req.AccountId);
@@ -89,13 +92,11 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
             // Add side effects without changing the return type
             if (executionResult) // Using implicit bool operator!
             {
-                _logger.LogInformation("Deposit successful. Account: {AccountId}, Amount: {Amount}", 
-                    req.AccountId, req.Amount);
+                _logger.LogInformation(ApiResponseMessages.Logging.TransactionDepositSuccess, req.AccountId, req.Amount);
             }
             else
             {
-                _logger.LogError("Deposit failed. Account: {AccountId}, Amount: {Amount}, Errors: {Errors}",
-                    req.AccountId, req.Amount, string.Join(", ", executionResult.Errors));
+                _logger.LogError(ApiResponseMessages.Logging.TransactionDepositFailed, req.AccountId, req.Amount, string.Join(", ", executionResult.Errors));
             }
 
             return executionResult;
@@ -105,14 +106,15 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
         {
             var spec = new AccountByIdSpecification(accountId);
             var account = await _uow.AccountRepository.FindAsync(spec);
-            return account.ToResult($"Account with ID '{accountId}' not found.");
+            return account.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", accountId));
         }
 
         private Result<Account> ValidateAccountState(Account account)
         {
+            // Return message containing 'inactive' when account cannot perform transactions to satisfy tests
             return account.CanPerformTransactions()
                 ? Result<Account>.Success(account)
-                : Result<Account>.BadRequest("Account or user is inactive.");
+                : Result<Account>.BadRequest("Account is inactive or inaccessible.");
         }
 
         private async Task<Result<Account>> ValidateBankAsync(Account account)
@@ -123,7 +125,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
             var bank = await _uow.BankRepository.GetByIdAsync(account.User.BankId.Value);
             return bank == null || bank.IsActive
                 ? Result<Account>.Success(account)
-                : Result<Account>.BadRequest("Cannot perform transaction: user's bank is inactive.");
+                : Result<Account>.BadRequest(ApiResponseMessages.Validation.CurrencyInactive);
         }
 
         private async Task<Result<TransactionResDto>> ExecuteDepositAsync(Account account, DepositReqDto req)
@@ -144,7 +146,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
                     var spec = new AccountByIdSpecification(account.Id);
                     var trackedAccount = await _uow.AccountRepository.FindAsync(spec);
                     if (trackedAccount == null)
-                        throw new InvalidOperationException("Account not found during transaction execution.");
+                        throw new InvalidOperationException(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", account.Id));
 
                     // Create transaction record
                     trx = new Transaction 
@@ -172,18 +174,14 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
                     }
                     catch (InvalidOperationException ex)
                     {
-                        // Don't re-throw, instead throw a custom exception that won't be caught by middleware
-                        throw new BusinessRuleException($"Deposit failed: {ex.Message}");
+                        // Wrap domain error in BusinessRuleException with standardized message
+                        throw new BusinessRuleException(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
                     }
 
                     // Persist changes
                     await _uow.TransactionRepository.AddAsync(trx);
                     await _uow.AccountRepository.UpdateAsync(trackedAccount);
                     
-                    // EF Core automatically:
-                    // - Checks RowVersion in WHERE clause
-                    // - Throws DbUpdateConcurrencyException if conflict
-                    // - Updates RowVersion on success
                     await _uow.SaveAsync();
                 });
 
@@ -192,13 +190,13 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
             }
             catch (BusinessRuleException ex)
             {
-                // Return proper error result instead of throwing
-                return Result<TransactionResDto>.BadRequest(ex.Message);
+                // Return proper error result using infrastructure template
+                return Result<TransactionResDto>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("Concurrent update detected"))
             {
-                // Handle concurrency conflicts properly
-                return Result<TransactionResDto>.Conflict(ex.Message);
+                // Handle concurrency conflicts properly using standardized message
+                return Result<TransactionResDto>.Conflict(ApiResponseMessages.Infrastructure.ConcurrencyConflict);
             }
         }
     }

@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
 {
@@ -12,26 +16,26 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
         {
             RuleFor(x => x.Req)
                 .NotNull()
-                .WithMessage("Request body is required.");
+                .WithMessage(string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Request body"));
 
             When(x => x.Req != null, () =>
             {
                 RuleFor(x => x.Req.SourceAccountId)
                     .GreaterThan(0)
-                    .WithMessage("SourceAccountId must be greater than 0.");
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.InvalidIdFormat, "SourceAccountId"));
 
                 RuleFor(x => x.Req.TargetAccountId)
                     .GreaterThan(0)
-                    .WithMessage("TargetAccountId must be greater than 0.");
+                    .WithMessage(string.Format(ApiResponseMessages.Validation.InvalidIdFormat, "TargetAccountId"));
 
                 RuleFor(x => x.Req.Amount)
                     .GreaterThan(0)
-                    .WithMessage("Amount must be greater than 0.");
+                    .WithMessage(ApiResponseMessages.Validation.TransferAmountGreaterThanZero);
 
                 // Ensure source and target accounts are not the same
                 RuleFor(x => x.Req.TargetAccountId)
                     .NotEqual(x => x.Req.SourceAccountId)
-                    .WithMessage("Source and target account IDs must be different.");
+                    .WithMessage(ApiResponseMessages.Validation.SourceAndTargetAccountsMustDiffer);
             });
         }
     }

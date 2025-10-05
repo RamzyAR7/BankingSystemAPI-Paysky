@@ -1,3 +1,4 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.Interfaces.Messaging;
@@ -5,6 +6,9 @@ using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.AccountSpecification;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using Microsoft.Extensions.Logging;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetBalance
 {
@@ -54,7 +58,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetBalance
         {
             var spec = new AccountByIdSpecification(accountId);
             var account = await _uow.AccountRepository.FindAsync(spec);
-            return account.ToResult($"Account with ID '{accountId}' not found.");
+            return account.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", accountId));
         }
 
         private async Task<Result> ValidateAuthorizationAsync(int accountId)
@@ -68,8 +72,9 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetBalance
             }
             catch (Exception ex)
             {
-                return Result.Forbidden($"Authorization failed: {ex.Message}");
+                return Result.Forbidden(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
     }
 }
+

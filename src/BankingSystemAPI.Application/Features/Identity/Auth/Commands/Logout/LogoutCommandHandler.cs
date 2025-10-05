@@ -1,9 +1,13 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Auth;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using Microsoft.Extensions.Logging;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Logout
 {
@@ -28,15 +32,15 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Logout
                 : Result<AuthResultDto>.Failure(result.Errors.Select(e => e.Description));
 
             // Add side effects using ResultExtensions
-            logoutResult.OnSuccess(() => 
-                {
-                    _logger.LogInformation("User logged out successfully: {UserId}", request.UserId);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning("User logout failed: {UserId}. Errors: {Errors}",
-                        request.UserId, string.Join(", ", errors));
-                });
+            logoutResult.OnSuccess(() =>
+            {
+                _logger.LogInformation(ApiResponseMessages.Logging.OperationCompletedController, "auth", "logout");
+            })
+            .OnFailure(errors =>
+            {
+                _logger.LogWarning(ApiResponseMessages.Logging.OperationFailedController,
+                    "auth", "logout", string.Join(", ", errors));
+            });
 
             return logoutResult;
         }

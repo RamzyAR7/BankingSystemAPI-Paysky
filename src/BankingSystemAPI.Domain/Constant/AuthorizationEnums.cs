@@ -1,4 +1,7 @@
+﻿#region Usings
 using System;
+#endregion
+
 
 namespace BankingSystemAPI.Domain.Constant
 {
@@ -25,38 +28,6 @@ namespace BankingSystemAPI.Domain.Constant
         /// </summary>
         Global = 3
     }
-
-    /// <summary>
-    /// Defines authorization validation results in order of severity
-    /// </summary>
-    public enum AuthorizationResult
-    {
-        /// <summary>
-        /// Operation is explicitly forbidden due to business rules
-        /// </summary>
-        Forbidden = 1,
-
-        /// <summary>
-        /// User lacks proper authentication
-        /// </summary>
-        Unauthorized = 2,
-
-        /// <summary>
-        /// Requested resource does not exist or is inaccessible
-        /// </summary>
-        NotFound = 3,
-
-        /// <summary>
-        /// Operation violates data integrity or business constraints
-        /// </summary>
-        ValidationFailed = 4,
-
-        /// <summary>
-        /// Operation is allowed and can proceed
-        /// </summary>
-        Allowed = 5
-    }
-
     /// <summary>
     /// Defines authorization check types in logical operation order
     /// </summary>
@@ -87,61 +58,5 @@ namespace BankingSystemAPI.Domain.Constant
         /// </summary>
         Administrate = 5
     }
-
-    /// <summary>
-    /// Defines resource access patterns in order of complexity
-    /// </summary>
-    public enum ResourceAccessPattern
-    {
-        /// <summary>
-        /// Single resource access by ID
-        /// </summary>
-        SingleResource = 1,
-
-        /// <summary>
-        /// Multiple resources owned by same user
-        /// </summary>
-        UserOwnedResources = 2,
-
-        /// <summary>
-        /// Resources within same bank/organization
-        /// </summary>
-        BankScopedResources = 3,
-
-        /// <summary>
-        /// Cross-bank resource access
-        /// </summary>
-        CrossBankResources = 4,
-
-        /// <summary>
-        /// System-wide resource access
-        /// </summary>
-        SystemWideResources = 5
-    }
-
-    /// <summary>
-    /// Defines validation priority levels for authorization checks
-    /// </summary>
-    public enum ValidationPriority
-    {
-        /// <summary>
-        /// Critical security checks (authentication, basic permissions)
-        /// </summary>
-        Critical = 1,
-
-        /// <summary>
-        /// High priority checks (ownership, scope validation)
-        /// </summary>
-        High = 2,
-
-        /// <summary>
-        /// Medium priority checks (business rules, data integrity)
-        /// </summary>
-        Medium = 3,
-
-        /// <summary>
-        /// Low priority checks (logging, audit trail)
-        /// </summary>
-        Low = 4
-    }
 }
+

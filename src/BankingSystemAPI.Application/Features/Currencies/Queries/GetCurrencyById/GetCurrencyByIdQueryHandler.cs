@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Application.DTOs.Currency;
@@ -6,7 +6,8 @@ using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.CurrencySpecification;
 using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
+using BankingSystemAPI.Domain.Constant;
+using BankingSystemAPI.Domain.Entities;
 
 namespace BankingSystemAPI.Application.Features.Currencies.Queries.GetCurrencyById
 {
@@ -30,33 +31,33 @@ namespace BankingSystemAPI.Application.Features.Currencies.Queries.GetCurrencyBy
                 return Result<CurrencyDto>.Failure(currencyResult.Errors);
 
             var mappedResult = currencyResult.Map(currency => _mapper.Map<CurrencyDto>(currency));
-            
+
             // Add side effects using ResultExtensions
-            mappedResult.OnSuccess(() => 
-                {
-                    _logger.LogDebug("Currency retrieved successfully: ID={CurrencyId}, Code={CurrencyCode}", 
-                        request.Id, mappedResult.Value!.Code);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning("Currency retrieval failed: ID={CurrencyId}, Errors={Errors}",
-                        request.Id, string.Join(", ", errors));
-                });
+            mappedResult.OnSuccess(() =>
+            {
+                // Use standardized controller-level success logging template
+                _logger.LogInformation(ApiResponseMessages.Logging.OperationCompletedController, "currency", "getcurrencybyid");
+            })
+            .OnFailure(errors =>
+            {
+                _logger.LogWarning(ApiResponseMessages.Logging.OperationFailedController,
+                    "currency", "getcurrencybyid", string.Join(", ", errors));
+            });
 
             return mappedResult;
         }
 
-        private async Task<Result<Domain.Entities.Currency>> LoadCurrencyAsync(int currencyId)
+        private async Task<Result<Currency>> LoadCurrencyAsync(int currencyId)
         {
             try
             {
                 var spec = new CurrencyByIdSpecification(currencyId);
                 var currency = await _uow.CurrencyRepository.FindAsync(spec);
-                return currency.ToResult($"Currency with ID '{currencyId}' not found.");
+                return currency.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Currency", currencyId));
             }
             catch (Exception ex)
             {
-                return Result<Domain.Entities.Currency>.BadRequest($"Failed to retrieve currency: {ex.Message}");
+                return Result<Currency>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
     }

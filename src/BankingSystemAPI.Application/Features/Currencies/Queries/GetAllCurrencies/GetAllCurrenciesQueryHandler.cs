@@ -1,3 +1,4 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Currency;
@@ -7,6 +8,8 @@ using BankingSystemAPI.Application.Specifications.CurrencySpecification;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Currencies.Queries.GetAllCurrencies
 {
@@ -31,3 +34,4 @@ namespace BankingSystemAPI.Application.Features.Currencies.Queries.GetAllCurrenc
         }
     }
 }
+

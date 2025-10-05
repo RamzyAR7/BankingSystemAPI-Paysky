@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUsers
 {
@@ -8,13 +12,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
         {
             RuleFor(x => x.UserIds)
                 .NotNull()
-                .WithMessage("User IDs collection cannot be null.")
+                .WithMessage(ApiResponseMessages.Validation.UserIdsCollectionCannotBeNull)
                 .Must(ids => ids.Any())
-                .WithMessage("At least one user ID must be provided.")
+                .WithMessage(ApiResponseMessages.Validation.AtLeastOneUserIdProvided)
                 .Must(ids => ids.All(id => !string.IsNullOrWhiteSpace(id)))
-                .WithMessage("All user IDs must be valid (non-empty).")
+                .WithMessage(ApiResponseMessages.Validation.AllUserIdsMustBeValid)
                 .Must(ids => ids.Distinct().Count() == ids.Count())
-                .WithMessage("Duplicate user IDs are not allowed.");
+                .WithMessage(ApiResponseMessages.Validation.DuplicateUserIdsNotAllowed);
         }
     }
 }

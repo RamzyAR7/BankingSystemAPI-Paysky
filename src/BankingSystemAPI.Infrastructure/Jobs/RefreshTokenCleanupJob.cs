@@ -1,9 +1,13 @@
-﻿using BankingSystemAPI.Infrastructure.Context;
+﻿#region Usings
+using BankingSystemAPI.Infrastructure.Context;
 using BankingSystemAPI.Domain.Entities;
+using BankingSystemAPI.Domain.Constant;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Jobs
 {
@@ -25,7 +29,7 @@ namespace BankingSystemAPI.Infrastructure.Jobs
             var cyan = "\u001b[36m";
             var reset = "\u001b[0m";
 
-            var scanMsg = $"{cyan}[CleanupJob] Scanning for expired/inactive refresh tokens...{reset}";
+            var scanMsg = string.Format("{0}[CleanupJob] Scanning for expired/inactive refresh tokens...{1}", cyan, reset);
             Console.WriteLine(scanMsg);
 
             const int batchSize = 100; // Tune as needed for your DB
@@ -78,21 +82,21 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                 await context.SaveChangesAsync(cancellationToken); // Commit after each batch
                 removedTokens += batchRemoved;
                 var batchEnd = DateTime.UtcNow;
-                _logger.LogInformation("CleanupJob Batch {BatchNumber} removed {BatchRemoved} tokens, duration {Duration}s", batchNumber, batchRemoved, (batchEnd-batchStart).TotalSeconds);
+                _logger.LogInformation(ApiResponseMessages.Logging.CleanupJobBatch, batchNumber, batchRemoved, (batchEnd - batchStart).TotalSeconds);
             }
             var jobEnd = DateTime.UtcNow;
-            var foundMsg = $"{cyan}[CleanupJob] Found {totalTokens} tokens to clean.{reset}";
+            var foundMsg = string.Format("{0}[CleanupJob] Found {1} tokens to clean.{2}", cyan, totalTokens, reset);
             Console.WriteLine(foundMsg);
-            var removedMsg = $"{cyan}[CleanupJob] Removed {removedTokens} expired/invalid refresh tokens.{reset}";
+            var removedMsg = string.Format("{0}[CleanupJob] Removed {1} expired/invalid refresh tokens.{2}", cyan, removedTokens, reset);
             Console.WriteLine(removedMsg);
-            _logger.LogInformation("CleanupJob run completed. TotalTokens={Total}, Removed={Removed}, Duration={Duration}s", totalTokens, removedTokens, (jobEnd-jobStart).TotalSeconds);
+            _logger.LogInformation(ApiResponseMessages.Logging.CleanupJobRunCompleted, totalTokens, removedTokens, (jobEnd - jobStart).TotalSeconds);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var cyan = "\u001b[36m";
             var reset = "\u001b[0m";
-            var startMsg = $"{cyan}[CleanupJob] started at {DateTime.UtcNow:u}{reset}";
+            var startMsg = string.Format("{0}[CleanupJob] started at {1:u}{2}", cyan, DateTime.UtcNow, reset);
             Console.WriteLine(startMsg);
             // Run every 24 hours
             while (!stoppingToken.IsCancellationRequested)
@@ -103,7 +107,7 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                 }
                 catch (Exception ex)
                 {
-                    var errorMsg = $"{cyan}[CleanupJob] Error while cleaning refresh tokens{reset}";
+                    var errorMsg = string.Format("{0}[CleanupJob] Error while cleaning refresh tokens{1}", cyan, reset);
                     Console.WriteLine(errorMsg);
                 }
 
@@ -112,3 +116,4 @@ namespace BankingSystemAPI.Infrastructure.Jobs
         }
     }
 }
+

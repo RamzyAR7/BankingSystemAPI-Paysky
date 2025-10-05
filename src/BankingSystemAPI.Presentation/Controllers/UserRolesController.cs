@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.DTOs.User;
+﻿#region Usings
+using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.Features.Identity.UserRoles.Commands.UpdateUserRoles;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.AuthorizationFilter;
@@ -7,6 +8,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -19,6 +22,17 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiExplorerSettings(GroupName = "UserRoles")]
     public class UserRolesController : BaseApiController
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         private readonly IMediator _mediator;
 
         public UserRolesController(IMediator mediator)
@@ -56,3 +70,4 @@ namespace BankingSystemAPI.Presentation.Controllers
         }
     }
 }
+

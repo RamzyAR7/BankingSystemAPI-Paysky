@@ -1,3 +1,4 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
@@ -12,11 +13,24 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Banks.Queries.GetBankById
 {
     public class GetBankByIdQueryHandler : IQueryHandler<GetBankByIdQuery, BankResDto>
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
         private readonly ILogger<GetBankByIdQueryHandler> _logger;
@@ -60,3 +74,4 @@ namespace BankingSystemAPI.Application.Features.Banks.Queries.GetBankById
         }
     }
 }
+

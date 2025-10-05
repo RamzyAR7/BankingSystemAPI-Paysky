@@ -1,8 +1,11 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.UserRoles.Commands.UpdateUserRoles
 {
@@ -28,14 +31,14 @@ namespace BankingSystemAPI.Application.Features.Identity.UserRoles.Commands.Upda
                 
                 if (!isSuperAdmin && string.Equals(request.Role, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase))
                 {
-                    return Result<UserRoleUpdateResultDto>.Failure(new[] { "Not authorized to assign SuperAdmin role." });
+                    return Result<UserRoleUpdateResultDto>.Forbidden(ApiResponseMessages.Validation.NotAuthorizedToAssignSuperAdmin);
                 }
             }
 
             // Business validation: Ensure role is not just whitespace
             if (!string.IsNullOrEmpty(request.Role) && string.IsNullOrWhiteSpace(request.Role))
             {
-                return Result<UserRoleUpdateResultDto>.Failure(new[] { "Role cannot be empty or whitespace." });
+                return Result<UserRoleUpdateResultDto>.ValidationFailed(ApiResponseMessages.Validation.RoleCannotBeEmptyOrWhitespace);
             }
 
             // Delegate to UserRolesService for core role assignment - returns Result<UserRoleUpdateResultDto>
@@ -56,3 +59,4 @@ namespace BankingSystemAPI.Application.Features.Identity.UserRoles.Commands.Upda
         }
     }
 }
+

@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.Interfaces.Repositories;
+﻿#region Usings
+using BankingSystemAPI.Application.Interfaces.Repositories;
 using BankingSystemAPI.Infrastructure.Context;
 using BankingSystemAPI.Domain.Entities;
 using System;
@@ -8,11 +9,24 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class TransactionRepository : GenericRepository<Transaction, int>, ITransactionRepository
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         public TransactionRepository(ApplicationDbContext context) : base(context)
         {
         }
@@ -39,3 +53,4 @@ namespace BankingSystemAPI.Infrastructure.Repositories
         }
     }
 }
+

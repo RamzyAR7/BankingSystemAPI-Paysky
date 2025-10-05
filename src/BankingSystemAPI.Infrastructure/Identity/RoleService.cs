@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿#region Usings
+using AutoMapper;
 using BankingSystemAPI.Application.DTOs.Role;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Domain.Common;
@@ -10,6 +11,9 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Services
 {
@@ -45,11 +49,11 @@ namespace BankingSystemAPI.Infrastructure.Services
                 // Add side effects using ResultExtensions
                 enrichedRolesResult.OnSuccess(() => 
                     {
-                        _logger.LogDebug("Retrieved {Count} roles with claims successfully", enrichedRolesResult.Value!.Count);
+                        _logger.LogDebug(ApiResponseMessages.Logging.RoleRetrieved, enrichedRolesResult.Value!.Count);
                     })
                     .OnFailure(errors => 
                     {
-                        _logger.LogWarning("Failed to retrieve roles. Errors: {Errors}",
+                        _logger.LogWarning(ApiResponseMessages.Logging.RoleRetrieveFailed,
                             string.Join(", ", errors));
                     });
 
@@ -57,7 +61,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
             catch (System.Exception ex)
             {
-                var errorMessage = $"Failed to retrieve roles: {ex.Message}";
+                var errorMessage = string.Format(ApiResponseMessages.Logging.RoleRetrieveError, ex.Message);
                 _logger.LogError(ex, errorMessage);
                 return Result<List<RoleResDto>>.BadRequest(errorMessage);
             }
@@ -79,11 +83,11 @@ namespace BankingSystemAPI.Infrastructure.Services
             // Add side effects using ResultExtensions
             createResult.OnSuccess(() => 
                 {
-                    _logger.LogInformation("Role created successfully: {RoleName}", dto.Name);
+                    _logger.LogInformation(ApiResponseMessages.Logging.RoleCreated, dto.Name);
                 })
                 .OnFailure(errors => 
                 {
-                    _logger.LogWarning("Role creation failed for: {RoleName}. Errors: {Errors}",
+                    _logger.LogWarning(ApiResponseMessages.Logging.RoleCreateFailed,
                         dto.Name, string.Join(", ", errors));
                 });
 
@@ -106,12 +110,12 @@ namespace BankingSystemAPI.Infrastructure.Services
             // Add side effects using ResultExtensions
             deleteResult.OnSuccess(() => 
                 {
-                    _logger.LogInformation("Role deleted successfully: {RoleId}, Name: {RoleName}", 
+                    _logger.LogInformation(ApiResponseMessages.Logging.RoleDeleted, 
                         roleId, roleResult.Value!.Name);
                 })
                 .OnFailure(errors => 
                 {
-                    _logger.LogWarning("Role deletion failed for: {RoleId}. Errors: {Errors}",
+                    _logger.LogWarning(ApiResponseMessages.Logging.RoleDeleteFailed,
                         roleId, string.Join(", ", errors));
                 });
 
@@ -137,16 +141,16 @@ namespace BankingSystemAPI.Infrastructure.Services
                 
                 // Add side effects using ResultExtensions
                 result.OnSuccess(() => 
-                    _logger.LogDebug("[ROLE_SERVICE] Role usage check completed: RoleId={RoleId}, IsInUse={IsInUse}, ViaFK={ViaFK}, ViaRoleTable={ViaRoleTable}", 
+                    _logger.LogDebug(ApiResponseMessages.Logging.RoleUsageCheckCompleted, 
                         roleId, combinedUsage, fkUsageResult.Value, roleTableUsageResult.Value));
                 
                 return result;
             }
             catch (Exception ex)
             {
-                var errorResult = Result<bool>.BadRequest($"Failed to check role usage: {ex.Message}");
+                var errorResult = Result<bool>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
                 errorResult.OnFailure(errors => 
-                    _logger.LogError(ex, "[ROLE_SERVICE] Role usage check failed: RoleId={RoleId}", roleId));
+                    _logger.LogError(ex, ApiResponseMessages.Logging.RoleUsageCheckFailed, roleId));
                 return errorResult;
             }
         }
@@ -162,7 +166,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                return Result<List<ApplicationRole>>.BadRequest($"Failed to load roles: {ex.Message}");
+                return Result<List<ApplicationRole>>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
@@ -187,15 +191,15 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                return Result<List<RoleResDto>>.BadRequest($"Failed to enrich roles with claims: {ex.Message}");
+                return Result<List<RoleResDto>>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
         private Result ValidateCreateRoleInput(RoleReqDto dto)
         {
-            return dto.ToResult("Role data is required.")
+            return dto.ToResult(string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Role"))
                 .Bind(d => string.IsNullOrWhiteSpace(d.Name)
-                    ? Result.BadRequest("Role name cannot be null or empty.")
+                    ? Result.BadRequest(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Role name"))
                     : Result.Success());
         }
 
@@ -204,7 +208,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             var existingRole = await _roleManager.FindByNameAsync(roleName);
             return existingRole == null
                 ? Result.Success()
-                : Result.BadRequest($"Role '{roleName}' already exists.");
+                : Result.BadRequest(string.Format(ApiResponseMessages.BankingErrors.AlreadyExistsFormat, "Role", roleName));
         }
 
         private async Task<Result<RoleUpdateResultDto>> ExecuteRoleCreationAsync(RoleReqDto dto)
@@ -230,28 +234,28 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                return Result<RoleUpdateResultDto>.BadRequest($"Failed to create role: {ex.Message}");
+                return Result<RoleUpdateResultDto>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
         private Result ValidateDeleteRoleInput(string roleId)
         {
             return string.IsNullOrWhiteSpace(roleId)
-                ? Result.BadRequest("Role ID cannot be null or empty.")
+                ? Result.BadRequest(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Role ID"))
                 : Result.Success();
         }
 
         private Result ValidateRoleIdInput(string roleId)
         {
             return string.IsNullOrWhiteSpace(roleId)
-                ? Result.BadRequest("Role ID cannot be null or empty.")
+                ? Result.BadRequest(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Role ID"))
                 : Result.Success();
         }
 
         private async Task<Result<ApplicationRole>> FindRoleForDeletionAsync(string roleId)
         {
             var role = await _roleManager.FindByIdAsync(roleId);
-            return role.ToResult($"Role with ID '{roleId}' not found.");
+            return role.ToResult(string.Format(ApiResponseMessages.BankingErrors.NotFoundFormat, "Role", roleId));
         }
 
         private async Task<Result<RoleUpdateResultDto>> ExecuteRoleDeletionAsync(ApplicationRole role)
@@ -276,7 +280,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                return Result<RoleUpdateResultDto>.BadRequest($"Failed to delete role: {ex.Message}");
+                return Result<RoleUpdateResultDto>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
@@ -289,7 +293,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[ROLE_SERVICE] Failed to check FK usage for role: {RoleId}", roleId);
+                _logger.LogWarning(ex, ApiResponseMessages.Logging.RoleFkCheckFailed, roleId);
                 return Result<bool>.Success(false); // Fail-safe: assume not in use
             }
         }
@@ -308,7 +312,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[ROLE_SERVICE] Failed to check UserRoles table usage for role: {RoleId}", roleId);
+                _logger.LogWarning(ex, ApiResponseMessages.Logging.RoleTableCheckFailed, roleId);
                 return Result<bool>.Success(false); // Fail-safe: assume not in use
             }
         }
@@ -316,3 +320,4 @@ namespace BankingSystemAPI.Infrastructure.Services
         #endregion
     }
 }
+

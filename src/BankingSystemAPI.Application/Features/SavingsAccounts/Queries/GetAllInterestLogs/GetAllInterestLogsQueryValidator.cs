@@ -1,4 +1,7 @@
+﻿#region Usings
 using FluentValidation;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetAllInterestLogs
 {
@@ -11,3 +14,4 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetAllIn
         }
     }
 }
+

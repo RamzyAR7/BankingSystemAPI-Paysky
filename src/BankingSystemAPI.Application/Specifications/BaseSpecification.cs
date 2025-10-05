@@ -1,5 +1,8 @@
+﻿#region Usings
 using BankingSystemAPI.Application.Interfaces.Specification;
 using System.Linq.Expressions;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Specifications
 {
@@ -42,3 +45,4 @@ namespace BankingSystemAPI.Application.Specifications
         }
     }
 }
+

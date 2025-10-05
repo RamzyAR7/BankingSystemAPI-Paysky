@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.DTOs.Auth;
+﻿#region Usings
+using BankingSystemAPI.Application.DTOs.Auth;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
@@ -15,6 +16,8 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Identity
 {

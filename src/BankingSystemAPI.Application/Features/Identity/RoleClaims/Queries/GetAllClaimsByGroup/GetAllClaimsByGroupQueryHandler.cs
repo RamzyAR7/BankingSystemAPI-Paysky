@@ -1,8 +1,11 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Role;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.RoleClaims.Queries.GetAllClaimsByGroup
 {
@@ -26,7 +29,7 @@ namespace BankingSystemAPI.Application.Features.Identity.RoleClaims.Queries.GetA
 
             if (!isSuperAdmin && !isAdmin)
             {
-                return Result<ICollection<RoleClaimsResDto>>.Failure(new[] { "Insufficient permissions to view role claims." });
+                return Result<ICollection<RoleClaimsResDto>>.Forbidden(ApiResponseMessages.ErrorPatterns.AccessDenied);
             }
 
             // Delegate to RoleClaimsService - returns Result<ICollection<RoleClaimsResDto>>

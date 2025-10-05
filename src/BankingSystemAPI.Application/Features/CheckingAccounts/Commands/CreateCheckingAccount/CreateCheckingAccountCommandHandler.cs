@@ -1,3 +1,4 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
@@ -7,6 +8,9 @@ using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Specifications.UserSpecifications;
 using BankingSystemAPI.Domain.Entities;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.CreateCheckingAccount
 {
@@ -61,18 +65,18 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Create
         private async Task<Result<Currency>> ValidateCurrencyAsync(int currencyId)
         {
             var currency = await _uow.CurrencyRepository.GetByIdAsync(currencyId);
-            return currency.ToResult($"Currency with ID '{currencyId}' not found.")
+            return currency.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Currency", currencyId))
                 .Bind(c => !c.IsActive 
-                    ? Result<Currency>.BadRequest("Cannot create account with inactive currency.")
+                    ? Result<Currency>.BadRequest(ApiResponseMessages.Validation.CurrencyInactive)
                     : Result<Currency>.Success(c));
         }
 
         private async Task<Result<ApplicationUser>> ValidateUserAsync(string userId)
         {
             var user = await _uow.UserRepository.FindAsync(new UserByIdSpecification(userId));
-            return user.ToResult($"User with ID '{userId}' not found.")
+            return user.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "User", userId))
                 .Bind(u => !u.IsActive 
-                    ? Result<ApplicationUser>.BadRequest("Cannot create account for inactive user.")
+                    ? Result<ApplicationUser>.BadRequest(ApiResponseMessages.Validation.AccountNotFound)
                     : Result<ApplicationUser>.Success(u));
         }
 
@@ -80,7 +84,7 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Create
         {
             var targetRole = await _uow.RoleRepository.GetRoleByUserIdAsync(userId);
             var roleName = targetRole?.Name;
-            return roleName.ToResult("Cannot create account for a user that has no role assigned. Assign a role first.")
+            return roleName.ToResult(ApiResponseMessages.Validation.FieldRequiredFormat.Replace("{0}", "Role"))
                 .Bind<string>(_ => Result.Success());
         }
 
@@ -102,3 +106,4 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Create
         }
     }
 }
+

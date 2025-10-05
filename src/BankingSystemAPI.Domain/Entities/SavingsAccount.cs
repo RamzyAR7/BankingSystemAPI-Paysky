@@ -1,10 +1,13 @@
-﻿using BankingSystemAPI.Domain.Constant;
+﻿#region Usings
+using BankingSystemAPI.Domain.Constant;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Domain.Entities
 {
@@ -14,6 +17,7 @@ namespace BankingSystemAPI.Domain.Entities
     /// </summary>
     public class SavingsAccount : Account
     {
+        #region Fields
         /// <summary>
         /// Annual interest rate as a decimal (e.g., 0.05 for 5%).
         /// Must be between 0% and 100%.
@@ -39,6 +43,8 @@ namespace BankingSystemAPI.Domain.Entities
         /// </summary>
         public override AccountType AccountType => AccountType.Savings;
 
+        #endregion
+        #region Methods
         /// <summary>
         /// Performs withdrawal from savings account.
         /// Does not allow overdraft - balance must remain non-negative.
@@ -150,5 +156,7 @@ namespace BankingSystemAPI.Domain.Entities
         {
             return InterestLogs?.Sum(log => log.Amount) ?? 0m;
         }
+        #endregion
     }
 }
+

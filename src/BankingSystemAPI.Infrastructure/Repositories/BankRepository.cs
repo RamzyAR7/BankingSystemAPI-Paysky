@@ -1,15 +1,29 @@
-﻿using BankingSystemAPI.Application.Interfaces.Repositories;
+﻿#region Usings
+using BankingSystemAPI.Application.Interfaces.Repositories;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class BankRepository : GenericRepository<Bank, int>, IBankRepository
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         public BankRepository(ApplicationDbContext context) : base(context)
         {
         }
@@ -26,3 +40,4 @@ namespace BankingSystemAPI.Infrastructure.Repositories
         }
     }
 }
+

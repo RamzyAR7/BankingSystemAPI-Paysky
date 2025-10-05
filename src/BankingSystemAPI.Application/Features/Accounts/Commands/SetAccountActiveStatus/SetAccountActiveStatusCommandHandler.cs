@@ -1,9 +1,12 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Application.Specifications.AccountSpecification;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Accounts.Commands.SetAccountActiveStatus
 {
@@ -26,7 +29,7 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.SetAccountActi
 
             var spec = new AccountByIdSpecification(request.Id);
             var account = await _uow.AccountRepository.FindAsync(spec);
-            if (account == null) return Result.Failure(new[] { $"Account with ID '{request.Id}' not found." });
+            if (account == null) return Result.Failure(new[] { string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", request.Id) });
             account.IsActive = request.IsActive;
             await _uow.AccountRepository.UpdateAsync(account);
             await _uow.SaveAsync();
@@ -35,3 +38,4 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.SetAccountActi
         }
     }
 }
+

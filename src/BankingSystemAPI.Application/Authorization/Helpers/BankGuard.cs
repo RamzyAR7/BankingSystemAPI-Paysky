@@ -1,15 +1,29 @@
-﻿using BankingSystemAPI.Domain.Common;
+﻿#region Usings
+using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Authorization.Helpers
 {
     public static class BankGuard
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// Validates that both banks are the same for cross-bank operations
         /// </summary>
@@ -104,3 +118,4 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
         }
     }
 }
+

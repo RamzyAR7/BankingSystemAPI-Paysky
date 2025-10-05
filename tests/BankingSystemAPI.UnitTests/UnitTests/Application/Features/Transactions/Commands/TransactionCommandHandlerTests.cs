@@ -1,3 +1,4 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Application.DTOs.Transactions;
 using BankingSystemAPI.Application.Features.Transactions.Commands.Deposit;
@@ -5,6 +6,8 @@ using BankingSystemAPI.UnitTests.TestInfrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
+#endregion
+
 
 namespace BankingSystemAPI.UnitTests.UnitTests.Application.Features.Transactions.Commands;
 
@@ -14,6 +17,17 @@ namespace BankingSystemAPI.UnitTests.UnitTests.Application.Features.Transactions
 /// </summary>
 public class TransactionCommandHandlerTests : TestBase
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     private readonly DepositCommandHandler _depositHandler;
 
     public TransactionCommandHandlerTests()

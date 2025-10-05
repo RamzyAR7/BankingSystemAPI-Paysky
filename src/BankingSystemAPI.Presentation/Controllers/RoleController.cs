@@ -1,4 +1,5 @@
-﻿using BankingSystemAPI.Application.DTOs.Role;
+﻿#region Usings
+using BankingSystemAPI.Application.DTOs.Role;
 using BankingSystemAPI.Application.Features.Identity.Roles.Commands.CreateRole;
 using BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRole;
 using BankingSystemAPI.Application.Features.Identity.Roles.Queries.GetAllRoles;
@@ -8,6 +9,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
@@ -19,6 +22,17 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiExplorerSettings(GroupName = "Roles")]
     public class RoleController : BaseApiController
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         private readonly IMediator _mediator;
 
         public RoleController(IMediator mediator)
@@ -26,9 +40,14 @@ namespace BankingSystemAPI.Presentation.Controllers
             _mediator = mediator;
         }
 
-        /// <summary>
-        /// Get all roles.
-        /// </summary>
+    /// <summary>
+    /// Get all roles.
+    /// </summary>
+    /// <remarks>
+    /// This endpoint returns all roles. It does not accept ordering query parameters; a default ordering
+    /// is applied by the backend. If you need ordering support, please request the feature or use the
+    /// API's pagination to control result sets.
+    /// </remarks>
         [HttpGet("GetAllRoles")]
         [PermissionFilterFactory(Permission.Role.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -87,3 +106,4 @@ namespace BankingSystemAPI.Presentation.Controllers
         }
     }
 }
+

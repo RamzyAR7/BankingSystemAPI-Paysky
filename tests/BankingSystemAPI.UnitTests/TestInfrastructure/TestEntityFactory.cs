@@ -1,5 +1,8 @@
+﻿#region Usings
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.UnitTests.TestInfrastructure;
 
@@ -8,6 +11,17 @@ namespace BankingSystemAPI.UnitTests.TestInfrastructure;
 /// </summary>
 public static class TestEntityFactory
 {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
     public static CheckingAccount CreateCheckingAccount(
         string userId, 
         int currencyId, 

@@ -1,14 +1,28 @@
-﻿using BankingSystemAPI.Domain.Constant;
+﻿#region Usings
+using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Domain.Common;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Interfaces.Authorization
 {
     public interface IAccountAuthorizationService
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// Validates if the current user can view the specified account
         /// </summary>
@@ -35,3 +49,4 @@ namespace BankingSystemAPI.Application.Interfaces.Authorization
         Task<Result<IQueryable<Account>>> FilterAccountsQueryAsync(IQueryable<Account> query);
     }
 }
+

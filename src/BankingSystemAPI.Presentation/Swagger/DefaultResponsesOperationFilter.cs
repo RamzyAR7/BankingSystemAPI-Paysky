@@ -1,5 +1,8 @@
+﻿#region Usings
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
+#endregion
+
 
 namespace BankingSystemAPI.Presentation.Swagger
 {
@@ -9,6 +12,17 @@ namespace BankingSystemAPI.Presentation.Swagger
     /// </summary>
     public class DefaultResponsesOperationFilter : IOperationFilter
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
             // Add 400 Bad Request for endpoints that accept a body (POST/PUT/PATCH)
@@ -38,3 +52,4 @@ namespace BankingSystemAPI.Presentation.Swagger
         }
     }
 }
+

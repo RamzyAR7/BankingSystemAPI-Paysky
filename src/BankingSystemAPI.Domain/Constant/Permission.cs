@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -85,6 +86,7 @@ namespace BankingSystemAPI.Domain.Constant
 
         public static class Transaction
         {
+
             public const string ReadBalance = "Permission.Transaction.ReadBalance";
             public const string Deposit = "Permission.Transaction.Deposit";
             public const string Withdraw = "Permission.Transaction.Withdraw";
@@ -105,3 +107,4 @@ namespace BankingSystemAPI.Domain.Constant
         }
     }
 }
+

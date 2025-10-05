@@ -1,5 +1,8 @@
-﻿using System;
+﻿#region Usings
+using System;
 using System.ComponentModel.DataAnnotations;
+#endregion
+
 
 namespace BankingSystemAPI.Application.DTOs.Currency
 {
@@ -8,6 +11,17 @@ namespace BankingSystemAPI.Application.DTOs.Currency
     /// </summary>
     public class CurrencyDto
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         /// <summary>
         /// Currency identifier.
         /// </summary>
@@ -37,3 +51,4 @@ namespace BankingSystemAPI.Application.DTOs.Currency
         public bool IsActive { get; set; }
     }
 }
+

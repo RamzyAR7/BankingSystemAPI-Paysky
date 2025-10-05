@@ -1,14 +1,28 @@
-﻿using BankingSystemAPI.Application.Interfaces.Repositories;
+﻿#region Usings
+using BankingSystemAPI.Application.Interfaces.Repositories;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Interfaces.UnitOfWork
 {
     public interface IUnitOfWork: IDisposable
     {
+    #region Fields
+    #endregion
+
+    #region Constructors
+    #endregion
+
+    #region Properties
+    #endregion
+
+    #region Methods
+    #endregion
         IRoleRepository RoleRepository { get; }
         IUserRepository UserRepository { get; }
         IAccountRepository AccountRepository { get; }
@@ -28,3 +42,4 @@ namespace BankingSystemAPI.Application.Interfaces.UnitOfWork
         void Dispose();
     }
 }
+

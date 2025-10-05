@@ -1,4 +1,8 @@
+﻿#region Usings
 using FluentValidation;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.CreateRole
 {
@@ -8,9 +12,9 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.CreateRo
         {
             RuleFor(x => x.Name)
                 .NotEmpty()
-                .WithMessage("Role name is required.")
+                .WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Role name"))
                 .MaximumLength(256)
-                .WithMessage("Role name cannot exceed 256 characters.");
+                .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthMaxFormat, "Role name", 256));
         }
     }
 }

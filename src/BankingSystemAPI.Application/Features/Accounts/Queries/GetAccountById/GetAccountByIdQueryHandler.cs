@@ -1,3 +1,4 @@
+﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Application.DTOs.Account;
@@ -7,6 +8,9 @@ using BankingSystemAPI.Application.Specifications.AccountSpecification;
 using System.Collections.Generic;
 using System.Linq;
 using BankingSystemAPI.Application.Interfaces.Authorization;
+using BankingSystemAPI.Domain.Constant;
+#endregion
+
 
 namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountById
 {
@@ -38,10 +42,11 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountById
             var account = await _uow.AccountRepository.FindAsync(spec);
             
             if (account == null)
-                return Result<AccountDto>.Failure(new[] { $"Account with ID '{request.Id}' not found." });
+                return Result<AccountDto>.Failure(new[] { string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", request.Id) });
 
             var dto = _mapper.Map<AccountDto>(account);
             return Result<AccountDto>.Success(dto);
         }
     }
 }
+
