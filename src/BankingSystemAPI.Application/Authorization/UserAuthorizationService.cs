@@ -99,6 +99,14 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         /// </summary>
         public async Task<Result> CanModifyUserAsync(string targetUserId, UserModificationOperation operation)
         {
+            // Allow self password changes immediately
+            if (operation == UserModificationOperation.ChangePassword &&
+                !string.IsNullOrWhiteSpace(_currentUser.UserId) &&
+                string.Equals(_currentUser.UserId, targetUserId, StringComparison.OrdinalIgnoreCase))
+            {
+                return Result.Success();
+            }
+
             var scopeResult = await GetScopeAsync();
             if (scopeResult.IsFailure)
                 return HandleScopeError(scopeResult);

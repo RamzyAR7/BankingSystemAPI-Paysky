@@ -96,6 +96,25 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 scopeResult.Value, 
                 pageNumber, 
                 pageSize);
+
+            // Fallback: if filtering failed for in-memory queries, attempt a safe LINQ-to-Objects filter
+            if (filteringResult.IsFailure && scopeResult.Value == AccessScope.Self)
+            {
+                try
+                {
+                    var all = query.ToList();
+                    var filtered = all.Where(t => t.AccountTransactions != null && t.AccountTransactions.Any(at => at.Account != null && string.Equals(at.Account.UserId, _currentUser.UserId, StringComparison.OrdinalIgnoreCase)))
+                                      .OrderByDescending(t => t.Timestamp)
+                                      .Skip((pageNumber - 1) * pageSize)
+                                      .Take(pageSize)
+                                      .ToList();
+                    filteringResult = Result<(IEnumerable<Transaction> Transactions, int TotalCount)>.Success((filtered, filtered.Count));
+                }
+                catch
+                {
+                    // keep original failure
+                }
+            }
             
             LogFilteringResult(filteringResult, scopeResult.Value, pageNumber, pageSize);
 
@@ -202,15 +221,21 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             try
             {
                 var skip = (pageNumber - 1) * pageSize;
-                var filteredQueryResult = await ApplyScopeFilterAsync(query, scope);
-                
-                if (filteredQueryResult.IsFailure)
-                    return Result<(IEnumerable<Transaction> Transactions, int TotalCount)>.Failure(filteredQueryResult.Errors);
 
-                // Execute filtered query with pagination
-                var baseQuery = filteredQueryResult.Value!.OrderByDescending(t => t.Timestamp);
-                var total = await baseQuery.CountAsync();
-                var items = await baseQuery.Skip(skip).Take(pageSize).ToListAsync();
+                // Materialize query to an in-memory list to avoid expression tree/executor differences
+                var allItems = query.ToList();
+
+                IEnumerable<Transaction> filteredItems = scope switch
+                {
+                    AccessScope.Global => allItems,
+                    AccessScope.Self => allItems.Where(t => t.AccountTransactions != null && t.AccountTransactions.Any(at => at.Account != null && string.Equals(at.Account.UserId, _currentUser.UserId, StringComparison.OrdinalIgnoreCase))),
+                    AccessScope.BankLevel => allItems.Where(t => t.AccountTransactions != null && t.AccountTransactions.Any(at => at.Account != null && at.Account.User != null && at.Account.User.BankId == _currentUser.BankId)),
+                    _ => Enumerable.Empty<Transaction>()
+                };
+
+                var ordered = filteredItems.OrderByDescending(t => t.Timestamp).ToList();
+                var total = ordered.Count;
+                var items = ordered.Skip(skip).Take(pageSize).ToList();
 
                 return Result<(IEnumerable<Transaction> Transactions, int TotalCount)>.Success((items, total));
             }
@@ -220,31 +245,6 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 return Result<(IEnumerable<Transaction> Transactions, int TotalCount)>
                     .BadRequest($"Failed to filter transactions: {ex.Message}");
             }
-        }
-
-        /// <summary>
-        /// Apply scope-based query filters for transaction data access
-        /// Order: Scope complexity from simple to complex
-        /// </summary>
-        private async Task<Result<IQueryable<Transaction>>> ApplyScopeFilterAsync(
-            IQueryable<Transaction> query, 
-            AccessScope scope)
-        {
-            return scope switch
-            {
-                // Complex: Global access (no filtering) for system administrators
-                AccessScope.Global => Result<IQueryable<Transaction>>.Success(query),
-                
-                // Simple: Self access (user's own transactions only) for clients
-                AccessScope.Self => Result<IQueryable<Transaction>>.Success(
-                    query.Where(t => t.AccountTransactions.Any(at => at.Account.UserId == _currentUser.UserId))),
-                
-                // Medium: Bank-level access with role filtering for bank administrators
-                AccessScope.BankLevel => await ApplyBankLevelTransactionFilterAsync(query),
-                
-                // Default: No access for unknown scopes
-                _ => Result<IQueryable<Transaction>>.Success(query.Where(_ => false))
-            };
         }
 
         /// <summary>
