@@ -25,7 +25,7 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.SetAccountActi
         {
             var authResult = await _accountAuth.CanModifyAccountAsync(request.Id, AccountModificationOperation.Edit);
             if (authResult.IsFailure)
-                return Result.Failure(authResult.Errors);
+                return Result.Failure(authResult.ErrorItems);
 
             var spec = new AccountByIdSpecification(request.Id);
             var account = await _uow.AccountRepository.FindAsync(spec);

@@ -61,7 +61,7 @@ namespace BankingSystemAPI.UnitTests.UnitTests.Presentation
         }
 
         [Fact]
-        public void HandleResult_Generic_NotFound_Returns404()
+        public void HandleResult_Generic_NotFound_Returns404_And_StructuredError()
         {
             var controller = new TestController();
             var ctx = CreateHttpContext("GET");
@@ -72,6 +72,26 @@ namespace BankingSystemAPI.UnitTests.UnitTests.Presentation
 
             var obj = Assert.IsAssignableFrom<ObjectResult>(actionResult);
             Assert.Equal(404, obj.StatusCode);
+
+            // Validate structured error body
+            var body = obj.Value ?? throw new Xunit.Sdk.XunitException("Response body was null");
+            var msgProp = body.GetType().GetProperty("message");
+            Assert.NotNull(msgProp);
+            var message = msgProp.GetValue(body) as string;
+            Assert.False(string.IsNullOrWhiteSpace(message));
+            Assert.Contains("User", message, StringComparison.OrdinalIgnoreCase);
+
+            var errorsProp = body.GetType().GetProperty("errors");
+            Assert.NotNull(errorsProp);
+            var errorsVal = errorsProp.GetValue(body) as System.Collections.IEnumerable;
+            Assert.NotNull(errorsVal);
+
+            var first = errorsVal.Cast<object>().FirstOrDefault();
+            Assert.NotNull(first);
+            var typeProp = first.GetType().GetProperty("type");
+            Assert.NotNull(typeProp);
+            var typeVal = typeProp.GetValue(first) as string;
+            Assert.Equal("NotFound", typeVal);
         }
 
         [Fact]
@@ -122,7 +142,7 @@ namespace BankingSystemAPI.UnitTests.UnitTests.Presentation
         }
 
         [Fact]
-        public void HandleResult_InsufficientFunds_ReturnsConflict()
+        public void HandleResult_InsufficientFunds_ReturnsConflict_And_StructuredError()
         {
             var controller = new TestController();
             var ctx = CreateHttpContext("POST");
@@ -133,6 +153,18 @@ namespace BankingSystemAPI.UnitTests.UnitTests.Presentation
 
             var obj = Assert.IsAssignableFrom<ObjectResult>(actionResult);
             Assert.Equal(409, obj.StatusCode);
+
+            var body = obj.Value ?? throw new Xunit.Sdk.XunitException("Response body was null");
+            var errorsProp = body.GetType().GetProperty("errors");
+            Assert.NotNull(errorsProp);
+            var errorsVal = errorsProp.GetValue(body) as System.Collections.IEnumerable;
+            Assert.NotNull(errorsVal);
+            var first = errorsVal.Cast<object>().FirstOrDefault();
+            Assert.NotNull(first);
+            var typeProp = first.GetType().GetProperty("type");
+            Assert.NotNull(typeProp);
+            var typeVal = typeProp.GetValue(first) as string;
+            Assert.Equal("BusinessRule", typeVal);
         }
     }
 }

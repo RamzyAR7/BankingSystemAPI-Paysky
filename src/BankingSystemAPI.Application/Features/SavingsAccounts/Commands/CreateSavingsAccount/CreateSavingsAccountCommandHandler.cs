@@ -44,15 +44,15 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
             // Chain authorization, validation, and creation using ResultExtensions
             var authResult = await ValidateAuthorizationAsync(req.UserId);
             if (authResult.IsFailure)
-                return Result<SavingsAccountDto>.Failure(authResult.Errors);
+                return Result<SavingsAccountDto>.Failure(authResult.ErrorItems);
 
             var currencyResult = await ValidateCurrencyAsync(req.CurrencyId);
             if (currencyResult.IsFailure)
-                return Result<SavingsAccountDto>.Failure(currencyResult.Errors);
+                return Result<SavingsAccountDto>.Failure(currencyResult.ErrorItems);
 
             var userResult = await ValidateUserAsync(req.UserId);
             if (userResult.IsFailure)
-                return Result<SavingsAccountDto>.Failure(userResult.Errors);
+                return Result<SavingsAccountDto>.Failure(userResult.ErrorItems);
 
             var createResult = await CreateSavingsAccountAsync(req, currencyResult.Value!);
             
@@ -76,7 +76,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
                 var authResult = await _accountAuth.CanCreateAccountForUserAsync(userId);
                 return authResult.IsSuccess 
                     ? Result.Success() 
-                    : Result.Failure(authResult.Errors);
+                    : Result.Failure(authResult.ErrorItems);
             }
             catch (Exception ex)
             {

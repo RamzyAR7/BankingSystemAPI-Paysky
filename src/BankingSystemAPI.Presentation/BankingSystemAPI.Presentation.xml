@@ -195,15 +195,6 @@
             404 Not Found may be returned by the implementation if the bank does not exist.
             </returns>
         </member>
-        <member name="T:BankingSystemAPI.Presentation.Controllers.BaseApiController">
-            <summary>
-            Base controller providing consistent Result pattern handling with proper HTTP status codes
-            Simplified implementation preserving original behavior. Separated responsibilities:
-            - message selection/logging remain here
-            - error -> HTTP mapping moved to IErrorResponseFactory
-            - success message generation delegated to ISuccessMessageProvider
-            </summary>
-        </member>
         <member name="T:BankingSystemAPI.Presentation.Controllers.CheckingAccountController">
             <summary>
             Endpoints to manage checking accounts.

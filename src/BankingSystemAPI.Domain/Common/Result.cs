@@ -1,193 +1,183 @@
 ﻿#region Usings
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using BankingSystemAPI.Domain.Constant;
 #endregion
-
 
 namespace BankingSystemAPI.Domain.Common
 {
     /// <summary>
-    /// Enhanced operation result without a value following best practices.
-    /// Now includes semantic factory methods for proper HTTP status code mapping.
+    /// Structured metadata for an error (optional)
     /// </summary>
-    public class Result
-    {
-        public bool IsSuccess { get; private set; }
-        public bool IsFailure => !IsSuccess;
-        public IReadOnlyList<string> Errors { get; private set; }
-        public string ErrorMessage => string.Join("; ", Errors);
+    public sealed record ResultErrorDetails(string? Field = null, string? Code = null, object? Metadata = null);
 
-        protected Result(bool isSuccess, IEnumerable<string> errors)
+    /// <summary>
+    /// Single error item used by Result. Immutable and strongly typed.
+    /// </summary>
+    public sealed record ResultError(ErrorType Type, string Message, ResultErrorDetails? Details = null);
+
+    /// <summary>
+    /// Enhanced operation result without a value. Immutable (record class).
+    /// Preserves backward-compatible string Errors list while exposing structured errors.
+    /// </summary>
+    public record class Result
+    {
+        // Internal list of structured errors
+        private readonly IReadOnlyList<ResultError> _errorItems;
+        private readonly string _errorMessageCache; // cache joined message to avoid repeated joins
+
+        public bool IsSuccess { get; init; }
+        public bool IsFailure => !IsSuccess;
+
+        // Structured errors (new API)
+        public IReadOnlyList<ResultError> ErrorItems => _errorItems;
+
+        // Backwards-compatible view: plain strings
+        public IReadOnlyList<string> Errors { get; init; }
+
+        // Cached joined message (same semantics as previous code)
+        public string ErrorMessage => _errorMessageCache;
+
+        // Primary error type derived from first error or Unknown
+        public ErrorType PrimaryErrorType => _errorItems.Count > 0 ? _errorItems[0].Type : ErrorType.Unknown;
+
+        // Resolve HTTP status code using centralized mapper
+        public int StatusCode => ResultErrorMapper.MapToStatusCode(PrimaryErrorType);
+
+        // Protected ctor used by factory methods
+        protected Result(bool isSuccess, IReadOnlyList<ResultError> errorItems)
         {
             IsSuccess = isSuccess;
-            Errors = errors?.ToList().AsReadOnly() ?? new List<string>().AsReadOnly();
+            _errorItems = errorItems ?? Array.Empty<ResultError>();
+            Errors = new ReadOnlyCollection<string>(_errorItems.Select(e => e.Message).ToList());
+            _errorMessageCache = string.Join("; ", Errors);
         }
 
-        public static Result Success() => new Result(true, Enumerable.Empty<string>());
-        
-        public static Result Failure(params string[] errors) => new Result(false, errors);
-        
-        public static Result Failure(IEnumerable<string> errors) => new Result(false, errors);
+        // Success factory
+        public static Result Success() => new Result(true, Array.Empty<ResultError>());
 
-        // Semantic factory methods for different HTTP status scenarios
+        // Failure factories - keep overloads for backward compatibility
+        [Obsolete("Use structured Result.Failure(ResultError...) overloads instead.")]
+        public static Result Failure(params string[] errors) =>
+            Failure(errors.Select(m => new ResultError(ErrorType.Validation, m)).ToArray());
 
-        /// <summary>
-        /// Creates a Not Found result (404) - Resource doesn't exist
-        /// </summary>
-        public static Result NotFound(string entity, object id) => 
-            Failure(string.Format(ApiResponseMessages.BankingErrors.NotFoundFormat, entity, id));
+        [Obsolete("Use structured Result.Failure(IEnumerable<ResultError>) overload instead.")]
+        public static Result Failure(IEnumerable<string> errors) =>
+            Failure(errors?.Select(m => new ResultError(ErrorType.Validation, m)) ?? Enumerable.Empty<ResultError>());
 
-        public static Result NotFound(string message) => 
-            Failure(message.Contains("not found", StringComparison.OrdinalIgnoreCase) ? message : string.Format(ApiResponseMessages.BankingErrors.NotFoundFormat, message, ""));
+        // Structured failure overloads
+        public static Result Failure(params ResultError[] errors) =>
+            new Result(false, errors?.ToList().AsReadOnly() ?? new List<ResultError>().AsReadOnly());
 
-        /// <summary>
-        /// Creates an Unauthorized result (401) - Authentication required
-        /// </summary>
-        public static Result Unauthorized(string message = null) => 
-            Failure(message ?? ApiResponseMessages.ErrorPatterns.NotAuthenticated);
+        public static Result Failure(IEnumerable<ResultError> errors) =>
+            new Result(false, errors?.ToList().AsReadOnly() ?? new List<ResultError>().AsReadOnly());
 
-        /// <summary>
-        /// Creates a Forbidden result (403) - Insufficient permissions
-        /// </summary>
-        public static Result Forbidden(string message = null) => 
-            Failure(message ?? ApiResponseMessages.ErrorPatterns.AccessDenied);
+        // Overloads that accept ErrorType (recommended)
+        public static Result Failure(ErrorType type, string message, ResultErrorDetails? details = null) =>
+            Failure(new ResultError(type, message, details));
 
-        /// <summary>
-        /// Creates a Bad Request result (400) - Invalid input/request format
-        /// </summary>
-        public static Result BadRequest(string message) => 
-            Failure(message);
+        // Semantic factory methods - produce generic messages (domain-layer should not reference UI constants)
+        public static Result NotFound(string entity, object id) =>
+            Failure(ErrorType.NotFound, string.Format("{0} with id {1} was not found.", entity, id));
 
-        /// <summary>
-        /// Creates a Conflict result (409) - Business rule violation or resource conflict
-        /// </summary>
-        public static Result Conflict(string message) => 
-            Failure(message);
+        public static Result Unauthorized(string message = null) =>
+            Failure(ErrorType.Unauthorized, message ?? "Not authenticated.");
 
-        /// <summary>
-        /// Creates an Unprocessable Entity result (422) - Valid format but business validation failed
-        /// </summary>
-        public static Result ValidationFailed(string message) => 
-            Failure(message);
+        public static Result Forbidden(string message = null) =>
+            Failure(ErrorType.Forbidden, message ?? "Access denied.");
 
-        public static Result ValidationFailed(params string[] validationErrors) => 
-            Failure(validationErrors);
+        public static Result BadRequest(string message) =>
+            Failure(ErrorType.Validation, message);
 
-        // Common business scenarios for banking system
+        public static Result Conflict(string message) =>
+            Failure(ErrorType.Conflict, message);
 
-        /// <summary>
-        /// Creates a result for insufficient funds scenario
-        /// </summary>
-        public static Result InsufficientFunds(decimal requested, decimal available) => 
-            Failure(string.Format(ApiResponseMessages.BankingErrors.InsufficientFundsFormat, requested.ToString("C"), available.ToString("C")));
+        public static Result ValidationFailed(string message) =>
+            Failure(ErrorType.Validation, message);
 
-        /// <summary>
-        /// Creates a result for inactive account scenario
-        /// </summary>
-        public static Result AccountInactive(string accountNumber) => 
-            Failure(string.Format(ApiResponseMessages.BankingErrors.AccountInactiveFormat, accountNumber));
+        public static Result InsufficientFunds(decimal requested, decimal available) =>
+            Failure(ErrorType.BusinessRule, string.Format("Insufficient funds: requested {0}, available {1}.", requested.ToString("C"), available.ToString("C")));
 
-        /// <summary>
-        /// Creates a result for duplicate resource scenario
-        /// </summary>
-        public static Result AlreadyExists(string entity, string identifier) => 
-            Failure(string.Format(ApiResponseMessages.BankingErrors.AlreadyExistsFormat, entity, identifier));
+        public static Result AccountInactive(string accountNumber) =>
+            Failure(ErrorType.BusinessRule, string.Format("Account {0} is inactive.", accountNumber));
 
-        /// <summary>
-        /// Creates a result for invalid credentials scenario
-        /// </summary>
-        public static Result InvalidCredentials(string message = null) => 
-            Failure(message ?? ApiResponseMessages.ErrorPatterns.InvalidCredentials);
-
-        /// <summary>
-        /// Creates a result for expired token scenario
-        /// </summary>
-        public static Result TokenExpired(string message = null) => 
-            Failure(message ?? ApiResponseMessages.ErrorPatterns.TokenExpired);
-
-        // Implicit conversion for easier usage
-        public static implicit operator bool(Result result) => result.IsSuccess;
-
-        // Combine multiple results
+        // Combine multiple results: returns Success if all success; otherwise collects errors (preserves messages)
         public static Result Combine(params Result[] results)
         {
-            var failures = results.Where(r => !r).ToList(); // Using implicit bool operator!
+            if (results == null || results.Length == 0) return Success();
+
+            var failures = results.Where(r => r.IsFailure).ToList();
             if (!failures.Any()) return Success();
-            
-            var allErrors = failures.SelectMany(r => r.Errors);
-            return Failure(allErrors);
+
+            var combinedErrors = failures.SelectMany(r => r.ErrorItems).ToList();
+            return Failure(combinedErrors);
         }
+
+        // Implicit conversion to bool for compatibility
+        public static implicit operator bool(Result result) => result is not null && result.IsSuccess;
     }
 
     /// <summary>
-    /// Enhanced operation result with a value following best practices.
-    /// Includes semantic factory methods for proper HTTP status code mapping.
+    /// Generic Result with value. Immutable (record class) and backward-compatible.
     /// </summary>
-    public class Result<T> : Result
+    public record class Result<T> : Result
     {
-        public T? Value { get; private set; }
+        public T? Value { get; init; }
 
-        private Result(bool isSuccess, T? value, IEnumerable<string> errors) 
+        private Result(bool isSuccess, T? value, IReadOnlyList<ResultError> errors)
             : base(isSuccess, errors)
         {
             Value = value;
         }
 
-        public static Result<T> Success(T value) => 
-            new Result<T>(true, value, Enumerable.Empty<string>());
-        
-        public static new Result<T> Failure(params string[] errors) => 
-            new Result<T>(false, default, errors);
-        
-        public static new Result<T> Failure(IEnumerable<string> errors) => 
-            new Result<T>(false, default, errors);
+        // Success / Failure factories
+        public static Result<T> Success(T value) => new Result<T>(true, value, Array.Empty<ResultError>());
+        public static new Result<T> Failure(params string[] errors) =>
+            Failure(errors?.Select(m => new ResultError(ErrorType.Validation, m)) ?? Enumerable.Empty<ResultError>());
 
-        // Semantic factory methods for different HTTP status scenarios
+        public static new Result<T> Failure(IEnumerable<string> errors) =>
+            Failure(errors?.Select(m => new ResultError(ErrorType.Validation, m)) ?? Enumerable.Empty<ResultError>());
 
-        public static new Result<T> NotFound(string entity, object id) => 
-            Failure(string.Format(ApiResponseMessages.BankingErrors.NotFoundFormat, entity, id));
+        public static Result<T> Failure(params ResultError[] errors) =>
+            new Result<T>(false, default, errors?.ToList().AsReadOnly() ?? new List<ResultError>().AsReadOnly());
 
-        public static new Result<T> NotFound(string message) => 
-            Failure(message.Contains("not found", StringComparison.OrdinalIgnoreCase) ? message : string.Format(ApiResponseMessages.BankingErrors.NotFoundFormat, message, ""));
+        public static Result<T> Failure(IEnumerable<ResultError> errors) =>
+            new Result<T>(false, default, errors?.ToList().AsReadOnly() ?? new List<ResultError>().AsReadOnly());
 
-        public static new Result<T> Unauthorized(string message = null) => 
-            Failure(message ?? ApiResponseMessages.ErrorPatterns.NotAuthenticated);
+        public static Result<T> Failure(ErrorType type, string message, ResultErrorDetails? details = null) =>
+            Failure(new ResultError(type, message, details));
 
-        public static new Result<T> Forbidden(string message = null) => 
-            Failure(message ?? ApiResponseMessages.ErrorPatterns.AccessDenied);
+        // Semantic factories
+        public static new Result<T> NotFound(string entity, object id) =>
+            Failure(ErrorType.NotFound, string.Format("{0} with id {1} was not found.", entity, id));
 
-        public static new Result<T> BadRequest(string message) => 
-            Failure(message);
+        public static new Result<T> NotFound(string message) =>
+            Failure(ErrorType.NotFound, message.Contains("not found", StringComparison.OrdinalIgnoreCase)
+                ? message
+                : string.Format("{0} not found.", message));
 
-        public static new Result<T> Conflict(string message) => 
-            Failure(message);
+        public static new Result<T> Unauthorized(string message = null) =>
+            Failure(ErrorType.Unauthorized, message ?? "Not authenticated.");
 
-        public static new Result<T> ValidationFailed(string message) => 
-            Failure(message);
+        public static new Result<T> Forbidden(string message = null) =>
+            Failure(ErrorType.Forbidden, message ?? "Access denied.");
 
-        public static new Result<T> ValidationFailed(params string[] validationErrors) => 
-            Failure(validationErrors);
+        public static new Result<T> BadRequest(string message) =>
+            Failure(ErrorType.Validation, message);
 
-        // Common business scenarios for banking system
+        public static new Result<T> Conflict(string message) =>
+            Failure(ErrorType.Conflict, message);
 
-        public static new Result<T> InsufficientFunds(decimal requested, decimal available) => 
-            Failure(string.Format(ApiResponseMessages.BankingErrors.InsufficientFundsFormat, requested.ToString("C"), available.ToString("C")));
+        public static new Result<T> ValidationFailed(string message) =>
+            Failure(ErrorType.Validation, message);
 
-        public static new Result<T> AccountInactive(string accountNumber) => 
-            Failure(string.Format(ApiResponseMessages.BankingErrors.AccountInactiveFormat, accountNumber));
+        public static new Result<T> InsufficientFunds(decimal requested, decimal available) =>
+            Failure(ErrorType.BusinessRule, string.Format("Insufficient funds: requested {0}, available {1}.", requested.ToString("C"), available.ToString("C")));
 
-        public static new Result<T> AlreadyExists(string entity, string identifier) => 
-            Failure(string.Format(ApiResponseMessages.BankingErrors.AlreadyExistsFormat, entity, identifier));
-
-        public static new Result<T> InvalidCredentials(string message = null) => 
-            Failure(message ?? ApiResponseMessages.ErrorPatterns.InvalidCredentials);
-
-        public static new Result<T> TokenExpired(string message = null) => 
-            Failure(message ?? ApiResponseMessages.ErrorPatterns.TokenExpired);
+        public static new Result<T> InvalidCredentials(string message = null) =>
+            Failure(ErrorType.Unauthorized, message ?? "Email or password is incorrect.");
 
         // Implicit conversion from value
         public static implicit operator Result<T>(T value) => Success(value);

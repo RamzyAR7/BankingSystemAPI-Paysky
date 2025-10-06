@@ -66,19 +66,19 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
             // Chain validations using ResultExtensions
             var accountResult = await ValidateAccountAsync(req.AccountId);
             if (accountResult.IsFailure)
-                return Result<TransactionResDto>.Failure(accountResult.Errors);
+                return Result<TransactionResDto>.Failure(accountResult.ErrorItems);
 
             var stateResult = await ValidateAccountStateAsync(accountResult.Value!);
             if (stateResult.IsFailure)
-                return Result<TransactionResDto>.Failure(stateResult.Errors);
+                return Result<TransactionResDto>.Failure(stateResult.ErrorItems);
 
             var bankResult = await ValidateBankAsync(stateResult.Value!);
             if (bankResult.IsFailure)
-                return Result<TransactionResDto>.Failure(bankResult.Errors);
+                return Result<TransactionResDto>.Failure(bankResult.ErrorItems);
 
             var amountResult = ValidateWithdrawalAmount(bankResult.Value!, req.Amount);
             if (amountResult.IsFailure)
-                return Result<TransactionResDto>.Failure(amountResult.Errors);
+                return Result<TransactionResDto>.Failure(amountResult.ErrorItems);
 
             var account = amountResult.Value!;
             var executionResult = await ExecuteWithdrawalAsync(account, req);
@@ -143,7 +143,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
             // Authorization
             var authResult = await _accountAuth.CanModifyAccountAsync(req.AccountId, AccountModificationOperation.Withdraw);
             if (authResult.IsFailure)
-                return Result<TransactionResDto>.Failure(authResult.Errors);
+                return Result<TransactionResDto>.Failure(authResult.ErrorItems);
 
             Transaction trx = null;
 

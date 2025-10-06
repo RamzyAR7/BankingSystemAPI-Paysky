@@ -76,15 +76,15 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
             // Chain validations using ResultExtensions
             var accountResult = await ValidateAccountAsync(req.AccountId);
             if (!accountResult) // Using implicit bool operator!
-                return Result<TransactionResDto>.Failure(accountResult.Errors);
+                return Result<TransactionResDto>.Failure(accountResult.ErrorItems);
 
             var stateResult = ValidateAccountState(accountResult.Value!);
             if (!stateResult) // Using implicit bool operator!
-                return Result<TransactionResDto>.Failure(stateResult.Errors);
+                return Result<TransactionResDto>.Failure(stateResult.ErrorItems);
 
             var bankResult = await ValidateBankAsync(stateResult.Value!);
             if (!bankResult) // Using implicit bool operator!
-                return Result<TransactionResDto>.Failure(bankResult.Errors);
+                return Result<TransactionResDto>.Failure(bankResult.ErrorItems);
 
             var account = bankResult.Value!;
             var executionResult = await ExecuteDepositAsync(account, req);
@@ -133,7 +133,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
             // Authorization
             var authResult = await _accountAuth.CanModifyAccountAsync(req.AccountId, AccountModificationOperation.Deposit);
             if (authResult.IsFailure)
-                return Result<TransactionResDto>.Failure(authResult.Errors);
+                return Result<TransactionResDto>.Failure(authResult.ErrorItems);
 
             Transaction trx = null;
 

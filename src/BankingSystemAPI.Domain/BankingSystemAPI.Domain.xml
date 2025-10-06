@@ -4,141 +4,50 @@
         <name>BankingSystemAPI.Domain</name>
     </assembly>
     <members>
+        <member name="T:BankingSystemAPI.Domain.Common.ResultErrorDetails">
+            <summary>
+            Structured metadata for an error (optional)
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Common.ResultErrorDetails.#ctor(System.String,System.String,System.Object)">
+            <summary>
+            Structured metadata for an error (optional)
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Common.ResultError">
+            <summary>
+            Single error item used by Result. Immutable and strongly typed.
+            </summary>
+        </member>
+        <member name="M:BankingSystemAPI.Domain.Common.ResultError.#ctor(BankingSystemAPI.Domain.Constant.ErrorType,System.String,BankingSystemAPI.Domain.Common.ResultErrorDetails)">
+            <summary>
+            Single error item used by Result. Immutable and strongly typed.
+            </summary>
+        </member>
         <member name="T:BankingSystemAPI.Domain.Common.Result">
             <summary>
-            Enhanced operation result without a value following best practices.
-            Now includes semantic factory methods for proper HTTP status code mapping.
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Common.Result.NotFound(System.String,System.Object)">
-            <summary>
-            Creates a Not Found result (404) - Resource doesn't exist
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Common.Result.Unauthorized(System.String)">
-            <summary>
-            Creates an Unauthorized result (401) - Authentication required
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Common.Result.Forbidden(System.String)">
-            <summary>
-            Creates a Forbidden result (403) - Insufficient permissions
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Common.Result.BadRequest(System.String)">
-            <summary>
-            Creates a Bad Request result (400) - Invalid input/request format
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Common.Result.Conflict(System.String)">
-            <summary>
-            Creates a Conflict result (409) - Business rule violation or resource conflict
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Common.Result.ValidationFailed(System.String)">
-            <summary>
-            Creates an Unprocessable Entity result (422) - Valid format but business validation failed
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Common.Result.InsufficientFunds(System.Decimal,System.Decimal)">
-            <summary>
-            Creates a result for insufficient funds scenario
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Common.Result.AccountInactive(System.String)">
-            <summary>
-            Creates a result for inactive account scenario
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Common.Result.AlreadyExists(System.String,System.String)">
-            <summary>
-            Creates a result for duplicate resource scenario
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Common.Result.InvalidCredentials(System.String)">
-            <summary>
-            Creates a result for invalid credentials scenario
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Common.Result.TokenExpired(System.String)">
-            <summary>
-            Creates a result for expired token scenario
+            Enhanced operation result without a value. Immutable (record class).
+            Preserves backward-compatible string Errors list while exposing structured errors.
             </summary>
         </member>
         <member name="T:BankingSystemAPI.Domain.Common.Result`1">
             <summary>
-            Enhanced operation result with a value following best practices.
-            Includes semantic factory methods for proper HTTP status code mapping.
+            Generic Result with value. Immutable (record class) and backward-compatible.
             </summary>
         </member>
-        <member name="T:BankingSystemAPI.Domain.Extensions.ResultExtensions">
+        <member name="T:BankingSystemAPI.Domain.Common.ResultErrorMapper">
             <summary>
-            Extension methods for Result pattern to improve usability
+            Centralized mapping between ErrorType and HTTP status codes.
+            Keeps HTTP mapping consolidated and easy to change/test.
             </summary>
         </member>
-        <member name="M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccess(BankingSystemAPI.Domain.Common.Result,System.Action)">
+        <member name="T:BankingSystemAPI.Domain.Common.ResultFactory">
             <summary>
-            Execute action if result is successful
+            Helper to construct Result and Result{T} instances via reflection in a centralized place.
+            This isolates reflection usage and simplifies testing.
             </summary>
         </member>
-        <member name="M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnFailure(BankingSystemAPI.Domain.Common.Result,System.Action{System.Collections.Generic.IReadOnlyList{System.String}})">
-            <summary>
-            Execute action if result fails
-            </summary>
-        </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccess``1(BankingSystemAPI.Domain.Common.Result{``0},System.Action)" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnFailure``1(BankingSystemAPI.Domain.Common.Result{``0},System.Action{System.Collections.Generic.IReadOnlyList{System.String}})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccess``1(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}},System.Action)" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnFailure``1(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}},System.Action{System.Collections.Generic.IReadOnlyList{System.String}})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccess(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result},System.Action)" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnFailure(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result},System.Action{System.Collections.Generic.IReadOnlyList{System.String}})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.Map``2(BankingSystemAPI.Domain.Common.Result{``0},System.Func{``0,``1})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.MapAsync``2(BankingSystemAPI.Domain.Common.Result{``0},System.Func{``0,System.Threading.Tasks.Task{``1}})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.MapAsync``2(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}},System.Func{``0,System.Threading.Tasks.Task{``1}})" -->
-        <member name="M:BankingSystemAPI.Domain.Extensions.ResultExtensions.Bind``2(BankingSystemAPI.Domain.Common.Result{``0},System.Func{``0,BankingSystemAPI.Domain.Common.Result{``1}})">
-            <summary>
-            Bind operation - chain Results together
-            </summary>
-        </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.Bind``1(BankingSystemAPI.Domain.Common.Result{``0},System.Func{``0,BankingSystemAPI.Domain.Common.Result})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.Bind``1(BankingSystemAPI.Domain.Common.Result,System.Func{BankingSystemAPI.Domain.Common.Result{``0}})" -->
-        <member name="M:BankingSystemAPI.Domain.Extensions.ResultExtensions.Bind(BankingSystemAPI.Domain.Common.Result,System.Func{BankingSystemAPI.Domain.Common.Result})">
-            <summary>
-            Bind operation - chain Result to Result
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Extensions.ResultExtensions.BindAsync``2(BankingSystemAPI.Domain.Common.Result{``0},System.Func{``0,System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``1}}})">
-            <summary>
-            Bind operation - chain Results together (async)
-            </summary>
-        </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.BindAsync``1(BankingSystemAPI.Domain.Common.Result{``0},System.Func{``0,System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result}})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.BindAsync``1(BankingSystemAPI.Domain.Common.Result,System.Func{System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}}})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.BindAsync(BankingSystemAPI.Domain.Common.Result,System.Func{System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result}})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.BindAsync``2(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}},System.Func{``0,System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``1}}})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.BindAsync``1(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}},System.Func{``0,System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result}})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.BindAsync``1(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result},System.Func{System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}}})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.BindAsync(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result},System.Func{System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result}})" -->
-        <member name="M:BankingSystemAPI.Domain.Extensions.ResultExtensions.ValidateAll(BankingSystemAPI.Domain.Common.Result[])">
-            <summary>
-            Validate multiple results and return combined result
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Extensions.ResultExtensions.ToResult``1(``0,System.String)">
-            <summary>
-            Convert nullable value to Result
-            </summary>
-        </member>
-        <member name="M:BankingSystemAPI.Domain.Extensions.ResultExtensions.ToResult``1(System.Nullable{``0},System.String)">
-            <summary>
-            Convert nullable value to Result (value types)
-            </summary>
-        </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.ToResult``1(BankingSystemAPI.Domain.Common.Result{``0})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.ToResultAsync``1(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccessToResult``1(BankingSystemAPI.Domain.Common.Result{``0},System.Action{``0})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccessToResultAsync``1(BankingSystemAPI.Domain.Common.Result{``0},System.Func{``0,System.Threading.Tasks.Task})" -->
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Extensions.ResultExtensions.OnSuccessToResultAsync``1(System.Threading.Tasks.Task{BankingSystemAPI.Domain.Common.Result{``0}},System.Func{``0,System.Threading.Tasks.Task})" -->
+        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Common.ResultFactory.CreateGenericFailure(System.Type,System.Collections.Generic.IEnumerable{BankingSystemAPI.Domain.Common.ResultError})" -->
         <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages">
             <summary>
             Constants for API response messages to maintain consistency and improve maintainability
@@ -301,6 +210,11 @@
         <member name="F:BankingSystemAPI.Domain.Constant.AuthorizationCheckType.Administrate">
             <summary>
             Check if user can perform administrative operations
+            </summary>
+        </member>
+        <member name="T:BankingSystemAPI.Domain.Constant.ErrorType">
+            <summary>
+            Strongly-typed error category for Result pattern
             </summary>
         </member>
         <member name="T:BankingSystemAPI.Domain.Constant.InterestType">

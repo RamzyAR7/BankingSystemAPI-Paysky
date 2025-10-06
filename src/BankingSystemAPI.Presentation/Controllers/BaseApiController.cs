@@ -11,13 +11,6 @@ using BankingSystemAPI.Presentation.Services;
 
 namespace BankingSystemAPI.Presentation.Controllers
 {
-    /// <summary>
-    /// Base controller providing consistent Result pattern handling with proper HTTP status codes
-    /// Simplified implementation preserving original behavior. Separated responsibilities:
-    /// - message selection/logging remain here
-    /// - error -> HTTP mapping moved to IErrorResponseFactory
-    /// - success message generation delegated to ISuccessMessageProvider
-    /// </summary>
     [ApiController]
     public abstract class BaseApiController : ControllerBase
     {
@@ -35,7 +28,7 @@ namespace BankingSystemAPI.Presentation.Controllers
             }
 
             LogFailure(result.Errors);
-            return CreateErrorResponse(result.Errors);
+            return CreateErrorResponse(result);
         }
         protected IActionResult HandleResult(Result result)
         {
@@ -46,7 +39,7 @@ namespace BankingSystemAPI.Presentation.Controllers
             }
 
             LogFailure(result.Errors);
-            return CreateErrorResponse(result.Errors);
+            return CreateErrorResponse(result);
         }
 
         protected IActionResult HandleUpdateResult<T>(Result<T> result)
@@ -73,7 +66,7 @@ namespace BankingSystemAPI.Presentation.Controllers
             }
 
             LogFailure(result.Errors);
-            return CreateErrorResponse(result.Errors);
+            return CreateErrorResponse(result);
         }
 
         protected IActionResult HandleCreatedResult<T>(Result<T> result, string actionName = "", object? routeValues = null)
@@ -81,7 +74,7 @@ namespace BankingSystemAPI.Presentation.Controllers
             if (!result.IsSuccess)
             {
                 LogFailure(result.Errors);
-                return CreateErrorResponse(result.Errors);
+                return CreateErrorResponse(result);
             }
 
             Logger.LogInformation("Resource created successfully. Controller: {Controller}, Action: {Action}", GetControllerName(), GetActionName());
@@ -121,9 +114,10 @@ namespace BankingSystemAPI.Presentation.Controllers
         #endregion
 
         #region Error Response
-        private IActionResult CreateErrorResponse(IReadOnlyList<string> errors)
+        private IActionResult CreateErrorResponse(Result result)
         {
-            var (statusCode, body) = ErrorFactory.Create(errors);
+            var (statusCode, body) = ErrorFactory.Create(result.ErrorItems);
+
             return statusCode switch
             {
                 401 => Unauthorized(body),

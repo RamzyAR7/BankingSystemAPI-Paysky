@@ -6,6 +6,10 @@ using BankingSystemAPI.Domain.Extensions;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
 using BankingSystemAPI.Domain.Constant;
+using FluentValidation.Results;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 #endregion
 
 
@@ -38,7 +42,7 @@ namespace BankingSystemAPI.Application.Behaviors
             
             if (validationResult.IsFailure)
             {
-                return CreateValidationFailureResponse(validationResult.Errors, typeof(TRequest).Name);
+                return CreateValidationFailureResponse(validationResult.ErrorItems, typeof(TRequest).Name);
             }
 
             // Log successful validation using ResultExtensions
@@ -65,14 +69,20 @@ namespace BankingSystemAPI.Application.Behaviors
                 if (!failures.Any())
                     return Result.Success();
 
-                // Prepare distinct error messages
-                var errors = failures
-                    .Select(e => e.ErrorMessage)
-                    .Where(m => !string.IsNullOrWhiteSpace(m))
-                    .Distinct()
-                    .ToArray();
+                // Convert FluentValidation failures to structured ResultError items
+                var structuredErrors = failures
+                    .Select(f => new ResultError(
+                        ErrorType.Validation,
+                        f.ErrorMessage ?? "Validation failed",
+                        new ResultErrorDetails(
+                            Field: f.PropertyName,
+                            Code: f.ErrorCode,
+                            Metadata: f.AttemptedValue
+                        )
+                    ))
+                    .ToList();
 
-                var validationFailureResult = Result.Failure(errors);
+                var validationFailureResult = Result.Failure(structuredErrors);
                 
                 // Use ResultExtensions for structured validation failure logging
                 validationFailureResult.OnFailure(errs => 
@@ -91,7 +101,7 @@ namespace BankingSystemAPI.Application.Behaviors
             }
         }
 
-        private TResponse CreateValidationFailureResponse(IReadOnlyList<string> errors, string requestTypeName)
+        private TResponse CreateValidationFailureResponse(IReadOnlyList<ResultError> errors, string requestTypeName)
         {
             // If the pipeline response is a Result (non-generic)
             if (typeof(TResponse) == typeof(Result))
@@ -111,7 +121,7 @@ namespace BankingSystemAPI.Application.Behaviors
             {
                 var genericArg = responseType.GetGenericArguments()[0];
                 var resultGenericType = typeof(Result<>).MakeGenericType(genericArg);
-                var failureMethod = resultGenericType.GetMethod("Failure", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(IEnumerable<string>) }, null);
+                var failureMethod = resultGenericType.GetMethod("Failure", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(IEnumerable<ResultError>) }, null);
                 
                 if (failureMethod != null)
                 {
@@ -133,7 +143,7 @@ namespace BankingSystemAPI.Application.Behaviors
                 _logger.LogError(ApiResponseMessages.Logging.ValidationPipelineUnsupportedResponse, 
                     typeof(TResponse).Name, requestTypeName));
 
-            throw new ValidationException(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, $"Validation failed for {requestTypeName}: {string.Join(", ", errors)}"));
+            throw new ValidationException(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, $"Validation failed for {requestTypeName}: {string.Join(", ", errors.Select(e=>e.Message))}"));
         }
     }
 }

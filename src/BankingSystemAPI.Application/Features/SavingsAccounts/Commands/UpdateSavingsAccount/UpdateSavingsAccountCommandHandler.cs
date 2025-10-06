@@ -43,11 +43,11 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
             // Chain authorization, validation, and update using ResultExtensions
             var authResult = await ValidateAuthorizationAsync(request.Id);
             if (authResult.IsFailure)
-                return Result<SavingsAccountDto>.Failure(authResult.Errors);
+                return Result<SavingsAccountDto>.Failure(authResult.ErrorItems);
 
             var accountResult = await LoadSavingsAccountAsync(request.Id);
             if (accountResult.IsFailure)
-                return Result<SavingsAccountDto>.Failure(accountResult.Errors);
+                return Result<SavingsAccountDto>.Failure(accountResult.ErrorItems);
 
             var ownershipResult = ValidateOwnership(accountResult.Value!, request.Req.UserId);
             if (ownershipResult.IsFailure)
@@ -55,7 +55,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
 
             var currencyResult = await ValidateCurrencyAsync(request.Req.CurrencyId);
             if (currencyResult.IsFailure)
-                return Result<SavingsAccountDto>.Failure(currencyResult.Errors);
+                return Result<SavingsAccountDto>.Failure(currencyResult.ErrorItems);
 
             var updateResult = await ExecuteUpdateAsync(accountResult.Value!, request.Req, currencyResult.Value!);
             
@@ -79,7 +79,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
                 var authResult = await _accountAuth.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
                 return authResult.IsSuccess 
                     ? Result.Success() 
-                    : Result.Failure(authResult.Errors);
+                    : Result.Failure(authResult.ErrorItems);
             }
             catch (Exception ex)
             {
