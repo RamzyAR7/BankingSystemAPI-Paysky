@@ -36,6 +36,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using BankingSystemAPI.Domain.Constant;
+using BankingSystemAPI.Presentation.Services;
 #endregion
 
 
@@ -263,6 +264,12 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<ITransactionHelperService, TransactionHelperService>();
 // Register ScopeResolver
 builder.Services.AddScoped<IScopeResolver, ScopeResolver>();
+
+// Register error response factory
+builder.Services.AddSingleton<IErrorResponseFactory, ErrorResponseFactory>();
+
+// Register success message provider
+builder.Services.AddSingleton<ISuccessMessageProvider, SuccessMessageProvider>();
 #endregion
 
 #region Register Job Services

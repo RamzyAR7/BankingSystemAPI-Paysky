@@ -13,7 +13,6 @@ using BankingSystemAPI.Presentation.Helpers;
 using BankingSystemAPI.Domain.Constant;
 #endregion
 
-
 namespace BankingSystemAPI.Presentation.Middlewares
 {
     /// <summary>
@@ -109,12 +108,8 @@ namespace BankingSystemAPI.Presentation.Middlewares
             {
                 // Unwrap and categorize exception using functional approach
                 var realException = GetInnermostException(exception);
-                var categorizationResult = CategorizeException(realException);
-                
-                if (categorizationResult.IsFailure)
-                    return Result.Failure(categorizationResult.Errors);
-
-                var (statusCode, message, logLevel) = categorizationResult.Value;
+                var categorization = CategorizeExceptionCore(realException);
+                var (statusCode, message, logLevel) = categorization;
 
                 // Enhanced logging with comprehensive context
                 LogException(realException, context, requestId, message, logLevel);
@@ -163,89 +158,83 @@ namespace BankingSystemAPI.Presentation.Middlewares
             }
         }
 
-        private Result<(int StatusCode, string Message, LogLevel LogLevel)> CategorizeException(Exception exception)
+        // New static method to handle background/unobserved exceptions using same logic
+        public static void HandleBackgroundException(Exception exception, IServiceProvider services)
         {
             try
             {
-                var result = exception switch
-                {
-                    // Database/Infrastructure exceptions
-                    DbUpdateConcurrencyException => ((int)HttpStatusCode.Conflict, 
-                        ApiResponseMessages.Infrastructure.ConcurrencyConflict, LogLevel.Warning),
-                    
-                    DbUpdateException dbEx => ((int)HttpStatusCode.BadRequest, 
-                        GetDatabaseErrorMessage(dbEx), LogLevel.Error),
-                    
-                    TimeoutException => ((int)HttpStatusCode.RequestTimeout, 
-                        ApiResponseMessages.Infrastructure.RequestTimedOut, LogLevel.Warning),
-                    
-                    // Authentication/Authorization exceptions
-                    UnauthorizedAccessException => ((int)HttpStatusCode.Unauthorized, 
-                        ApiResponseMessages.Infrastructure.AccessDeniedAuthenticate, LogLevel.Warning),
-                    
-                    // Validation/Input exceptions  
-                    ArgumentNullException argEx => ((int)HttpStatusCode.BadRequest, 
-                        string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, argEx.ParamName ?? "unknown"), LogLevel.Warning),
-                    
-                    ArgumentException argEx => ((int)HttpStatusCode.BadRequest, 
-                        string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, argEx.ParamName ?? "unknown"), LogLevel.Warning),
-                    
-                    InvalidOperationException => ((int)HttpStatusCode.BadRequest, 
-                        ApiResponseMessages.Infrastructure.InvalidOperation, LogLevel.Warning),
-                    
-                    // JSON/Serialization exceptions
-                    JsonException => ((int)HttpStatusCode.BadRequest, 
-                        ApiResponseMessages.Infrastructure.InvalidJsonFormat, LogLevel.Warning),
-                    
-                    // System resource exceptions
-                    OutOfMemoryException => ((int)HttpStatusCode.InternalServerError, 
-                        ApiResponseMessages.Infrastructure.SystemHighLoad, LogLevel.Error),
-                    
-                    StackOverflowException => ((int)HttpStatusCode.InternalServerError, 
-                        ApiResponseMessages.Infrastructure.SystemErrorContact, LogLevel.Error),
-                    
-                    // Network/HTTP exceptions
-                    HttpRequestException => ((int)HttpStatusCode.BadGateway, 
-                        ApiResponseMessages.Infrastructure.ExternalServiceUnavailable, LogLevel.Warning),
-                    
-                    TaskCanceledException => ((int)HttpStatusCode.RequestTimeout, 
-                        ApiResponseMessages.Infrastructure.RequestCancelled, LogLevel.Warning),
-                    
-                    OperationCanceledException => ((int)HttpStatusCode.RequestTimeout, 
-                        ApiResponseMessages.Infrastructure.OperationCancelled, LogLevel.Warning),
-                    
-                    // File system exceptions
-                    DirectoryNotFoundException => ((int)HttpStatusCode.InternalServerError, 
-                        ApiResponseMessages.Infrastructure.RequiredResourceNotFound, LogLevel.Error),
-                    
-                    FileNotFoundException => ((int)HttpStatusCode.InternalServerError, 
-                        ApiResponseMessages.Infrastructure.RequiredFileNotFound, LogLevel.Error),
-                    
-                    // Default for unhandled exceptions
-                    _ => ((int)HttpStatusCode.InternalServerError, 
-                        ApiResponseMessages.Infrastructure.UnexpectedErrorDetailed, LogLevel.Error)
-                };
+                if (exception == null) return;
 
-                return Result<(int StatusCode, string Message, LogLevel LogLevel)>.Success(result);
+                var logger = services.GetService<ILogger<ExceptionHandlingMiddleware>>() ?? services.GetService<ILoggerFactory>()?.CreateLogger("ExceptionHandlingMiddleware");
+                if (logger == null)
+                {
+                    // fallback to console
+                    Console.Error.WriteLine("ExceptionHandlingMiddleware logger not available");
+                    return;
+                }
+
+                var realException = GetInnermostException(exception);
+                var (statusCode, message, logLevel) = CategorizeExceptionCore(realException);
+
+                var logArgs = new object[] { "Background", "", "", realException.GetType().Name, message };
+
+                switch (logLevel)
+                {
+                    case LogLevel.Critical:
+                        logger.LogCritical(realException, ApiResponseMessages.Logging.MiddlewareExceptionHandled, logArgs);
+                        break;
+                    case LogLevel.Error:
+                        logger.LogError(realException, ApiResponseMessages.Logging.MiddlewareExceptionHandled, logArgs);
+                        break;
+                    case LogLevel.Warning:
+                        logger.LogWarning(realException, ApiResponseMessages.Logging.MiddlewareExceptionHandled, logArgs);
+                        break;
+                    default:
+                        logger.LogInformation(realException, ApiResponseMessages.Logging.MiddlewareExceptionHandled, logArgs);
+                        break;
+                }
             }
             catch (Exception ex)
             {
-                return Result<(int StatusCode, string Message, LogLevel LogLevel)>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
+                try { Console.Error.WriteLine($"Failed while handling background exception: {ex}"); } catch { }
             }
+        }
+
+        private static (int StatusCode, string Message, LogLevel LogLevel) CategorizeExceptionCore(Exception exception)
+        {
+            var ex = exception ?? new Exception("Unknown");
+            return ex switch
+            {
+                DbUpdateConcurrencyException => ((int)HttpStatusCode.Conflict, ApiResponseMessages.Infrastructure.ConcurrencyConflict, LogLevel.Warning),
+                DbUpdateException dbEx => ((int)HttpStatusCode.BadRequest, GetDatabaseErrorMessage(dbEx), LogLevel.Error),
+                TimeoutException => ((int)HttpStatusCode.RequestTimeout, ApiResponseMessages.Infrastructure.RequestTimedOut, LogLevel.Warning),
+                UnauthorizedAccessException => ((int)HttpStatusCode.Unauthorized, ApiResponseMessages.Infrastructure.AccessDeniedAuthenticate, LogLevel.Warning),
+                ArgumentNullException argEx => ((int)HttpStatusCode.BadRequest, string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, argEx.ParamName ?? "unknown"), LogLevel.Warning),
+                ArgumentException argEx => ((int)HttpStatusCode.BadRequest, string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, argEx.ParamName ?? "unknown"), LogLevel.Warning),
+                InvalidOperationException => ((int)HttpStatusCode.BadRequest, ApiResponseMessages.Infrastructure.InvalidOperation, LogLevel.Warning),
+                JsonException => ((int)HttpStatusCode.BadRequest, ApiResponseMessages.Infrastructure.InvalidJsonFormat, LogLevel.Warning),
+                OutOfMemoryException => ((int)HttpStatusCode.InternalServerError, ApiResponseMessages.Infrastructure.SystemHighLoad, LogLevel.Error),
+                StackOverflowException => ((int)HttpStatusCode.InternalServerError, ApiResponseMessages.Infrastructure.SystemErrorContact, LogLevel.Error),
+                HttpRequestException => ((int)HttpStatusCode.BadGateway, ApiResponseMessages.Infrastructure.ExternalServiceUnavailable, LogLevel.Warning),
+                TaskCanceledException => ((int)HttpStatusCode.RequestTimeout, ApiResponseMessages.Infrastructure.RequestCancelled, LogLevel.Warning),
+                OperationCanceledException => ((int)HttpStatusCode.RequestTimeout, ApiResponseMessages.Infrastructure.OperationCancelled, LogLevel.Warning),
+                DirectoryNotFoundException => ((int)HttpStatusCode.InternalServerError, ApiResponseMessages.Infrastructure.RequiredResourceNotFound, LogLevel.Error),
+                FileNotFoundException => ((int)HttpStatusCode.InternalServerError, ApiResponseMessages.Infrastructure.RequiredFileNotFound, LogLevel.Error),
+                _ => ((int)HttpStatusCode.InternalServerError, ApiResponseMessages.Infrastructure.UnexpectedErrorDetailed, LogLevel.Error)
+            };
         }
 
         private static string GetDatabaseErrorMessage(DbUpdateException dbEx)
         {
             var innerMessage = dbEx.InnerException?.Message ?? string.Empty;
-            
             ReadOnlySpan<char> messageSpan = innerMessage.AsSpan();
-            
+
             if (messageSpan.Contains("UNIQUE constraint".AsSpan(), StringComparison.OrdinalIgnoreCase) ||
                 messageSpan.Contains("duplicate key".AsSpan(), StringComparison.OrdinalIgnoreCase))
             {
                 return ApiResponseMessages.Infrastructure.DbUniqueConstraintViolation;
             }
-            
+
             if (messageSpan.Contains("FOREIGN KEY constraint".AsSpan(), StringComparison.OrdinalIgnoreCase))
             {
                 return ApiResponseMessages.Infrastructure.DbForeignKeyViolation;

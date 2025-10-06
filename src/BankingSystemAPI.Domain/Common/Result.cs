@@ -193,4 +193,3 @@ namespace BankingSystemAPI.Domain.Common
         public static implicit operator Result<T>(T value) => Success(value);
     }
 }
-

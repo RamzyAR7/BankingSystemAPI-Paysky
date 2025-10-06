@@ -385,6 +385,39 @@ namespace BankingSystemAPI.Domain.Constant
         }
         #endregion
 
+        #region Create
+        /// <summary>
+        /// Creation operation messages
+        /// </summary>
+        public static class Create
+        {
+            public static class User
+            {
+                public const string Success = "User has been successfully created.";
+            }
+
+            public static class Account
+            {
+                public const string Success = "Account has been successfully created.";
+            }
+
+            public static class Bank
+            {
+                public const string Success = "Bank has been successfully created.";
+            }
+
+            public static class Currency
+            {
+                public const string Success = "Currency has been successfully created.";
+            }
+
+            public static class Generic
+            {
+                public const string Success = "Resource has been successfully created.";
+            }
+        }
+        #endregion
+
         #region Status
         /// <summary>
         /// Active/Inactive status messages

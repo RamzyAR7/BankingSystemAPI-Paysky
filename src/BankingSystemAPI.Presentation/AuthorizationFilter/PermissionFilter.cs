@@ -13,17 +13,6 @@ namespace BankingSystemAPI.Presentation.AuthorizationFilter
 {
     public class PermissionFilter : IAsyncAuthorizationFilter
     {
-    #region Fields
-    #endregion
-
-    #region Constructors
-    #endregion
-
-    #region Properties
-    #endregion
-
-    #region Methods
-    #endregion
         private readonly string _permission;
         public PermissionFilter(string permission)
         {

@@ -12,6 +12,7 @@ namespace BankingSystemAPI.Domain.Constant
 {
     public enum ControllerType
     {
+        Unknown = 0,
         Auth = 1,
         User,
         Role,
@@ -25,4 +26,3 @@ namespace BankingSystemAPI.Domain.Constant
         Bank
     }
 }
-

@@ -47,7 +47,7 @@ namespace BankingSystemAPI.Presentation.Filters
                 request.Body.Position = 0;
             }
 
-            // Log request info
+            // Build request info
             var requestInfo = new
             {
                 Scheme = request.Scheme,
@@ -65,20 +65,11 @@ namespace BankingSystemAPI.Presentation.Filters
                 Body = requestBody
             };
 
-            var prettyRequest = JsonSerializer.Serialize(requestInfo, new JsonSerializerOptions { WriteIndented = true });
-            _logger.LogInformation(ApiResponseMessages.Logging.IncomingRequest, prettyRequest);
+            var requestJson = JsonSerializer.Serialize(requestInfo, new JsonSerializerOptions { WriteIndented = true });
 
-            var originalColor = Console.ForegroundColor;
-            try
-            {
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine($"[Request] {DateTime.UtcNow:u}");
-                Console.WriteLine(prettyRequest);
-            }
-            finally
-            {
-                Console.ForegroundColor = originalColor;
-            }
+            // Log a concise info line and keep the full payload at Debug level
+            _logger.LogInformation("Incoming request: {Method} {Path} UserId={UserId} Query={Query}", request.Method, request.Path, userId ?? "-", request.QueryString);
+            _logger.LogDebug(ApiResponseMessages.Logging.IncomingRequest + "\n{Request}", requestJson);
 
             // Execute the action
             ActionExecutedContext executedContext = null;
@@ -159,38 +150,75 @@ namespace BankingSystemAPI.Presentation.Filters
                 Roles = resultRoles ?? (roles != null ? string.Join(",", roles) : null)
             };
 
-            var prettyResponse = JsonSerializer.Serialize(responseInfo, new JsonSerializerOptions { WriteIndented = true });
-            _logger.LogInformation(ApiResponseMessages.Logging.OutgoingResponse, prettyResponse);
+            var responseJson = JsonSerializer.Serialize(responseInfo, new JsonSerializerOptions { WriteIndented = true });
 
-            // Add summary line for key fields if available
+            // Log concise response summary at Information and full payload at Debug
+            _logger.LogInformation("Outgoing response: {Method} {Path} StatusCode={Status} ElapsedMs={Elapsed} UserId={UserId}", request.Method, request.Path, statusCode, sw.ElapsedMilliseconds, userId ?? "-");
+            _logger.LogDebug(ApiResponseMessages.Logging.OutgoingResponse + "\n{Response}", responseJson);
+
             if (username != null || resultRoles != null || userId != null)
             {
                 _logger.LogInformation(ApiResponseMessages.Logging.ResponseSummary, statusCode, username ?? userId, resultRoles ?? (roles != null ? string.Join(",", roles) : null), userId);
             }
+
             if (exception != null)
             {
-                _logger.LogError(ApiResponseMessages.Logging.ExceptionOccurred, exception, errorMessage);
+                _logger.LogError(exception, ApiResponseMessages.Logging.ExceptionOccurred + " - {Message}", errorMessage);
             }
 
+            // Optional: print a simple colored diff to console when enabled via env var
             try
             {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"[Response] {DateTime.UtcNow:u}");
-                Console.WriteLine(prettyResponse);
-                if (username != null || resultRoles != null || userId != null)
+                var enableDiff = Environment.GetEnvironmentVariable("ENABLE_CONSOLE_DIFF");
+                if (!string.IsNullOrEmpty(enableDiff) && enableDiff.Equals("true", StringComparison.OrdinalIgnoreCase))
                 {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"Summary: StatusCode={statusCode}, Username={username ?? userId}, Roles={resultRoles ?? (roles != null ? string.Join(",", roles) : null)}, UserId={userId}");
-                }
-                if (exception != null)
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Exception: {errorMessage}\n{errorStack}");
+                    Console.WriteLine($"[Request/Response Diff] {DateTime.UtcNow:u} {request.Method} {request.Path} Status={statusCode}");
+                    PrintColoredDiffLines(requestJson, responseJson);
                 }
             }
-            finally
+            catch
             {
-                Console.ForegroundColor = originalColor;
+                // swallow any console-related errors to avoid affecting request pipeline
+            }
+        }
+
+        // Simple line-based diff printer: lines only in request => red (-), only in response => green (+), common => default
+        private static void PrintColoredDiffLines(string left, string right)
+        {
+            if (left == null) left = string.Empty;
+            if (right == null) right = string.Empty;
+
+            var leftLines = left.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim()).ToList();
+            var rightLines = right.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim()).ToList();
+
+            var leftSet = new HashSet<string>(leftLines);
+            var rightSet = new HashSet<string>(rightLines);
+
+            // iterate through union preserving an order: first left lines then right-only lines
+            foreach (var line in leftLines)
+            {
+                if (rightSet.Contains(line))
+                {
+                    Console.ResetColor();
+                    Console.WriteLine("  " + line);
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("- " + line);
+                    Console.ResetColor();
+                }
+            }
+
+            // print lines that are only in right and were not printed
+            foreach (var line in rightLines)
+            {
+                if (!leftSet.Contains(line))
+                {
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine("+ " + line);
+                    Console.ResetColor();
+                }
             }
         }
     }

@@ -9,17 +9,6 @@ namespace BankingSystemAPI.Presentation.AuthorizationFilter
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = true)]
     public class PermissionFilterFactory : Attribute, IFilterFactory
     {
-    #region Fields
-    #endregion
-
-    #region Constructors
-    #endregion
-
-    #region Properties
-    #endregion
-
-    #region Methods
-    #endregion
         public bool IsReusable => false;
         private readonly string _permission;
 

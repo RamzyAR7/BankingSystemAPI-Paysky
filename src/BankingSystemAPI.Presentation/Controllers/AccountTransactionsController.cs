@@ -23,17 +23,6 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiExplorerSettings(GroupName = "AccountTransactions")]
     public class AccountTransactionsController : BaseApiController
     {
-    #region Fields
-    #endregion
-
-    #region Constructors
-    #endregion
-
-    #region Properties
-    #endregion
-
-    #region Methods
-    #endregion
         private readonly IMediator _mediator;
 
         public AccountTransactionsController(IMediator mediator)
