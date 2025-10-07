@@ -40,12 +40,12 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetBalance
 
             // Add side effects using ResultExtensions
             var result = Result<decimal>.Success(balance);
-            result.OnSuccess(() => 
+            result.OnSuccess(() =>
                 {
-                    _logger.LogDebug("Balance retrieved successfully for account: {AccountId}, Balance: {Balance}", 
+                    _logger.LogDebug("Balance retrieved successfully for account: {AccountId}, Balance: {Balance}",
                         request.AccountId, balance);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning("Failed to retrieve balance for account: {AccountId}. Errors: {Errors}",
                         request.AccountId, string.Join(", ", errors));
@@ -66,8 +66,8 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetBalance
             try
             {
                 var authResult = await _accountAuth.CanViewAccountAsync(accountId);
-                return authResult.IsSuccess 
-                    ? Result.Success() 
+                return authResult.IsSuccess
+                    ? Result.Success()
                     : Result.Failure(authResult.ErrorItems);
             }
             catch (Exception ex)

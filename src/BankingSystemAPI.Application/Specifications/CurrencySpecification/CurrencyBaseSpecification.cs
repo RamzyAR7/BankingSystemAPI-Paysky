@@ -9,17 +9,17 @@ namespace BankingSystemAPI.Application.Specifications.CurrencySpecification
 {
     public class CurrencyBaseSpecification : BaseSpecification<Currency>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public CurrencyBaseSpecification()
             : base(c => c.IsBase)
         {

@@ -39,18 +39,18 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserBy
             {
                 using var scope = _serviceProvider.CreateScope();
                 var logger = scope.ServiceProvider.GetService<ILogger<GetUserByIdQueryValidator>>();
-                
+
                 var validationResult = userId.Length > 3 && userId.Length <= 450 // Reasonable ID length
                     ? Result.Success()
                     : Result.BadRequest(ApiResponseMessages.Validation.UserIdInvalidFormat);
 
-                validationResult.OnSuccess(() => 
+                validationResult.OnSuccess(() =>
                 {
                     logger?.LogDebug("[VALIDATION] User ID format validation passed: {UserId}", userId);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
-                    logger?.LogWarning("[VALIDATION] User ID format validation failed: {UserId}, Errors={Errors}", 
+                    logger?.LogWarning("[VALIDATION] User ID format validation failed: {UserId}, Errors={Errors}",
                         userId, string.Join("|", errors));
                 });
 

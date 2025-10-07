@@ -11,17 +11,17 @@ namespace BankingSystemAPI.Application.DTOs.Role
     /// </summary>
     public class RoleUpdateResultDto
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         /// <summary>
         /// Operation that was performed (Create, Update, Delete)
         /// </summary>

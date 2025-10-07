@@ -12,8 +12,6 @@ using BankingSystemAPI.Domain.Common;
 using Microsoft.Extensions.Logging;
 using BankingSystemAPI.Application.Interfaces.Specification;
 #endregion
-
-
 namespace BankingSystemAPI.UnitTests.UnitTests.Application.Authorization;
 
 public class UserAuthorizationServiceTests
@@ -64,7 +62,7 @@ public class UserAuthorizationServiceTests
         _currentUserMock.Setup(x => x.UserId).Returns(userId);
         _scopeResolverMock.Setup(x => x.GetScopeAsync()).ReturnsAsync(AccessScope.BankLevel);
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync(targetUserId)).ReturnsAsync(new ApplicationRole { Name = "Client" });
-        _uowMock.SetupSequence(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>()))
+        _uowMock.SetupSequence(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(new ApplicationUser { Id = targetUserId, BankId = 1 });
         _currentUserMock.Setup(x => x.BankId).Returns(1);
         // Act
@@ -91,7 +89,7 @@ public class UserAuthorizationServiceTests
         string userId = "user3";
         _currentUserMock.Setup(x => x.UserId).Returns(userId);
         _scopeResolverMock.Setup(x => x.GetScopeAsync()).ReturnsAsync(AccessScope.Self);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId });
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId });
         // Act
         var result = await _service.CanModifyUserAsync(userId, UserModificationOperation.Edit);
         Assert.False(result.IsSuccess);
@@ -106,7 +104,7 @@ public class UserAuthorizationServiceTests
         _currentUserMock.Setup(x => x.UserId).Returns(userId);
         _scopeResolverMock.Setup(x => x.GetScopeAsync()).ReturnsAsync(AccessScope.BankLevel);
         // Ensure acting user then target user are returned in sequence
-        _uowMock.SetupSequence(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>()))
+        _uowMock.SetupSequence(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(new ApplicationUser { Id = userId, BankId = 2 })
             .ReturnsAsync(new ApplicationUser { Id = targetUserId, BankId = 2 });
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync(targetUserId)).ReturnsAsync(new ApplicationRole { Name = "Client" });
@@ -122,7 +120,7 @@ public class UserAuthorizationServiceTests
         string targetUserId = "otheruser4";
         _currentUserMock.Setup(x => x.UserId).Returns(userId);
         _scopeResolverMock.Setup(x => x.GetScopeAsync()).ReturnsAsync(AccessScope.Self);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId });
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId });
         // Act
         var result = await _service.CanModifyUserAsync(targetUserId, UserModificationOperation.Edit);
         Assert.False(result.IsSuccess);
@@ -136,7 +134,7 @@ public class UserAuthorizationServiceTests
         string targetUserId = "client3";
         _currentUserMock.Setup(x => x.UserId).Returns(userId);
         _scopeResolverMock.Setup(x => x.GetScopeAsync()).ReturnsAsync(AccessScope.BankLevel);
-        _uowMock.SetupSequence(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>()))
+        _uowMock.SetupSequence(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(new ApplicationUser { Id = userId, BankId = 3 })
             .ReturnsAsync(new ApplicationUser { Id = targetUserId, BankId = 3 });
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync(targetUserId)).ReturnsAsync(new ApplicationRole { Name = "Client" });
@@ -152,7 +150,7 @@ public class UserAuthorizationServiceTests
         string targetUserId = "otheruser5";
         _currentUserMock.Setup(x => x.UserId).Returns(userId);
         _scopeResolverMock.Setup(x => x.GetScopeAsync()).ReturnsAsync(AccessScope.Self);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId });
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId });
         // Act
         var result = await _service.CanModifyUserAsync(targetUserId, UserModificationOperation.Delete);
         Assert.False(result.IsSuccess);
@@ -165,7 +163,7 @@ public class UserAuthorizationServiceTests
         string userId = "user6";
         _currentUserMock.Setup(x => x.UserId).Returns(userId);
         _scopeResolverMock.Setup(x => x.GetScopeAsync()).ReturnsAsync(AccessScope.Self);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId });
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId });
         // Act
         var result = await _service.CanModifyUserAsync(userId, UserModificationOperation.ChangePassword);
         Assert.True(result.IsSuccess, string.Join(" | ", result.Errors));
@@ -178,7 +176,7 @@ public class UserAuthorizationServiceTests
         string targetUserId = "client4";
         _currentUserMock.Setup(x => x.UserId).Returns(userId);
         _scopeResolverMock.Setup(x => x.GetScopeAsync()).ReturnsAsync(AccessScope.BankLevel);
-        _uowMock.SetupSequence(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>()))
+        _uowMock.SetupSequence(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(new ApplicationUser { Id = userId, BankId = 4 })
             .ReturnsAsync(new ApplicationUser { Id = targetUserId, BankId = 4 });
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync(targetUserId)).ReturnsAsync(new ApplicationRole { Name = "Client" });
@@ -194,7 +192,7 @@ public class UserAuthorizationServiceTests
         string targetUserId = "otheruser7";
         _currentUserMock.Setup(x => x.UserId).Returns(userId);
         _scopeResolverMock.Setup(x => x.GetScopeAsync()).ReturnsAsync(AccessScope.Self);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId });
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId });
         // Act
         var result = await _service.CanModifyUserAsync(targetUserId, UserModificationOperation.ChangePassword);
         Assert.False(result.IsSuccess);
@@ -208,7 +206,7 @@ public class UserAuthorizationServiceTests
         string targetUserId = "inactiveuser";
         _currentUserMock.Setup(x => x.UserId).Returns(userId);
         _scopeResolverMock.Setup(x => x.GetScopeAsync()).ReturnsAsync(AccessScope.BankLevel);
-        _uowMock.SetupSequence(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>()))
+        _uowMock.SetupSequence(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(new ApplicationUser { Id = userId, BankId = 5 })
             .ReturnsAsync((ApplicationUser)null!);
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync(targetUserId)).ReturnsAsync(new ApplicationRole { Name = "Client" });
@@ -225,7 +223,7 @@ public class UserAuthorizationServiceTests
         string targetUserId = "nonexistentuser";
         _currentUserMock.Setup(x => x.UserId).Returns(userId);
         _scopeResolverMock.Setup(x => x.GetScopeAsync()).ReturnsAsync(AccessScope.BankLevel);
-        _uowMock.SetupSequence(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>()))
+        _uowMock.SetupSequence(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(new ApplicationUser { Id = userId, BankId = 6 })
             .ReturnsAsync((ApplicationUser)null!);
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync(targetUserId)).ReturnsAsync(new ApplicationRole { Name = "Client" });

@@ -40,7 +40,7 @@ public class SavingsAccountBusinessTests
     {
         // Arrange
         var account = TestEntityFactory.CreateSavingsAccount("user1", 1, interestType: interestType);
-        
+
         // Simulate time passed since last interest
         if (daysSinceLastInterest > 0)
         {
@@ -60,7 +60,7 @@ public class SavingsAccountBusinessTests
     {
         // Arrange
         var account = TestEntityFactory.CreateSavingsAccount("user1", 1, interestType: InterestType.every5minutes);
-        
+
         // Simulate 6 minutes passed
         var sixMinutesAgo = DateTime.UtcNow.AddMinutes(-6);
         account.ApplyInterest(1m, sixMinutesAgo);
@@ -86,7 +86,7 @@ public class SavingsAccountBusinessTests
         // Assert
         Assert.Equal(1025.50m, account.Balance);
         Assert.Single(account.InterestLogs);
-        
+
         var log = account.InterestLogs.First();
         Assert.Equal(interestAmount, log.Amount);
         Assert.Equal(timestamp.Date, log.Timestamp.Date);
@@ -192,7 +192,7 @@ public class SavingsAccountBusinessTests
         decimal interestRate, InterestType interestType)
     {
         // Arrange
-        var account = TestEntityFactory.CreateSavingsAccount("user1", 1, 
+        var account = TestEntityFactory.CreateSavingsAccount("user1", 1,
             balance: 10000m, interestRate: interestRate, interestType: interestType);
 
         // Act
@@ -204,7 +204,7 @@ public class SavingsAccountBusinessTests
         Assert.True(monthlyInterest >= 0);
         Assert.True(quarterlyInterest >= monthlyInterest);
         Assert.True(yearlyInterest >= quarterlyInterest);
-        
+
         // Verify calculation: daily rate * days * balance
         var expectedMonthly = Math.Round(10000m * interestRate / 365m * 30m, 2);
         Assert.Equal(expectedMonthly, monthlyInterest);
@@ -218,11 +218,11 @@ public class SavingsAccountBusinessTests
     public void SavingsAccount_CompoundInterest_Simulation()
     {
         // Arrange - Simulate monthly compounding over a year
-        var account = TestEntityFactory.CreateSavingsAccount("user1", 1, 
+        var account = TestEntityFactory.CreateSavingsAccount("user1", 1,
             balance: 10000m, interestRate: 0.06m, interestType: InterestType.Monthly);
 
         var startingBalance = account.Balance;
-        
+
         // Act - Apply monthly interest 12 times
         for (int month = 1; month <= 12; month++)
         {
@@ -233,14 +233,14 @@ public class SavingsAccountBusinessTests
         // Assert
         var finalBalance = account.Balance;
         var totalInterest = account.GetTotalInterestEarned();
-        
+
         Assert.True(finalBalance > startingBalance);
         Assert.Equal(12, account.InterestLogs.Count);
-        
+
         // With monthly compounding, should earn more than simple annual interest
         var simpleInterest = startingBalance * 0.06m;
         Assert.True(totalInterest > simpleInterest);
-        
+
         // Verify compound effect (each month's interest earns interest)
         Assert.True(finalBalance > startingBalance + simpleInterest);
     }

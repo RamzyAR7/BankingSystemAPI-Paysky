@@ -3,5 +3,5 @@ using BankingSystemAPI.Application.Interfaces.Messaging;
 
 namespace BankingSystemAPI.Application.Features.Currencies.Commands.CreateCurrency
 {
-    public record CreateCurrencyCommand(CurrencyReqDto Currency): ICommand<CurrencyDto>;
+    public record CreateCurrencyCommand(CurrencyReqDto Currency) : ICommand<CurrencyDto>;
 }

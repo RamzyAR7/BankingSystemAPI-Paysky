@@ -10,21 +10,21 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Interfaces.Repositories
 {
-    public interface IRoleRepository: IGenericRepository<ApplicationRole, string>
+    public interface IRoleRepository : IGenericRepository<ApplicationRole, string>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
-        Task<ApplicationRole> GetRoleByUserIdAsync(string userId);
-        Task<Dictionary<string, string>> GetRolesByUserIdsAsync(IEnumerable<string> userIds);
+        #region Methods
+        #endregion
+        Task<ApplicationRole?> GetRoleByUserIdAsync(string userId);
+        Task<Dictionary<string, string?>> GetRolesByUserIdsAsync(IEnumerable<string> userIds);
         IQueryable<string> UsersWithRoleQuery(string roleName);
     }
 }

@@ -36,11 +36,11 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.DeleteBank
                 .BindAsync(async bank => await ValidateCanDeleteAsync(bank, request.id))
                 .BindAsync(async bank => await DeleteBankAsync(bank))
                 .BindAsync(async bank => await PersistChangesAsync())
-                .OnSuccess(() => 
+                .OnSuccess(() =>
                 {
                     _logger.LogInformation("Bank deleted successfully: {BankId}", request.id);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning("Bank deletion failed for ID: {BankId}. Errors: {Errors}",
                         request.id, string.Join(", ", errors));

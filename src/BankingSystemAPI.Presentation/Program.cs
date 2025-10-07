@@ -256,6 +256,10 @@ builder.Services.AddHttpContextAccessor();
 // Register Authorization Services (they already use ICurrentUserService which extracts JWT claims)
 builder.Services.AddScoped<IAccountAuthorizationService, AccountAuthorizationService>();
 builder.Services.AddScoped<IUserAuthorizationService, UserAuthorizationService>();
+
+// Register DB capabilities and TransactionAuthorizationService
+builder.Services.Configure<BankingSystemAPI.Application.Interfaces.Infrastructure.DbCapabilitiesOptions>(builder.Configuration.GetSection("DbCapabilities"));
+builder.Services.AddSingleton<BankingSystemAPI.Application.Interfaces.Infrastructure.IDbCapabilities, BankingSystemAPI.Infrastructure.Setting.DbCapabilities>();
 builder.Services.AddScoped<ITransactionAuthorizationService, TransactionAuthorizationService>();
 
 // Register CurrentUserService helper (extracts JWT claims)
@@ -294,7 +298,13 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer("JwtBearer", options =>
 {
-    var jwt = builder.Configuration.GetSection("Jwt").Get<JwtSettings>();
+    var jwtSection = builder.Configuration.GetSection("Jwt");
+    var jwt = jwtSection.Get<JwtSettings>();
+    if (jwt == null || string.IsNullOrWhiteSpace(jwt.Key) || string.IsNullOrWhiteSpace(jwt.Issuer) || string.IsNullOrWhiteSpace(jwt.Audience))
+    {
+        throw new InvalidOperationException("Missing or invalid JWT configuration. Ensure the 'Jwt' section contains non-empty 'Key', 'Issuer' and 'Audience'.");
+    }
+
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidIssuer = jwt.Issuer,

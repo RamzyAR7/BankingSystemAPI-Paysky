@@ -8,17 +8,17 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountByAcc
 {
     public class GetAccountByAccountNumberQueryValidator : AbstractValidator<GetAccountByAccountNumberQuery>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public GetAccountByAccountNumberQueryValidator()
         {
             RuleFor(x => x.AccountNumber).NotEmpty().WithMessage(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Account number"));

@@ -12,20 +12,20 @@ namespace BankingSystemAPI.Application.DTOs.User
 {
     public class ChangePasswordReqDto
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public string? CurrentPassword { get; set; }
-        public string NewPassword { get; set; }
-        public string ConfirmNewPassword { get; set; }
+        public string NewPassword { get; set; } = string.Empty;
+        public string ConfirmNewPassword { get; set; } = string.Empty;
     }
 }
 

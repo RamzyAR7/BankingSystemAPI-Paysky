@@ -14,32 +14,32 @@ namespace BankingSystemAPI.Application.DTOs.User
         /// <summary>
         /// User identifier.
         /// </summary>
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
 
         /// <summary>
         /// User email.
         /// </summary>
-        public string Email { get; set; }
+        public string Email { get; set; } = string.Empty;
 
         /// <summary>
         /// Username.
         /// </summary>
-        public string Username { get; set; }
+        public string Username { get; set; } = string.Empty;
 
         /// <summary>
         /// Full name of the user.
         /// </summary>
-        public string FullName { get; set; }
+        public string FullName { get; set; } = string.Empty;
 
         /// <summary>
         /// National identifier for the user.
         /// </summary>
-        public string NationalId { get; set; }
+        public string NationalId { get; set; } = string.Empty;
 
         /// <summary>
         /// Contact phone number.
         /// </summary>
-        public string PhoneNumber { get; set; }
+        public string PhoneNumber { get; set; } = string.Empty;
 
         /// <summary>
         /// Date of birth.
@@ -49,7 +49,7 @@ namespace BankingSystemAPI.Application.DTOs.User
         /// <summary>
         /// Roles assigned to the user.
         /// </summary>
-        public string Role { get; set; }
+        public string Role { get; set; } = string.Empty;
 
         /// <summary>
         /// Bank identifier the user is associated with.
@@ -59,7 +59,7 @@ namespace BankingSystemAPI.Application.DTOs.User
         /// <summary>
         /// Bank name the user is associated with.
         /// </summary>
-        public string BankName { get; set; }
+        public string BankName { get; set; } = string.Empty;
 
         /// <summary>
         /// Indicates if the user is active.

@@ -10,21 +10,21 @@ namespace BankingSystemAPI.Application.Interfaces.Identity
 {
     public interface IRoleService
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         Task<Result<List<RoleResDto>>> GetAllRolesAsync();
         Task<Result<RoleUpdateResultDto>> CreateRoleAsync(RoleReqDto roleName);
         Task<Result<RoleUpdateResultDto>> DeleteRoleAsync(string roleId);
-        
+
         /// <summary>
         /// Checks if a role is currently assigned to any users.
         /// This method belongs to IRoleService as it's role-specific business logic.

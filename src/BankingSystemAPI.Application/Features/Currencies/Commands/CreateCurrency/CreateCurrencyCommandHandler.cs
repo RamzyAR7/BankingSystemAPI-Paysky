@@ -29,21 +29,21 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.CreateCurren
         }
 
         public async Task<Result<CurrencyDto>> Handle(CreateCurrencyCommand request, CancellationToken cancellationToken)
-        {   
+        {
             // Business validation: Check base currency business rule
             var baseValidationResult = await ValidateBaseCurrencyRuleAsync(request.Currency);
             if (baseValidationResult.IsFailure)
                 return Result<CurrencyDto>.Failure(baseValidationResult.ErrorItems);
 
             var createResult = await CreateCurrencyAsync(request.Currency);
-            
+
             // Add side effects using ResultExtensions
-            createResult.OnSuccess(() => 
+            createResult.OnSuccess(() =>
                 {
-                    _logger.LogInformation("Currency created successfully: {Code}, IsBase: {IsBase}, ExchangeRate: {Rate}", 
+                    _logger.LogInformation("Currency created successfully: {Code}, IsBase: {IsBase}, ExchangeRate: {Rate}",
                         request.Currency.Code, request.Currency.IsBase, request.Currency.ExchangeRate);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning("Currency creation failed for: {Code}. Errors: {Errors}",
                         request.Currency?.Code, string.Join(", ", errors));
@@ -59,7 +59,7 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.CreateCurren
 
             var baseSpec = new CurrencyBaseSpecification();
             var existingBase = await _uow.CurrencyRepository.FindAsync(baseSpec);
-            
+
             return existingBase == null
                 ? Result.Success()
                 : Result.BadRequest(ApiResponseMessages.Validation.AnotherBaseCurrencyExists);

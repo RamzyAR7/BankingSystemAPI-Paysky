@@ -7,19 +7,19 @@ using System.Collections.Generic;
 
 namespace BankingSystemAPI.Application.Interfaces.Repositories
 {
-    public interface IBankRepository: IGenericRepository<Bank, int>
+    public interface IBankRepository : IGenericRepository<Bank, int>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         Task<Dictionary<int, string>> GetBankNamesByIdsAsync(IEnumerable<int> ids);
     }
 }

@@ -1,6 +1,7 @@
 ﻿#region Usings
 using System.Threading.Tasks;
 using Moq;
+using Xunit;
 using BankingSystemAPI.Application.AuthorizationServices;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
@@ -12,7 +13,8 @@ using Microsoft.Extensions.Logging;
 using BankingSystemAPI.Application.Interfaces.Specification;
 using BankingSystemAPI.UnitTests.TestInfrastructure;
 #endregion
-
+// Disable missing XML comment warnings for tests in this file
+#pragma warning disable 1591
 
 namespace BankingSystemAPI.UnitTests.UnitTests.Application.Authorization;
 
@@ -59,7 +61,7 @@ public class AccountAuthorizationServiceTests
         var account = TestEntityFactory.CreateCheckingAccount(userId, 1);
         account.UserId = userId;
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
         // Act
         var result = await _service.CanViewAccountAsync(accountId);
         // Assert
@@ -77,7 +79,7 @@ public class AccountAuthorizationServiceTests
         account.UserId = "client1";
         account.User = new ApplicationUser { BankId = 1, Id = "client1" };
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync("client1")).ReturnsAsync(new ApplicationRole { Name = "Client" });
         _currentUserMock.Setup(x => x.BankId).Returns(1);
         // Act
@@ -95,7 +97,7 @@ public class AccountAuthorizationServiceTests
         var account = TestEntityFactory.CreateCheckingAccount("otheruser", 1);
         account.UserId = "otheruser";
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
         // Act
         var result = await _service.CanViewAccountAsync(accountId);
         Assert.False(result.IsSuccess);
@@ -112,8 +114,8 @@ public class AccountAuthorizationServiceTests
         var account = TestEntityFactory.CreateCheckingAccount(userId, 1);
         account.UserId = userId;
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId });
         // Act
         var result = await _service.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
         Assert.False(result.IsSuccess);
@@ -131,8 +133,8 @@ public class AccountAuthorizationServiceTests
         account.User = new ApplicationUser { BankId = 2, Id = "client2" };
         account.UserId = "client2";
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 2 });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 2 });
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync("client2")).ReturnsAsync(new ApplicationRole { Name = "Client" });
         // Act
         var result = await _service.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
@@ -149,8 +151,8 @@ public class AccountAuthorizationServiceTests
         var account = TestEntityFactory.CreateCheckingAccount("otheruser6", 1);
         account.UserId = "otheruser6";
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId });
         // Act
         var result = await _service.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
         Assert.False(result.IsSuccess);
@@ -166,8 +168,8 @@ public class AccountAuthorizationServiceTests
         var account = TestEntityFactory.CreateCheckingAccount(userId, 1);
         account.UserId = userId;
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId });
         // Act
         var result = await _service.CanModifyAccountAsync(accountId, AccountModificationOperation.Delete);
         Assert.False(result.IsSuccess);
@@ -185,8 +187,8 @@ public class AccountAuthorizationServiceTests
         account.User = new ApplicationUser { BankId = 8, Id = "client8" };
         account.UserId = "client8";
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 8 });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 8 });
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync("client8")).ReturnsAsync(new ApplicationRole { Name = "Client" });
         // Act
         var result = await _service.CanModifyAccountAsync(accountId, AccountModificationOperation.Delete);
@@ -203,8 +205,8 @@ public class AccountAuthorizationServiceTests
         var account = TestEntityFactory.CreateCheckingAccount("otheruser9", 1);
         account.UserId = "otheruser9";
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId });
         // Act
         var result = await _service.CanModifyAccountAsync(accountId, AccountModificationOperation.Delete);
         Assert.False(result.IsSuccess);
@@ -221,8 +223,8 @@ public class AccountAuthorizationServiceTests
         account.User = new ApplicationUser { BankId = 10, Id = "client10" };
         account.UserId = "client10";
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 10 });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 10 });
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync("client10")).ReturnsAsync(new ApplicationRole { Name = "Client" });
         // Act
         var result = await _service.CanModifyAccountAsync(accountId, AccountModificationOperation.Freeze);
@@ -239,8 +241,8 @@ public class AccountAuthorizationServiceTests
         var account = TestEntityFactory.CreateCheckingAccount(userId, 1);
         account.UserId = userId;
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId });
         // Act
         var result = await _service.CanModifyAccountAsync(accountId, AccountModificationOperation.Freeze);
         Assert.False(result.IsSuccess);
@@ -258,8 +260,8 @@ public class AccountAuthorizationServiceTests
         account.User = new ApplicationUser { BankId = 12, Id = "client12" };
         account.UserId = "client12";
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 12 });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 12 });
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync("client12")).ReturnsAsync(new ApplicationRole { Name = "Client" });
         // Act
         var result = await _service.CanModifyAccountAsync(accountId, AccountModificationOperation.Unfreeze);
@@ -276,8 +278,8 @@ public class AccountAuthorizationServiceTests
         var account = TestEntityFactory.CreateCheckingAccount(userId, 1);
         account.UserId = userId;
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId });
         // Act
         var result = await _service.CanModifyAccountAsync(accountId, AccountModificationOperation.Unfreeze);
         Assert.False(result.IsSuccess);
@@ -296,8 +298,8 @@ public class AccountAuthorizationServiceTests
         account.UserId = "client14";
         account.IsActive = false;
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 14 });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 14 });
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync("client14")).ReturnsAsync(new ApplicationRole { Name = "Client" });
         // Act
         var result = await _service.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
@@ -312,8 +314,8 @@ public class AccountAuthorizationServiceTests
         string userId = "user15";
         _currentUserMock.Setup(x => x.UserId).Returns(userId);
         _scopeResolverMock.Setup(x => x.GetScopeAsync()).ReturnsAsync(AccessScope.BankLevel);
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync((Account)null!);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 15 });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync((Account)null!);
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 15 });
         // Act
         var result = await _service.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
         Assert.False(result.IsSuccess);
@@ -334,11 +336,13 @@ public class AccountAuthorizationServiceTests
         account.User = new ApplicationUser { BankId = 16, Id = "client16" };
         account.UserId = "client16";
         account.Id = accountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 16 });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 16 });
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync("client16")).ReturnsAsync(new ApplicationRole { Name = "Client" });
         // Act
         var result = await _service.CanModifyAccountAsync(accountId, operation);
         Assert.True(result.IsSuccess);
     }
 }
+
+#pragma warning restore 1591

@@ -11,23 +11,12 @@ namespace BankingSystemAPI.UnitTests.TestInfrastructure;
 /// </summary>
 public static class TestEntityFactory
 {
-    #region Fields
-    #endregion
-
-    #region Constructors
-    #endregion
-
-    #region Properties
-    #endregion
-
-    #region Methods
-    #endregion
     public static CheckingAccount CreateCheckingAccount(
-        string userId, 
-        int currencyId, 
-        decimal balance = 0m, 
+        string userId,
+        int currencyId,
+        decimal balance = 0m,
         decimal overdraftLimit = 1000m,
-        string accountNumber = null)
+    string? accountNumber = null)
     {
         return new CheckingAccount
         {
@@ -43,12 +32,12 @@ public static class TestEntityFactory
     }
 
     public static SavingsAccount CreateSavingsAccount(
-        string userId, 
-        int currencyId, 
-        decimal balance = 0m, 
+        string userId,
+        int currencyId,
+        decimal balance = 0m,
         decimal interestRate = 0.05m,
         InterestType interestType = InterestType.Monthly,
-        string accountNumber = null)
+    string? accountNumber = null)
     {
         return new SavingsAccount
         {

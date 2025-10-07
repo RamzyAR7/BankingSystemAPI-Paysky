@@ -31,20 +31,20 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
         {
             // Note: Input validation (null/empty checks) handled by CreateBankCommandValidator
             // This handler focuses on business logic validation and execution
-            
+
             // Business validation: Check bank name uniqueness
             var uniquenessResult = await ValidateUniquenessAsync(request.bankDto);
             if (!uniquenessResult) // Using implicit bool operator!
                 return Result<BankResDto>.Failure(uniquenessResult.ErrorItems);
 
             var createResult = await CreateAndPersistBankAsync(request.bankDto);
-            
+
             // Add side effects using ResultExtensions
-            createResult.OnSuccess(() => 
+            createResult.OnSuccess(() =>
             {
                 _logger.LogInformation("Bank created successfully: {BankName}", request.bankDto.Name);
             })
-            .OnFailure(errors => 
+            .OnFailure(errors =>
             {
                 _logger.LogWarning("Bank creation failed for {BankName}. Errors: {Errors}",
                     request.bankDto.Name, string.Join(", ", errors));
@@ -60,7 +60,7 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
 
             var spec = new BankByNormalizedNameSpecification(normalizedLower);
             var existing = await _uow.BankRepository.FindAsync(spec);
-            
+
             return existing == null
                 ? Result.Success()
                 : Result.BadRequest("A bank with the same name already exists.");
@@ -74,10 +74,10 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
                 entity.Name = dto.Name.Trim();
                 entity.CreatedAt = DateTime.UtcNow;
                 entity.IsActive = true; // Set to true by default for new banks
-                
+
                 await _uow.BankRepository.AddAsync(entity);
                 await _uow.SaveAsync();
-                
+
                 var result = _mapper.Map<BankResDto>(entity);
                 return Result<BankResDto>.Success(result);
             }

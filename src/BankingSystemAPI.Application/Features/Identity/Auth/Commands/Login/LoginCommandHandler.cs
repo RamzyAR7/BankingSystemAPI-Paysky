@@ -63,7 +63,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
         private async Task<Result<UserResDto>> ValidateUserExistsAsync(string email)
         {
             var userResult = await _userService.GetUserByEmailAsync(email);
-            
+
             // Map "User not found" to authentication error for security (prevents user enumeration)
             if (!userResult.IsSuccess)
             {

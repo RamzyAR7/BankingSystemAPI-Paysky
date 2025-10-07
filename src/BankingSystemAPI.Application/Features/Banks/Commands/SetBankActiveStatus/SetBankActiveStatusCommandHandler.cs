@@ -29,8 +29,8 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.SetBankActiveStat
             var spec = new BankByIdSpecification(request.id);
             var bank = await _uow.BankRepository.FindAsync(spec);
 
-                if (bank == null)
-                    return Result.Failure(new List<ResultError> { new ResultError(ErrorType.Validation, string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Bank", request.id)) });
+            if (bank == null)
+                return Result.Failure(new List<ResultError> { new ResultError(ErrorType.Validation, string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Bank", request.id)) });
 
             bank.IsActive = request.isActive;
 

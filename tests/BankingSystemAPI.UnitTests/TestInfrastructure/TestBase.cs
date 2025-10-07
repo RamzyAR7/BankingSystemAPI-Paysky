@@ -33,7 +33,7 @@ public abstract class TestBase : IDisposable
     protected readonly ApplicationDbContext Context;
     protected readonly IUnitOfWork UnitOfWork;
     protected readonly IMapper Mapper;
-    
+
     protected TestBase()
     {
         // Create unique in-memory database for each test
@@ -48,7 +48,7 @@ public abstract class TestBase : IDisposable
         var cacheService = CreateCacheService();
         UnitOfWork = CreateUnitOfWork(cacheService);
         Mapper = CreateMapper();
-        
+
         // Seed common test data
         SeedCommonTestData();
     }
@@ -72,7 +72,7 @@ public abstract class TestBase : IDisposable
         var interestLogRepo = new InterestLogRepository(Context);
         var bankRepo = new BankRepository(Context);
 
-        return new UnitOfWork(userRepo, roleRepo, accountRepo, transactionRepo, 
+        return new UnitOfWork(userRepo, roleRepo, accountRepo, transactionRepo,
             accountTxRepo, interestLogRepo, currencyRepo, bankRepo, Context);
     }
 
@@ -88,10 +88,10 @@ public abstract class TestBase : IDisposable
     private void SeedCommonTestData()
     {
         // Base currency - required for most tests
-        var baseCurrency = new Currency 
-        { 
-            Code = "USD", 
-            ExchangeRate = 1m, 
+        var baseCurrency = new Currency
+        {
+            Code = "USD",
+            ExchangeRate = 1m,
             IsBase = true,
             IsActive = true
         };
@@ -112,7 +112,7 @@ public abstract class TestBase : IDisposable
             DateOfBirth = DateTime.UtcNow.AddYears(-25),
             IsActive = true
         };
-        
+
         Context.Users.Add(user);
         Context.SaveChanges();
         return user;
@@ -126,7 +126,7 @@ public abstract class TestBase : IDisposable
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
-        
+
         Context.Banks.Add(bank);
         Context.SaveChanges();
         return bank;

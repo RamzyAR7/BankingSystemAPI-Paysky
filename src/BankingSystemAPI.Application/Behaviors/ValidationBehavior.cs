@@ -32,22 +32,22 @@ namespace BankingSystemAPI.Application.Behaviors
             if (!_validators.Any())
             {
                 var noValidatorsResult = Result.Success();
-                noValidatorsResult.OnSuccess(() => 
+                noValidatorsResult.OnSuccess(() =>
                     _logger.LogDebug(ApiResponseMessages.Logging.ValidationPipelineNoValidators, typeof(TRequest).Name));
-                
+
                 return await next();
             }
 
             var validationResult = await ExecuteValidationAsync(request, cancellationToken);
-            
+
             if (validationResult.IsFailure)
             {
                 return CreateValidationFailureResponse(validationResult.ErrorItems, typeof(TRequest).Name);
             }
 
             // Log successful validation using ResultExtensions
-            validationResult.OnSuccess(() => 
-                _logger.LogDebug(ApiResponseMessages.Logging.ValidationPipelinePassed, 
+            validationResult.OnSuccess(() =>
+                _logger.LogDebug(ApiResponseMessages.Logging.ValidationPipelinePassed,
                     typeof(TRequest).Name, _validators.Count()));
 
             return await next();
@@ -83,10 +83,10 @@ namespace BankingSystemAPI.Application.Behaviors
                     .ToList();
 
                 var validationFailureResult = Result.Failure(structuredErrors);
-                
+
                 // Use ResultExtensions for structured validation failure logging (OnFailure supplies string list)
-                validationFailureResult.OnFailure(errs => 
-                    _logger.LogWarning(ApiResponseMessages.Logging.ValidationPipelineFailed, 
+                validationFailureResult.OnFailure(errs =>
+                    _logger.LogWarning(ApiResponseMessages.Logging.ValidationPipelineFailed,
                         typeof(TRequest).Name, string.Join(", ", errs), _validators.Count()));
 
                 return validationFailureResult;
@@ -94,9 +94,9 @@ namespace BankingSystemAPI.Application.Behaviors
             catch (Exception ex)
             {
                 var exceptionResult = Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
-                exceptionResult.OnFailure(errors => 
+                exceptionResult.OnFailure(errors =>
                     _logger.LogError(ex, ApiResponseMessages.Logging.ValidationPipelineException, typeof(TRequest).Name));
-                
+
                 return exceptionResult;
             }
         }
@@ -108,7 +108,7 @@ namespace BankingSystemAPI.Application.Behaviors
             {
                 var failure = Result.Failure(errors);
                 // Use ResultExtensions for logging
-                failure.OnFailure(errs => 
+                failure.OnFailure(errs =>
                     _logger.LogInformation(ApiResponseMessages.Logging.ValidationPipelineReturningFailure, "Result", requestTypeName));
                 return (TResponse)(object)failure;
             }
@@ -120,28 +120,28 @@ namespace BankingSystemAPI.Application.Behaviors
                 var genericArg = responseType.GetGenericArguments()[0];
                 var resultGenericType = typeof(Result<>).MakeGenericType(genericArg);
                 var failureMethod = resultGenericType.GetMethod("Failure", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(IEnumerable<ResultError>) }, null);
-                
+
                 if (failureMethod != null)
                 {
                     var failureInstance = failureMethod.Invoke(null, new object[] { errors });
-                    
+
                     // Use ResultExtensions patterns for logging generic result failures
                     var logResult = Result.Success();
-                    logResult.OnSuccess(() => 
-                        _logger.LogInformation(ApiResponseMessages.Logging.ValidationPipelineReturningFailure, 
+                    logResult.OnSuccess(() =>
+                        _logger.LogInformation(ApiResponseMessages.Logging.ValidationPipelineReturningFailure,
                             genericArg.Name, requestTypeName));
-                        
+
                     return (TResponse)failureInstance!;
                 }
             }
 
             // Fallback to throwing exception for non-Result types with enhanced logging
             var exceptionResult = Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, "Unsupported response type for validation failure"));
-            exceptionResult.OnFailure(errs => 
-                _logger.LogError(ApiResponseMessages.Logging.ValidationPipelineUnsupportedResponse, 
+            exceptionResult.OnFailure(errs =>
+                _logger.LogError(ApiResponseMessages.Logging.ValidationPipelineUnsupportedResponse,
                     typeof(TResponse).Name, requestTypeName));
 
-            throw new ValidationException(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, $"Validation failed for {requestTypeName}: {string.Join(", ", errors.Select(e=>e.Message))}"));
+            throw new ValidationException(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, $"Validation failed for {requestTypeName}: {string.Join(", ", errors.Select(e => e.Message))}"));
         }
     }
 }

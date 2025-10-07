@@ -54,10 +54,10 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByUs
 
             var accountQuery = _uow.AccountRepository.QueryByUserId(request.UserId).AsQueryable();
             var filterResult = await _accountAuth.FilterAccountsQueryAsync(accountQuery);
-            
+
             if (filterResult.IsFailure)
                 return Result<List<AccountDto>>.Failure(filterResult.ErrorItems);
-            
+
             var filteredQuery = filterResult.Value!;
 
             // Fetch all matching accounts via repository paging helper

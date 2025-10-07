@@ -10,19 +10,19 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Interfaces.Repositories
 {
-    public interface IInterestLogRepository: IGenericRepository<InterestLog, int>
+    public interface IInterestLogRepository : IGenericRepository<InterestLog, int>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
     }
 }
 

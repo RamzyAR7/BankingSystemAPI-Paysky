@@ -57,7 +57,12 @@ namespace BankingSystemAPI.UnitTests.UnitTests.Presentation
             var actionResult = controller.InvokeHandleResult(result);
 
             var ok = Assert.IsType<OkObjectResult>(actionResult);
-            Assert.Equal("hello", ok.Value);
+            // expect standardized envelope { success, message, data }
+            var body = ok.Value ?? throw new Xunit.Sdk.XunitException("Response body was null");
+            var dataProp = body.GetType().GetProperty("data");
+            Assert.NotNull(dataProp);
+            var dataVal = dataProp.GetValue(body);
+            Assert.Equal("hello", dataVal);
         }
 
         [Fact]
@@ -106,7 +111,11 @@ namespace BankingSystemAPI.UnitTests.UnitTests.Presentation
 
             var obj = Assert.IsType<ObjectResult>(actionResult);
             Assert.Equal(201, obj.StatusCode);
-            Assert.Equal(123, obj.Value);
+            var body = obj.Value ?? throw new Xunit.Sdk.XunitException("Response body was null");
+            var dataProp = body.GetType().GetProperty("data");
+            Assert.NotNull(dataProp);
+            var dataVal = dataProp.GetValue(body);
+            Assert.Equal(123, dataVal);
         }
 
         [Fact]
@@ -120,8 +129,12 @@ namespace BankingSystemAPI.UnitTests.UnitTests.Presentation
             var actionResult = controller.InvokeHandleCreatedResult(result, "GetById", new { id = 999 });
 
             var created = Assert.IsType<CreatedAtActionResult>(actionResult);
-            Assert.Equal(999, created.Value);
             Assert.Equal("GetById", created.ActionName);
+            var body = created.Value ?? throw new Xunit.Sdk.XunitException("Response body was null");
+            var dataProp = body.GetType().GetProperty("data");
+            Assert.NotNull(dataProp);
+            var dataVal = dataProp.GetValue(body);
+            Assert.Equal(999, dataVal);
         }
 
         [Fact]
@@ -135,9 +148,9 @@ namespace BankingSystemAPI.UnitTests.UnitTests.Presentation
             var actionResult = controller.InvokeHandleUpdateResult(result);
 
             var ok = Assert.IsType<OkObjectResult>(actionResult);
-            var val = ok.Value;
-            // ensure there's no `data` property on the anonymous response
-            var dataProp = val.GetType().GetProperty("data");
+            var body = ok.Value ?? throw new Xunit.Sdk.XunitException("Response body was null");
+            // For password/status updates we return message-only object without `data`
+            var dataProp = body.GetType().GetProperty("data");
             Assert.Null(dataProp);
         }
 

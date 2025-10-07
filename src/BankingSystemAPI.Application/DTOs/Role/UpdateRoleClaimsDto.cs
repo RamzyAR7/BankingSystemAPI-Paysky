@@ -11,19 +11,19 @@ namespace BankingSystemAPI.Application.DTOs.Role
 {
     public class UpdateRoleClaimsDto
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
-        public string RoleName { get; set; }
-        public List<string> Claims { get; set; }
+        #region Methods
+        #endregion
+        public string RoleName { get; set; } = string.Empty;
+        public List<string> Claims { get; set; } = new List<string>();
     }
 }
 

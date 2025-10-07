@@ -40,9 +40,10 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Deposit([FromBody] DepositReqDto request)
         {
-            if (!ModelState.IsValid) 
-                return BadRequest(new { 
-                    success = false, 
+            if (!ModelState.IsValid)
+                return BadRequest(new
+                {
+                    success = false,
                     errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToArray(),
                     message = "Invalid deposit request."
                 });
@@ -61,9 +62,10 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Withdraw([FromBody] WithdrawReqDto request)
         {
-            if (!ModelState.IsValid) 
-                return BadRequest(new { 
-                    success = false, 
+            if (!ModelState.IsValid)
+                return BadRequest(new
+                {
+                    success = false,
                     errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToArray(),
                     message = "Invalid withdraw request."
                 });
@@ -82,9 +84,10 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Transfer([FromBody] TransferReqDto request)
         {
-            if (!ModelState.IsValid) 
-                return BadRequest(new { 
-                    success = false, 
+            if (!ModelState.IsValid)
+                return BadRequest(new
+                {
+                    success = false,
                     errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToArray(),
                     message = "Invalid transfer request."
                 });

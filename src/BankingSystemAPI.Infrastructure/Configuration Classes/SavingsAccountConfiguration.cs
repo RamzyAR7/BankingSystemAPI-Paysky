@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Infrastructure.Configuration_Classes
 {
-    public class SavingsAccountConfiguration: IEntityTypeConfiguration<SavingsAccount>
+    public class SavingsAccountConfiguration : IEntityTypeConfiguration<SavingsAccount>
     {
         public void Configure(EntityTypeBuilder<SavingsAccount> builder)
         {

@@ -10,19 +10,19 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Features.Banks.Queries.GetBankByName
 {
-    public class GetBankByNameQueryValidator: AbstractValidator<GetBankByNameQuery>
+    public class GetBankByNameQueryValidator : AbstractValidator<GetBankByNameQuery>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public GetBankByNameQueryValidator()
         {
             RuleFor(x => x.name)

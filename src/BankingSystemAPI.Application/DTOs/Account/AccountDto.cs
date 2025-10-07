@@ -12,17 +12,17 @@ namespace BankingSystemAPI.Application.DTOs.Account
     /// </summary>
     public class AccountDto
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         /// <summary>
         /// Account identifier.
         /// </summary>
@@ -33,7 +33,7 @@ namespace BankingSystemAPI.Application.DTOs.Account
         /// </summary>
         [Required]
         [StringLength(50)]
-        public string AccountNumber { get; set; }
+        public required string AccountNumber { get; set; } = string.Empty;
 
         /// <summary>
         /// Current account balance.
@@ -49,17 +49,17 @@ namespace BankingSystemAPI.Application.DTOs.Account
         /// Identifier of the owning user.
         /// </summary>
         [Required]
-        public string UserId { get; set; }
+        public required string UserId { get; set; } = string.Empty;
 
         /// <summary>
         /// Currency code for the account (e.g. "USD").
         /// </summary>
-        public string CurrencyCode { get; set; }
+        public required string CurrencyCode { get; set; } = string.Empty;
 
         /// <summary>
         /// Type of the account (e.g. "Checking", "Savings").
         /// </summary>
-        public string Type { get; set; }
+        public required string Type { get; set; } = string.Empty;
 
         /// <summary>
         /// Indicates if the account is active.

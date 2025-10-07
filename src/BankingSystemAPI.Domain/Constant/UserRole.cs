@@ -11,7 +11,7 @@ namespace BankingSystemAPI.Domain.Constant
 {
     public enum UserRole
     {
-        SuperAdmin = 1, 
+        SuperAdmin = 1,
         Admin,
         Client
     }

@@ -9,17 +9,17 @@ namespace BankingSystemAPI.Application.Specifications.TransactionSpecification
 {
     public class TransactionsByAccountPagedSpecification : PagedSpecification<Transaction>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public TransactionsByAccountPagedSpecification(int accountId, int skip, int take, string? orderBy = null, string? orderDir = null)
             : base(t => t.AccountTransactions.Any(at => at.AccountId == accountId), skip, take, orderBy ?? "Timestamp", orderDir ?? "DESC", t => t.AccountTransactions)
         {

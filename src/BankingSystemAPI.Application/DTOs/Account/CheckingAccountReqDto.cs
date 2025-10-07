@@ -15,21 +15,21 @@ namespace BankingSystemAPI.Application.DTOs.Account
     /// </summary>
     public class CheckingAccountReqDto
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         /// <summary>
         /// Identifier of the user who will own the account.
         /// </summary>
-        public string UserId { get; set; }
+        public required string UserId { get; set; } = string.Empty;
 
         /// <summary>
         /// Currency identifier for the account.

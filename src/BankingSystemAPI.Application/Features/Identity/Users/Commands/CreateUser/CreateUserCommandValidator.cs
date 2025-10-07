@@ -96,13 +96,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
                         {
                             var currentUserRole = await _currentUserService.GetRoleFromStoreAsync();
                             var isSuperAdmin = string.Equals(currentUserRole.Name, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase);
-                            
+
                             // Role is required only for SuperAdmin
                             if (isSuperAdmin)
                             {
                                 return !string.IsNullOrWhiteSpace(role);
                             }
-                            
+
                             // For non-SuperAdmin, role is optional (will be set to Client by handler)
                             return true;
                         }
@@ -148,7 +148,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
                         {
                             var currentUserRole = await _currentUserService.GetRoleFromStoreAsync();
                             var isSuperAdmin = string.Equals(currentUserRole.Name, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase);
-                            
+
                             // BankId validation based on user role
                             if (isSuperAdmin)
                             {
@@ -184,7 +184,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
         {
             var today = DateOnly.FromDateTime(DateTime.Today);
             var age = today.Year - dateOfBirth.Year;
-            
+
             if (dateOfBirth > today.AddYears(-age))
                 age--;
 

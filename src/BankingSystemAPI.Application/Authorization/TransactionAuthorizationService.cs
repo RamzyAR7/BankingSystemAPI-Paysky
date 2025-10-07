@@ -33,6 +33,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         private readonly IUnitOfWork _uow;
         private readonly IScopeResolver _scopeResolver;
         private readonly ILogger<TransactionAuthorizationService> _logger;
+        private readonly BankingSystemAPI.Application.Interfaces.Infrastructure.IDbCapabilities _dbCapabilities;
 
         #endregion
 
@@ -42,12 +43,14 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             ICurrentUserService currentUser,
             IUnitOfWork uow,
             IScopeResolver scopeResolver,
-            ILogger<TransactionAuthorizationService> logger)
+            ILogger<TransactionAuthorizationService> logger,
+            BankingSystemAPI.Application.Interfaces.Infrastructure.IDbCapabilities dbCapabilities)
         {
             _currentUser = currentUser;
             _uow = uow;
             _scopeResolver = scopeResolver;
             _logger = logger;
+            _dbCapabilities = dbCapabilities;
         }
 
         #endregion
@@ -69,14 +72,14 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 return HandleAccountError(sourceAccountResult);
 
             var authorizationResult = await ValidateTransferAuthorizationAsync(
-                sourceAccountResult.Value!, 
+                sourceAccountResult.Value!,
                 scopeResult.Value);
-            
+
             LogAuthorizationResult(
-                AuthorizationCheckType.Modify, 
-                $"Transfer: {sourceAccountId} -> {targetAccountId}", 
-                authorizationResult, 
-                scopeResult.Value, 
+                AuthorizationCheckType.Modify,
+                $"Transfer: {sourceAccountId} -> {targetAccountId}",
+                authorizationResult,
+                scopeResult.Value,
                 "MoneyTransfer");
 
             return authorizationResult;
@@ -87,8 +90,8 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         /// Priority: Low-Medium impact operation with potential high financial data exposure
         /// </summary>
         public async Task<Result<(IEnumerable<Transaction> Transactions, int TotalCount)>> FilterTransactionsAsync(
-            IQueryable<Transaction> query, 
-            int pageNumber = 1, 
+            IQueryable<Transaction> query,
+            int pageNumber = 1,
             int pageSize = 10)
         {
             var scopeResult = await GetScopeAsync();
@@ -97,12 +100,12 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
             var filteringResult = await ApplyScopeFilteringAsync(query, scopeResult.Value, pageNumber, pageSize);
 
-             LogFilteringResult(filteringResult, scopeResult.Value, pageNumber, pageSize);
+            LogFilteringResult(filteringResult, scopeResult.Value, pageNumber, pageSize);
 
-             return filteringResult;
-         }
+            return filteringResult;
+        }
 
-         #endregion
+        #endregion
 
         #region Core Authorization Logic - Organized by Validation Type
 
@@ -117,13 +120,13 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             {
                 // Least restrictive: Global access for system administrators
                 AccessScope.Global => Result.Success(),
-                
+
                 // Most restrictive: Self-access only for clients
                 AccessScope.Self => ValidateSelfTransferAuthorization(sourceAccount),
-                
+
                 // Moderately restrictive: Bank-level access with role restrictions
                 AccessScope.BankLevel => await ValidateBankLevelTransferAsync(sourceAccount),
-                
+
                 // Default: Unknown scope
                 _ => Result.Forbidden(AuthorizationConstants.ErrorMessages.UnknownAccessScope)
             };
@@ -194,37 +197,54 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         /// Order: Scope complexity from simple to complex for transaction history
         /// </summary>
         private async Task<Result<(IEnumerable<Transaction> Transactions, int TotalCount)>> ApplyScopeFilteringAsync(
-            IQueryable<Transaction> query, 
-            AccessScope scope, 
-            int pageNumber, 
+            IQueryable<Transaction> query,
+            AccessScope scope,
+            int pageNumber,
             int pageSize)
         {
             try
             {
                 var skip = (pageNumber - 1) * pageSize;
 
-                // Materialize query to an in-memory list to avoid expression tree/executor differences
-                var allItems = query.ToList();
-
-                IEnumerable<Transaction> filteredItems = scope switch
+                // Short-circuit unsafe scopes that require acting user info
+                if (scope == AccessScope.Self && string.IsNullOrWhiteSpace(_currentUser.UserId))
                 {
-                    AccessScope.Global => allItems,
-                    AccessScope.Self => allItems.Where(t => t.AccountTransactions != null && t.AccountTransactions.Any(at => at.Account != null && string.Equals(at.Account.UserId, _currentUser.UserId, StringComparison.OrdinalIgnoreCase))),
-                    AccessScope.BankLevel => allItems.Where(t => t.AccountTransactions != null && t.AccountTransactions.Any(at => at.Account != null && at.Account.User != null && at.Account.User.BankId == _currentUser.BankId)),
-                    _ => Enumerable.Empty<Transaction>()
+                    return Result<(IEnumerable<Transaction> Transactions, int TotalCount)>.Success((Enumerable.Empty<Transaction>(), 0));
+                }
+
+                IQueryable<Transaction> filteredQuery = scope switch
+                {
+                    AccessScope.Global => query,
+                    AccessScope.Self => query.Where(t => t.AccountTransactions.Any(at => at.Account != null && at.Account.UserId == _currentUser.UserId)),
+                    AccessScope.BankLevel => query.Where(t => t.AccountTransactions.Any(at => at.Account != null && at.Account.User != null && at.Account.User.BankId == _currentUser.BankId)),
+                    _ => query.Where(_ => false)
                 };
 
-                var ordered = filteredItems.OrderByDescending(t => t.Timestamp).ToList();
-                var total = ordered.Count;
-                var items = ordered.Skip(skip).Take(pageSize).ToList();
+                // Order query by timestamp
+                var orderedQuery = filteredQuery.OrderByDescending(t => t.Timestamp);
+
+                // Detect EF Core provider heuristically (provider assembly contains 'EntityFrameworkCore')
+                var isEfCore = _dbCapabilities?.SupportsEfCoreAsync ?? false;
+
+                if (isEfCore)
+                {
+                    var efQuery = orderedQuery.AsNoTracking();
+                    var totalAsync = await efQuery.CountAsync();
+                    var itemsAsync = await efQuery.Skip(skip).Take(pageSize).ToListAsync();
+                    return Result<(IEnumerable<Transaction> Transactions, int TotalCount)>.Success((itemsAsync, totalAsync));
+                }
+
+                // Fallback for in-memory queries (e.g., unit tests using LINQ-to-Objects)
+                var orderedList = orderedQuery.ToList();
+                var total = orderedList.Count;
+                var items = orderedList.Skip(skip).Take(pageSize).ToList();
 
                 return Result<(IEnumerable<Transaction> Transactions, int TotalCount)>.Success((items, total));
             }
             catch (Exception ex)
             {
                 LogSystemError("Failed to filter transactions", ex);
-                return Result<(IEnumerable<Transaction> Transactions, int TotalCount)>
-                    .BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
+                return Result<(IEnumerable<Transaction> Transactions, int TotalCount)>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
 
@@ -239,9 +259,9 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
             // Filter to show only transactions involving Client users within the same bank
             var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery(UserRole.Client.ToString());
-            var filteredQuery = query.Where(t => 
-                t.AccountTransactions.Any(at => 
-                    clientUserIds.Contains(at.Account.UserId) && 
+            var filteredQuery = query.Where(t =>
+                t.AccountTransactions.Any(at =>
+                    clientUserIds.Contains(at.Account.UserId) &&
                     at.Account.User.BankId == actingUserResult.Value!.BankId));
 
             return Result<IQueryable<Transaction>>.Success(filteredQuery);
@@ -268,6 +288,9 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         private async Task<Result<ApplicationUser>> GetActingUserAsync()
         {
+            if (string.IsNullOrWhiteSpace(_currentUser.UserId))
+                return Result<ApplicationUser>.Failure(ErrorType.Unauthorized, "Acting user is not available in the current context.");
+
             var actingUserSpec = new UserByIdSpecification(_currentUser.UserId);
             var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec);
             return actingUser.ToResult(string.Format(ApiResponseMessages.BankingErrors.NotFoundFormat, "Acting user", _currentUser.UserId));
@@ -282,14 +305,14 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         }
 
         // Validation Helpers
-        private bool IsSelfAccess(string targetUserId) => 
-            _currentUser.UserId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase);
+        private bool IsSelfAccess(string targetUserId) =>
+            !string.IsNullOrEmpty(_currentUser.UserId) && string.Equals(_currentUser.UserId, targetUserId, StringComparison.OrdinalIgnoreCase);
 
         // Error Handling Helpers
-        private Result HandleScopeError(Result<AccessScope> scopeResult) => 
+        private Result HandleScopeError(Result<AccessScope> scopeResult) =>
             Result.BadRequest(scopeResult.ErrorItems.FirstOrDefault()?.Message ?? AuthorizationConstants.ErrorMessages.SystemError);
 
-        private Result HandleAccountError(Result<Account> accountResult) => 
+        private Result HandleAccountError(Result<Account> accountResult) =>
             Result.BadRequest(accountResult.ErrorItems.FirstOrDefault()?.Message ?? ApiResponseMessages.Validation.AccountNotFound);
 
         #endregion
@@ -297,10 +320,10 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         #region Logging Methods - Organized by Log Level and Category
 
         private void LogAuthorizationResult(
-            AuthorizationCheckType checkType, 
-            string? targetId, 
-            Result authResult, 
-            AccessScope scope, 
+            AuthorizationCheckType checkType,
+            string? targetId,
+            Result authResult,
+            AccessScope scope,
             string? additionalInfo = null)
         {
             if (authResult.IsSuccess)
@@ -326,11 +349,11 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         }
 
         private void LogFilteringResult<T>(
-            Result<T> filterResult, 
-            AccessScope scope, 
-            int pageNumber, 
+            Result<T> filterResult,
+            AccessScope scope,
+            int pageNumber,
             int pageSize)
-         {
+        {
             if (filterResult.IsSuccess)
             {
                 _logger.LogDebug(ApiResponseMessages.Logging.UserFilteringCompleted,
@@ -358,16 +381,16 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 targetId);
         }
 
-         private void LogSystemError(string message, Exception? ex = null)
-         {
-             _logger.LogError(ex,
-                 "{LogCategory} {Message}: ActingUserId={ActingUserId}",
-                 AuthorizationConstants.LoggingCategories.SYSTEM_ERROR,
-                 message,
-                 _currentUser.UserId);
-         }
+        private void LogSystemError(string message, Exception? ex = null)
+        {
+            _logger.LogError(ex,
+                "{LogCategory} {Message}: ActingUserId={ActingUserId}",
+                AuthorizationConstants.LoggingCategories.SYSTEM_ERROR,
+                message,
+                _currentUser.UserId);
+        }
 
-         #endregion
-     }
- }
+        #endregion
+    }
+}
 

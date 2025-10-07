@@ -24,7 +24,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRo
         private readonly ILogger<DeleteRoleCommandHandler> _logger;
 
         public DeleteRoleCommandHandler(
-            IRoleService roleService, 
+            IRoleService roleService,
             ILogger<DeleteRoleCommandHandler> logger)
         {
             _roleService = roleService;
@@ -38,7 +38,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRo
             {
                 return Result<RoleUpdateResultDto>.ValidationFailed(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Role ID"));
             }
-            
+
             _logger.LogDebug(ApiResponseMessages.Logging.OperationCompletedController, "role", "delete");
 
             // Business rule validation: Check if role exists and is not in use
@@ -48,13 +48,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRo
 
             // Execute role deletion
             var deleteResult = await ExecuteRoleDeletionAsync(request.RoleId);
-            
+
             // Enhanced side effects using ResultExtensions with structured logging
-            deleteResult.OnSuccess(() => 
+            deleteResult.OnSuccess(() =>
             {
                 _logger.LogInformation(ApiResponseMessages.Logging.RoleDeleted, request.RoleId, deleteResult.Value?.Role?.Name);
             })
-            .OnFailure(errors => 
+            .OnFailure(errors =>
             {
                 _logger.LogWarning(ApiResponseMessages.Logging.RoleDeleteFailed, request.RoleId, string.Join(", ", errors));
             });
@@ -84,15 +84,15 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRo
 
                 // All business rules passed
                 var successResult = Result.Success();
-                successResult.OnSuccess(() => 
+                successResult.OnSuccess(() =>
                     _logger.LogDebug(ApiResponseMessages.Logging.OperationCompletedController, "role", "validatebusinessrules"));
-                
+
                 return successResult;
             }
             catch (Exception ex)
             {
                 var exceptionResult = Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
-                exceptionResult.OnFailure(errors => 
+                exceptionResult.OnFailure(errors =>
                     _logger.LogError(ex, ApiResponseMessages.Logging.SeedingFailed, ex.Message));
                 return exceptionResult;
             }
@@ -103,25 +103,24 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRo
         /// </summary>
         /// <param name="roleId">The role ID to check</param>
         /// <returns>Result indicating whether the role exists</returns>
-        private async Task<Result> ValidateRoleExistsAsync(string roleId)
+        private Task<Result> ValidateRoleExistsAsync(string roleId)
         {
             try
             {
                 _logger.LogDebug(ApiResponseMessages.Logging.OperationCompletedController, "role", "validateexistence");
-                
+
                 // The existence check is implicit in the deletion operation
                 // If we need explicit existence validation, we'd add a method to IRoleService
-                return Result.Success();
+                return Task.FromResult(Result.Success());
             }
             catch (Exception ex)
             {
                 var exceptionResult = Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
-                exceptionResult.OnFailure(errors => 
+                exceptionResult.OnFailure(errors =>
                     _logger.LogError(ex, ApiResponseMessages.Logging.SeedingFailed, ex.Message));
-                return exceptionResult;
+                return Task.FromResult(exceptionResult);
             }
         }
-
         /// <summary>
         /// Enhanced role usage validation using IRoleService - maintains proper separation of concerns
         /// </summary>
@@ -135,13 +134,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRo
 
                 // Use IRoleService for role-specific business logic - proper architecture
                 var roleUsageResult = await _roleService.IsRoleInUseAsync(roleId);
-                
+
                 // Enhanced error handling using ResultExtensions patterns
                 if (roleUsageResult.IsFailure)
                 {
                     // Fail-safe approach: if we can't determine usage, we don't allow deletion
                     var failsafeResult = Result.BadRequest(ApiResponseMessages.Validation.DeleteUserHasAccounts);
-                    failsafeResult.OnFailure(errors => 
+                    failsafeResult.OnFailure(errors =>
                         _logger.LogWarning(ApiResponseMessages.Logging.RoleUsageCheckFailed, roleId));
                     return failsafeResult;
                 }
@@ -150,22 +149,22 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRo
                 if (roleUsageResult.Value)
                 {
                     var businessRuleViolation = Result.BadRequest(ApiResponseMessages.BankingErrors.TransfersFromClientsOnly);
-                    businessRuleViolation.OnFailure(errors => 
+                    businessRuleViolation.OnFailure(errors =>
                         _logger.LogWarning(ApiResponseMessages.Logging.RoleUsageCheckFailed, roleId));
                     return businessRuleViolation;
                 }
 
                 // Success case with positive confirmation logging
                 var successResult = Result.Success();
-                successResult.OnSuccess(() => 
+                successResult.OnSuccess(() =>
                     _logger.LogDebug(ApiResponseMessages.Logging.OperationCompletedController, "role", "validateusage"));
-                
+
                 return successResult;
             }
             catch (Exception ex)
             {
                 var exceptionResult = Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
-                exceptionResult.OnFailure(errors => 
+                exceptionResult.OnFailure(errors =>
                     _logger.LogError(ex, ApiResponseMessages.Logging.SeedingFailed, ex.Message));
                 return exceptionResult;
             }
@@ -184,12 +183,12 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRo
 
                 // Use IRoleService - it now returns Result<RoleUpdateResultDto> directly
                 var serviceResult = await _roleService.DeleteRoleAsync(roleId);
-                
+
                 // Enhanced logging for service interaction
-                serviceResult.OnSuccess(() => 
-                    _logger.LogInformation(ApiResponseMessages.Logging.RoleDeleted, 
+                serviceResult.OnSuccess(() =>
+                    _logger.LogInformation(ApiResponseMessages.Logging.RoleDeleted,
                         roleId, serviceResult.Value!.Role!.Name))
-                    .OnFailure(errors => 
+                    .OnFailure(errors =>
                         _logger.LogError(ApiResponseMessages.Logging.RoleDeleteFailed, roleId, string.Join(", ", errors)));
 
                 return serviceResult;
@@ -197,7 +196,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRo
             catch (Exception ex)
             {
                 var exceptionResult = Result<RoleUpdateResultDto>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
-                exceptionResult.OnFailure(errors => 
+                exceptionResult.OnFailure(errors =>
                     _logger.LogError(ex, ApiResponseMessages.Logging.SeedingFailed, ex.Message));
                 return exceptionResult;
             }

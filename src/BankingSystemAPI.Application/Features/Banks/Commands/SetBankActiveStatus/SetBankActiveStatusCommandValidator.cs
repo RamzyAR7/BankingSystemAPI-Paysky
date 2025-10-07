@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Features.Banks.Commands.SetBankActiveStatus
 {
-    public class SetBankActiveStatusCommandValidator:AbstractValidator<SetBankActiveStatusCommand>
+    public class SetBankActiveStatusCommandValidator : AbstractValidator<SetBankActiveStatusCommand>
     {
         public SetBankActiveStatusCommandValidator()
         {

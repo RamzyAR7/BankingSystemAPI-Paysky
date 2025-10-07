@@ -11,17 +11,17 @@ namespace BankingSystemAPI.Application.DTOs.Currency
     /// </summary>
     public class CurrencyDto
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         /// <summary>
         /// Currency identifier.
         /// </summary>
@@ -32,7 +32,7 @@ namespace BankingSystemAPI.Application.DTOs.Currency
         /// </summary>
         [Required]
         [StringLength(5, MinimumLength = 3)]
-        public string Code { get; set; }
+        public string Code { get; set; } = string.Empty;
 
         /// <summary>
         /// Indicates if currency is base currency.

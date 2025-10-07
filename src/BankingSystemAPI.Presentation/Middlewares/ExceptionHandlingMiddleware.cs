@@ -47,11 +47,11 @@ namespace BankingSystemAPI.Presentation.Middlewares
             try
             {
                 await _next(context);
-                
+
                 // Use ResultExtensions for successful request logging with performance tracking
                 var successResult = Result.Success();
-                successResult.OnSuccess(() => 
-                    _logger.LogDebug(ApiResponseMessages.Logging.MiddlewareRequestCompleted, 
+                successResult.OnSuccess(() =>
+                    _logger.LogDebug("{RequestId} {Path} {Method} {StatusCode} - MiddlewareRequestCompleted",
                         requestId, context.Request.Path, context.Request.Method, context.Response.StatusCode));
             }
             catch (Exception ex)
@@ -71,7 +71,7 @@ namespace BankingSystemAPI.Presentation.Middlewares
         private static void SetRequestContext(HttpContext context, string requestId)
         {
             context.Items["RequestId"] = requestId;
-            
+
             // Use modern header manipulation for .NET 8
             if (!context.Response.Headers.ContainsKey("X-Request-ID"))
             {
@@ -85,7 +85,7 @@ namespace BankingSystemAPI.Presentation.Middlewares
             if (context.Response.HasStarted)
             {
                 var startedResult = Result.BadRequest(ApiResponseMessages.Validation.ResponseAlreadyStarted);
-                startedResult.OnFailure(errors => 
+                startedResult.OnFailure(errors =>
                     _logger.LogWarning(ApiResponseMessages.Logging.MiddlewareExceptionProcessingFailed, requestId, string.Join(", ", errors)));
                 return;
             }
@@ -95,11 +95,11 @@ namespace BankingSystemAPI.Presentation.Middlewares
 
             // Enhanced exception processing pipeline
             var exceptionProcessingResult = await ProcessExceptionAsync(context, exception, requestId);
-            
-            exceptionProcessingResult.OnSuccess(() => 
-                _logger.LogDebug(ApiResponseMessages.Logging.MiddlewareRequestCompleted, requestId))
-                .OnFailure(errors => 
-                    _logger.LogError(ApiResponseMessages.Logging.MiddlewareExceptionProcessingFailed, requestId, string.Join(", ", errors)));
+
+            exceptionProcessingResult.OnSuccess(() =>
+            _logger.LogDebug("{RequestId} - MiddlewareRequestCompleted", requestId))
+            .OnFailure(errors =>
+                _logger.LogError("{RequestId} - MiddlewareExceptionProcessingFailed: {Errors}", requestId, string.Join(", ", errors)));
         }
 
         private async Task<Result> ProcessExceptionAsync(HttpContext context, Exception exception, string requestId)
@@ -120,14 +120,14 @@ namespace BankingSystemAPI.Presentation.Middlewares
                 // Create and write error response
                 var errorResponse = CreateErrorResponse(statusCode, message, requestId);
                 var writeResult = await WriteErrorResponseAsync(context, errorResponse, requestId);
-                
+
                 return writeResult;
             }
             catch (Exception ex)
             {
                 var processingError = Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
-                processingError.OnFailure(errors => 
-                    _logger.LogCritical(ApiResponseMessages.Logging.MiddlewareCriticalProcessingError, ex, requestId));
+                processingError.OnFailure(errors =>
+                    _logger.LogCritical(ex, "{RequestId} - Critical error in exception processing", requestId));
                 return processingError;
             }
         }
@@ -272,16 +272,16 @@ namespace BankingSystemAPI.Presentation.Middlewares
                 await context.Response.WriteAsync(payload);
 
                 var responseResult = Result.Success();
-                responseResult.OnSuccess(() => 
+                responseResult.OnSuccess(() =>
                     // Use structured logging with matching placeholders to avoid FormatException
                     _logger.LogDebug("Error response written. RequestId={RequestId}, Code={Code}, PayloadLength={Length}", requestId, error.Code, payload.Length));
-                
+
                 return responseResult;
             }
             catch (Exception ex)
             {
                 var errorResult = Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
-                errorResult.OnFailure(errors => 
+                errorResult.OnFailure(errors =>
                     _logger.LogError(ex, ApiResponseMessages.Logging.MiddlewareCriticalProcessingError, requestId));
                 return errorResult;
             }
@@ -291,7 +291,7 @@ namespace BankingSystemAPI.Presentation.Middlewares
         {
             var current = ex;
             var visited = new HashSet<Exception>(ReferenceEqualityComparer.Instance);
-            
+
             while (current.InnerException is not null && visited.Add(current))
             {
                 current = current switch

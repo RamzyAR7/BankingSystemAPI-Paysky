@@ -29,7 +29,7 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
 
             // Use ResultExtensions patterns for consistent logging
             var result = Result<bool>.Success(isMatch);
-            result.OnSuccess(() => 
+            result.OnSuccess(() =>
                 {
                     _logger?.LogDebug(ApiResponseMessages.Logging.RoleCheck, role, expectedRole, isMatch);
                 });
@@ -62,7 +62,7 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
 
             // Use ResultExtensions for consistent logging
             var validationResult = Result<bool>.Success(isNotClientOrSuperAdmin);
-            validationResult.OnSuccess(() => 
+            validationResult.OnSuccess(() =>
                 {
                     _logger?.LogDebug(ApiResponseMessages.Logging.BankAdminCheck, role, isNotClientOrSuperAdmin);
                 });
@@ -77,7 +77,7 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
         {
             var validation = ValidateRoleInput(role, expectedRole);
 
-            validation.OnSuccess(() => 
+            validation.OnSuccess(() =>
                 {
                     _logger?.LogDebug(ApiResponseMessages.Logging.RoleValidationSuccessful, role, expectedRole);
                 });
@@ -93,7 +93,7 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
             if (allowedRoles == null || !allowedRoles.Any())
                 return Result.BadRequest("No allowed roles specified");
 
-            var roleValidations = allowedRoles.Select(role => 
+            var roleValidations = allowedRoles.Select(role =>
                 userRole.IsRole(role) ? Result.Success() : Result.BadRequest($"Role {userRole} is not {role}"))
                 .ToArray();
 
@@ -101,12 +101,12 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
             var hasValidRole = roleValidations.Any(r => r.IsSuccess);
             var result = hasValidRole ? Result.Success() : Result.BadRequest($"Role {userRole} is not in allowed roles: {string.Join(", ", allowedRoles)}");
 
-            result.OnSuccess(() => 
+            result.OnSuccess(() =>
                 {
-                    _logger?.LogDebug("[AUTHORIZATION] Multi-role validation passed: {UserRole} is in {AllowedRoles}", 
+                    _logger?.LogDebug("[AUTHORIZATION] Multi-role validation passed: {UserRole} is in {AllowedRoles}",
                         userRole, string.Join(", ", allowedRoles));
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger?.LogWarning("[AUTHORIZATION] Multi-role validation failed: {UserRole} not in {AllowedRoles}",
                         userRole, string.Join(", ", allowedRoles));

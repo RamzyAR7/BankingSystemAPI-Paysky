@@ -28,18 +28,18 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts
         public async Task<Result> Handle(DeleteAccountsCommand request, CancellationToken cancellationToken)
         {
             var distinctIds = request.Ids.Distinct().ToList();
-            
+
             if (!distinctIds.Any())
                 return Result.ValidationFailed(ApiResponseMessages.Validation.AtLeastOneAccountIdRequired);
 
             // Get accounts that exist
             var deleteSpec = AccountsByIdsSpecification.WithTracking(distinctIds);
             var accountsToDelete = await _uow.AccountRepository.ListAsync(deleteSpec);
-            
+
             // Check if all requested accounts exist
             var foundIds = accountsToDelete.Select(a => a.Id).ToList();
             var missingIds = distinctIds.Except(foundIds).ToList();
-            
+
             if (missingIds.Any())
             {
                 return Result.ValidationFailed(string.Format(ApiResponseMessages.Validation.AccountsNotFoundFormat, string.Join(", ", missingIds)));
@@ -49,8 +49,8 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts
             foreach (var account in accountsToDelete)
             {
                 var authResult = await _accountAuth.CanModifyAccountAsync(account.Id, AccountModificationOperation.Delete);
-                    if (authResult.IsFailure)
-                        return Result.Failure(authResult.ErrorItems);
+                if (authResult.IsFailure)
+                    return Result.Failure(authResult.ErrorItems);
             }
 
             // Validate accounts can be deleted (no positive balance)

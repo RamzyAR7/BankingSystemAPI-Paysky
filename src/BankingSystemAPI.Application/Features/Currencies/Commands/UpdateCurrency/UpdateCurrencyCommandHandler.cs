@@ -26,10 +26,10 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.UpdateCurren
         public async Task<Result<CurrencyDto>> Handle(UpdateCurrencyCommand request, CancellationToken cancellationToken)
         {
             // This handler focuses on business logic validation and execution
-            
+
             var spec = new CurrencyByIdSpecification(request.Id);
             var currency = await _uow.CurrencyRepository.FindAsync(spec);
-            if (currency == null) 
+            if (currency == null)
                 return Result<CurrencyDto>.Failure(new ResultError(ErrorType.Validation, ApiResponseMessages.Validation.AccountNotFound));
 
             // Validate uniqueness of currency code (case-insensitive) excluding current entity

@@ -33,27 +33,29 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.UpdateBank
             return await ValidateInputAsync(request)
                 .BindAsync(async cmd => await FindBankAsync(cmd.id))
                 .BindAsync(async bank => await UpdateBankAsync(bank, request.bankDto))
-                .MapAsync(async bank => _mapper.Map<BankResDto>(bank))
-                .OnSuccess(() => 
+                .MapAsync(bank => Task.FromResult(_mapper.Map<BankResDto>(bank)))
+                .OnSuccess(() =>
                 {
-                    _logger.LogInformation("Bank updated successfully: {BankId}, Name: {BankName}", 
+                    _logger.LogInformation("Bank updated successfully: {BankId}, Name: {BankName}",
                         request.id, request.bankDto.Name);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning("Bank update failed for ID: {BankId}. Errors: {Errors}",
                         request.id, string.Join(", ", errors));
                 });
         }
 
-        private async Task<Result<UpdateBankCommand>> ValidateInputAsync(UpdateBankCommand request)
+        private Task<Result<UpdateBankCommand>> ValidateInputAsync(UpdateBankCommand request)
         {
-            return request.ToResult(string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Update command"))
+            var res = request.ToResult(string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Update command"))
                 .Bind(cmd => cmd.bankDto.ToResult(string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Bank data")))
                 .Bind(dto => string.IsNullOrWhiteSpace(dto.Name)
                     ? Result<BankEditDto>.BadRequest(ApiResponseMessages.Validation.BankNameRequired)
                     : Result<BankEditDto>.Success(dto))
                 .Map(_ => request);
+
+            return Task.FromResult(res);
         }
 
         private async Task<Result<Bank>> FindBankAsync(int bankId)
@@ -63,16 +65,16 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.UpdateBank
             return bank.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Bank", bankId));
         }
 
-        private async Task<Result<Bank>> UpdateBankAsync(Bank bank, BankEditDto dto)
+        private Task<Result<Bank>> UpdateBankAsync(Bank bank, BankEditDto dto)
         {
             try
             {
                 bank.Name = dto.Name.Trim();
-                return Result<Bank>.Success(bank);
+                return Task.FromResult(Result<Bank>.Success(bank));
             }
             catch (Exception ex)
             {
-                return Result<Bank>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
+                return Task.FromResult(Result<Bank>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message)));
             }
         }
     }

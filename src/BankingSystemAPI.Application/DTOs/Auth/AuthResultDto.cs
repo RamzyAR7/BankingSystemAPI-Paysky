@@ -8,17 +8,17 @@ namespace BankingSystemAPI.Application.DTOs.Auth
 {
     public class AuthResultDto
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public bool Succeeded { get; set; }
         public List<IdentityError> Errors { get; set; } = new();
         public AuthResDto? AuthData { get; set; }

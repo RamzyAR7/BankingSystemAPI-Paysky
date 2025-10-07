@@ -25,17 +25,17 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiExplorerSettings(GroupName = "Currency")]
     public class CurrencyController : BaseApiController
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         private readonly IMediator _mediator;
 
         public CurrencyController(IMediator mediator)
@@ -43,13 +43,13 @@ namespace BankingSystemAPI.Presentation.Controllers
             _mediator = mediator;
         }
 
-    /// <summary>
-    /// Get all currencies.
-    /// </summary>
-    /// <remarks>
-    /// Returns all currencies. This endpoint does not accept ordering query parameters; a default ordering is applied.
-    /// To sort results use client-side sorting or request ordering support from the API.
-    /// </remarks>
+        /// <summary>
+        /// Get all currencies.
+        /// </summary>
+        /// <remarks>
+        /// Returns all currencies. This endpoint does not accept ordering query parameters; a default ordering is applied.
+        /// To sort results use client-side sorting or request ordering support from the API.
+        /// </remarks>
         [HttpGet]
         [PermissionFilterFactory(Permission.Currency.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]

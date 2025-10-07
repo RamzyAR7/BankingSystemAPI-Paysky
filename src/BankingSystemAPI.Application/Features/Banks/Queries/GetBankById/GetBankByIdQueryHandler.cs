@@ -20,17 +20,17 @@ namespace BankingSystemAPI.Application.Features.Banks.Queries.GetBankById
 {
     public class GetBankByIdQueryHandler : IQueryHandler<GetBankByIdQuery, BankResDto>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
         private readonly ILogger<GetBankByIdQueryHandler> _logger;
@@ -69,7 +69,7 @@ namespace BankingSystemAPI.Application.Features.Banks.Queries.GetBankById
             var dto = _mapper.Map<BankResDto>(bank);
             if (bank.ApplicationUsers != null)
                 dto.Users = _mapper.Map<List<UserResDto>>(bank.ApplicationUsers);
-            
+
             return dto;
         }
     }

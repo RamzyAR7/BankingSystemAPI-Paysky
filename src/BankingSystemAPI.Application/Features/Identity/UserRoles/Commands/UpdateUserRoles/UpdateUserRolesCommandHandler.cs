@@ -28,7 +28,7 @@ namespace BankingSystemAPI.Application.Features.Identity.UserRoles.Commands.Upda
             if (!string.IsNullOrEmpty(request.Role))
             {
                 var isSuperAdmin = await _currentUserService.IsInRoleAsync(UserRole.SuperAdmin.ToString());
-                
+
                 if (!isSuperAdmin && string.Equals(request.Role, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase))
                 {
                     return Result<UserRoleUpdateResultDto>.Forbidden(ApiResponseMessages.Validation.NotAuthorizedToAssignSuperAdmin);

@@ -7,17 +7,17 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetBalance
 {
     public class GetBalanceQueryValidator : AbstractValidator<GetBalanceQuery>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public GetBalanceQueryValidator()
         {
             RuleFor(x => x.AccountId).GreaterThan(0).WithMessage("Invalid account id.");

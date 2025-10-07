@@ -40,7 +40,7 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountById
             // Get account using specification
             var spec = new AccountByIdSpecification(request.Id);
             var account = await _uow.AccountRepository.FindAsync(spec);
-            
+
             if (account == null)
                 return Result<AccountDto>.NotFound("Account", request.Id);
 

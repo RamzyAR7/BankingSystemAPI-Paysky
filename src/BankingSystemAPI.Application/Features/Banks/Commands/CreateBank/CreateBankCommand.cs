@@ -8,5 +8,5 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
 {
-    public record CreateBankCommand(BankReqDto bankDto):ICommand<BankResDto>;
+    public record CreateBankCommand(BankReqDto bankDto) : ICommand<BankResDto>;
 }

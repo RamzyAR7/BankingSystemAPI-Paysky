@@ -58,7 +58,7 @@ public class CurrencyReqDtoBuilder
     public CurrencyReqDto Build() => _dto;
 }
 
-public class UserReqDtoBuilder  
+public class UserReqDtoBuilder
 {
     #region Fields
     #endregion
@@ -74,7 +74,7 @@ public class UserReqDtoBuilder
     private readonly UserReqDto _dto = new()
     {
         Username = "testuser",
-        Email = "test@example.com", 
+        Email = "test@example.com",
         Password = "Test@123",
         PasswordConfirm = "Test@123",
         PhoneNumber = "01234567890",
@@ -86,11 +86,11 @@ public class UserReqDtoBuilder
 
     public UserReqDtoBuilder WithUsername(string username) { _dto.Username = username; return this; }
     public UserReqDtoBuilder WithEmail(string email) { _dto.Email = email; return this; }
-    public UserReqDtoBuilder WithPassword(string password) 
-    { 
-        _dto.Password = password; 
-        _dto.PasswordConfirm = password; 
-        return this; 
+    public UserReqDtoBuilder WithPassword(string password)
+    {
+        _dto.Password = password;
+        _dto.PasswordConfirm = password;
+        return this;
     }
     public UserReqDtoBuilder WithPhoneNumber(string phone) { _dto.PhoneNumber = phone; return this; }
     public UserReqDtoBuilder WithFullName(string fullName) { _dto.FullName = fullName; return this; }
@@ -117,7 +117,7 @@ public class UserEditDtoBuilder
     private readonly UserEditDto _dto = new()
     {
         Username = "testuser",
-        Email = "test@example.com", 
+        Email = "test@example.com",
         PhoneNumber = "01234567890",
         FullName = "Test User",
         NationalId = "12345678901234",

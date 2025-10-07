@@ -48,7 +48,7 @@ public class AccountDomainTests
     {
         // Arrange
         var account = TestEntityFactory.CreateCheckingAccount("user1", 1, balance: 500m, overdraftLimit: 1000m);
-        
+
         // Act & Assert
         var exception = Assert.Throws<InvalidOperationException>(() => account.Withdraw(2000m));
         Assert.Contains("Insufficient funds", exception.Message);
@@ -62,7 +62,7 @@ public class AccountDomainTests
     {
         // Arrange
         var account = TestEntityFactory.CreateCheckingAccount("user1", 1, balance: 1000m);
-        
+
         // Act & Assert
         var exception = Assert.Throws<InvalidOperationException>(() => account.Withdraw(amount));
         Assert.Contains("must be greater than zero", exception.Message);
@@ -101,7 +101,7 @@ public class AccountDomainTests
         var account = TestEntityFactory.CreateCheckingAccount("user123", 1, balance: 100m, overdraftLimit: 200m);
 
         // Act & Assert - Test different overdraft scenarios
-        
+
         // Scenario 1: Positive balance
         Assert.Equal(100m, account.GetAvailableBalance()); // Actual balance
         Assert.Equal(300m, account.GetMaxWithdrawalAmount()); // 100 + 200 overdraft
@@ -113,7 +113,7 @@ public class AccountDomainTests
 
         // Scenario 2: After withdrawal into overdraft
         account.Withdraw(150m); // 100 - 150 = -50 (overdrawn)
-        
+
         Assert.Equal(-50m, account.GetAvailableBalance()); // Actual balance (negative)
         Assert.Equal(150m, account.GetMaxWithdrawalAmount()); // 200 - 50 used = 150 remaining credit
         Assert.True(account.CanWithdraw(100m)); // Within remaining credit
@@ -124,7 +124,7 @@ public class AccountDomainTests
 
         // Scenario 3: At overdraft limit
         account.Withdraw(150m); // -50 - 150 = -200 (at limit)
-        
+
         Assert.Equal(-200m, account.GetAvailableBalance()); // At overdraft limit
         Assert.Equal(0m, account.GetMaxWithdrawalAmount()); // No more credit available
         Assert.False(account.CanWithdraw(0.01m)); // Cannot withdraw even small amount
@@ -140,7 +140,7 @@ public class AccountDomainTests
         var account = TestEntityFactory.CreateCheckingAccount("user123", 1, balance: 500m, overdraftLimit: 300m);
 
         // Act & Assert - Demonstrate conceptual separation
-        
+
         // Customer's actual money vs bank's credit facility
         Assert.Equal(500m, account.GetAvailableBalance()); // Customer's money 
         Assert.Equal(300m, account.OverdraftLimit); // Bank's credit facility 
@@ -148,7 +148,7 @@ public class AccountDomainTests
 
         // After using overdraft - customer owes the bank
         account.Withdraw(600m); // Uses 100 of overdraft
-        
+
         Assert.Equal(-100m, account.GetAvailableBalance()); // Customer owes bank 100 
         Assert.Equal(100, account.GetOverdraftUsed()); // Amount borrowed from bank 
         Assert.Equal(200, account.GetAvailableOverdraftCredit()); // Bank can still lend 200 more 
@@ -201,7 +201,7 @@ public class AccountDomainTests
     {
         // Arrange
         var account = TestEntityFactory.CreateSavingsAccount("user1", 1, balance: 500m);
-        
+
         // Act & Assert
         var exception = Assert.Throws<InvalidOperationException>(() => account.Withdraw(600m));
         Assert.Contains("Insufficient funds", exception.Message);
@@ -271,7 +271,7 @@ public class AccountDomainTests
     {
         // Arrange
         var account = TestEntityFactory.CreateSavingsAccount("user1", 1, interestType: interestType);
-        
+
         // Simulate time passed since last interest
         if (daysSinceLastInterest > 0)
         {
@@ -291,7 +291,7 @@ public class AccountDomainTests
     {
         // Arrange
         var account = TestEntityFactory.CreateSavingsAccount("user1", 1, interestType: InterestType.every5minutes);
-        
+
         // Simulate 6 minutes ago
         var sixMinutesAgo = DateTime.UtcNow.AddMinutes(-6);
         account.ApplyInterest(1m, sixMinutesAgo);
@@ -308,7 +308,7 @@ public class AccountDomainTests
     {
         // Arrange
         var account = TestEntityFactory.CreateSavingsAccount("user1", 1, interestType: InterestType.every5minutes);
-        
+
         // No previous interest applied - account just created
 
         // Act

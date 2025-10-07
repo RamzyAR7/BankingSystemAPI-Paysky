@@ -12,17 +12,17 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.DeleteBank
 {
     public record DeleteBankCommand(int id) : ICommand
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
     }
 }
 

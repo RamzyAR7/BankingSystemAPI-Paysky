@@ -21,8 +21,8 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetAllUse
                 .WithMessage(string.Format(ApiResponseMessages.Validation.FieldLengthMaxFormat, "Page size", 100));
 
             RuleFor(x => x.OrderDirection)
-                .Must(direction => string.IsNullOrEmpty(direction) || 
-                      direction.Equals("ASC", StringComparison.OrdinalIgnoreCase) || 
+                .Must(direction => string.IsNullOrEmpty(direction) ||
+                      direction.Equals("ASC", StringComparison.OrdinalIgnoreCase) ||
                       direction.Equals("DESC", StringComparison.OrdinalIgnoreCase))
                 .WithMessage(ApiResponseMessages.Validation.OrderDirectionMustBeAscOrDesc);
         }

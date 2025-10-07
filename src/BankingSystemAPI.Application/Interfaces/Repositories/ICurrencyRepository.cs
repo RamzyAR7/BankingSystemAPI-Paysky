@@ -10,19 +10,19 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Interfaces.Repositories
 {
-    public interface ICurrencyRepository: IGenericRepository<Currency, int>
+    public interface ICurrencyRepository : IGenericRepository<Currency, int>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
     }
 }
 

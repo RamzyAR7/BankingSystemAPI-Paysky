@@ -50,13 +50,13 @@ namespace BankingSystemAPI.Presentation.Controllers
             return HandleResult(result);
         }
 
-    /// <summary>
-    /// Get all role claims grouped by category.
-    /// </summary>
-    /// <remarks>
-    /// Returns role claims grouped by category. This endpoint does not accept ordering query parameters;
-    /// the grouping order is implementation-defined.
-    /// </remarks>
+        /// <summary>
+        /// Get all role claims grouped by category.
+        /// </summary>
+        /// <remarks>
+        /// Returns role claims grouped by category. This endpoint does not accept ordering query parameters;
+        /// the grouping order is implementation-defined.
+        /// </remarks>
         [HttpGet("GetAllClaims")]
         [PermissionFilterFactory(Permission.RoleClaims.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]

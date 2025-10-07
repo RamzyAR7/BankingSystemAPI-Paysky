@@ -53,12 +53,12 @@ namespace BankingSystemAPI.Domain.Entities
         /// <exception cref="InvalidOperationException">Thrown when insufficient funds or invalid amount</exception>
         public override void Withdraw(decimal amount)
         {
-            if (amount <= 0) 
+            if (amount <= 0)
                 throw new InvalidOperationException("Withdrawal amount must be greater than zero.");
-            
-            if (amount > Balance) 
+
+            if (amount > Balance)
                 throw new InvalidOperationException("Insufficient funds for savings account.");
-            
+
             Balance = Math.Round(Balance - amount, 2);
         }
 
@@ -75,7 +75,7 @@ namespace BankingSystemAPI.Domain.Entities
             var periodsPerYear = GetPeriodsPerYear();
             var dailyRate = InterestRate / 365m;
             var interest = Balance * dailyRate * days;
-            
+
             return Math.Round(interest, 2);
         }
 

@@ -51,13 +51,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
                 return Result<UserResDto>.Failure(accountsResult.ErrorItems);
 
             var deleteResult = await ExecuteUserDeletionAsync(request.UserId);
-            
+
             // Add side effects using ResultExtensions
-            deleteResult.OnSuccess(() => 
+            deleteResult.OnSuccess(() =>
                 {
                     _logger.LogInformation(ApiResponseMessages.Logging.UserDeleted, request.UserId);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning(ApiResponseMessages.Logging.UserDeletionFailed, request.UserId, string.Join(", ", errors));
                 });
@@ -81,7 +81,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
         private Result ValidateSelfDeletion(string targetUserId)
         {
             var actingUserId = _currentUserService.UserId;
-            
+
             return !string.IsNullOrEmpty(actingUserId) && string.Equals(actingUserId, targetUserId, StringComparison.OrdinalIgnoreCase)
                 ? Result.BadRequest(AuthorizationConstants.ErrorMessages.CannotDeleteSelf)
                 : Result.Success();

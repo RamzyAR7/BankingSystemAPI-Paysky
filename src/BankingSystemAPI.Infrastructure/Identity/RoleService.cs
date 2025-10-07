@@ -25,9 +25,9 @@ namespace BankingSystemAPI.Infrastructure.Services
         private readonly ILogger<RoleService> _logger;
 
         public RoleService(
-            RoleManager<ApplicationRole> roleManager, 
+            RoleManager<ApplicationRole> roleManager,
             UserManager<ApplicationUser> userManager,
-            IMapper mapper, 
+            IMapper mapper,
             ILogger<RoleService> logger)
         {
             _roleManager = roleManager;
@@ -45,13 +45,13 @@ namespace BankingSystemAPI.Infrastructure.Services
                     return Result<List<RoleResDto>>.Failure(rolesResult.ErrorItems);
 
                 var enrichedRolesResult = await EnrichRolesWithClaimsAsync(rolesResult.Value!);
-                
+
                 // Add side effects using ResultExtensions
-                enrichedRolesResult.OnSuccess(() => 
+                enrichedRolesResult.OnSuccess(() =>
                     {
                         _logger.LogDebug(ApiResponseMessages.Logging.RoleRetrieved, enrichedRolesResult.Value!.Count);
                     })
-                    .OnFailure(errors => 
+                    .OnFailure(errors =>
                     {
                         _logger.LogWarning(ApiResponseMessages.Logging.RoleRetrieveFailed,
                             string.Join(", ", errors));
@@ -79,13 +79,13 @@ namespace BankingSystemAPI.Infrastructure.Services
                 return Result<RoleUpdateResultDto>.Failure(uniquenessResult.ErrorItems);
 
             var createResult = await ExecuteRoleCreationAsync(dto);
-            
+
             // Add side effects using ResultExtensions
-            createResult.OnSuccess(() => 
+            createResult.OnSuccess(() =>
                 {
                     _logger.LogInformation(ApiResponseMessages.Logging.RoleCreated, dto.Name);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning(ApiResponseMessages.Logging.RoleCreateFailed,
                         dto.Name, string.Join(", ", errors));
@@ -106,14 +106,14 @@ namespace BankingSystemAPI.Infrastructure.Services
                 return Result<RoleUpdateResultDto>.Failure(roleResult.ErrorItems);
 
             var deleteResult = await ExecuteRoleDeletionAsync(roleResult.Value!);
-            
+
             // Add side effects using ResultExtensions
-            deleteResult.OnSuccess(() => 
+            deleteResult.OnSuccess(() =>
                 {
-                    _logger.LogInformation(ApiResponseMessages.Logging.RoleDeleted, 
+                    _logger.LogInformation(ApiResponseMessages.Logging.RoleDeleted,
                         roleId, roleResult.Value!.Name);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning(ApiResponseMessages.Logging.RoleDeleteFailed,
                         roleId, string.Join(", ", errors));
@@ -138,18 +138,18 @@ namespace BankingSystemAPI.Infrastructure.Services
                 // Combine results using ResultExtensions
                 var combinedUsage = fkUsageResult.Value || roleTableUsageResult.Value;
                 var result = Result<bool>.Success(combinedUsage);
-                
+
                 // Add side effects using ResultExtensions
-                result.OnSuccess(() => 
-                    _logger.LogDebug(ApiResponseMessages.Logging.RoleUsageCheckCompleted, 
+                result.OnSuccess(() =>
+                    _logger.LogDebug(ApiResponseMessages.Logging.RoleUsageCheckCompleted,
                         roleId, combinedUsage, fkUsageResult.Value, roleTableUsageResult.Value));
-                
+
                 return result;
             }
             catch (Exception ex)
             {
                 var errorResult = Result<bool>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
-                errorResult.OnFailure(errors => 
+                errorResult.OnFailure(errors =>
                     _logger.LogError(ex, ApiResponseMessages.Logging.RoleUsageCheckFailed, roleId));
                 return errorResult;
             }
@@ -182,7 +182,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                     var dto = roleDtos[i];
                     var role = await _roleManager.FindByNameAsync(dto.Name);
                     if (role == null) continue;
-                    
+
                     var claims = await _roleManager.GetClaimsAsync(role);
                     dto.Claims = claims.Where(c => c.Type == "Permission").Select(c => c.Value).Distinct().ToList();
                 }
@@ -263,7 +263,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             try
             {
                 var identityResult = await _roleManager.DeleteAsync(role);
-                
+
                 if (!identityResult.Succeeded)
                 {
                     var errors = identityResult.Errors.Select(e => e.Description);
@@ -275,7 +275,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                     Operation = "Delete",
                     Role = _mapper.Map<RoleResDto>(role)
                 };
-                
+
                 return Result<RoleUpdateResultDto>.Success(result);
             }
             catch (Exception ex)

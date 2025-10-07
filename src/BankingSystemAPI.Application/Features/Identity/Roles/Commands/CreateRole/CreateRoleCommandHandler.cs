@@ -20,7 +20,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.CreateRo
         private readonly ILogger<CreateRoleCommandHandler> _logger;
 
         public CreateRoleCommandHandler(
-            IRoleService roleService, 
+            IRoleService roleService,
             RoleManager<ApplicationRole> roleManager,
             ILogger<CreateRoleCommandHandler> logger)
         {
@@ -36,20 +36,20 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.CreateRo
             {
                 return Result<RoleUpdateResultDto>.ValidationFailed("Role name cannot be null or empty.");
             }
-            
+
             // Business validation: Check if role already exists
             var uniquenessValidation = await ValidateRoleUniquenessAsync(request.Name);
             if (uniquenessValidation.IsFailure)
                 return Result<RoleUpdateResultDto>.Failure(uniquenessValidation.ErrorItems);
 
             var createResult = await CreateRoleAsync(request.Name);
-            
+
             // Add side effects using ResultExtensions
-            createResult.OnSuccess(() => 
+            createResult.OnSuccess(() =>
                 {
                     _logger.LogInformation(ApiResponseMessages.Logging.RoleCreated, request.Name);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning(ApiResponseMessages.Logging.RoleCreateFailed, request.Name, string.Join(", ", errors));
                 });

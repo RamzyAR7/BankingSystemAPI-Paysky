@@ -36,15 +36,15 @@ public class TransactionCommandHandlerTests : TestBase
         var mockAccountAuth = new Mock<BankingSystemAPI.Application.Interfaces.Authorization.IAccountAuthorizationService>();
         mockAccountAuth.Setup(x => x.CanModifyAccountAsync(It.IsAny<int>(), It.IsAny<BankingSystemAPI.Domain.Constant.AccountModificationOperation>()))
             .ReturnsAsync(BankingSystemAPI.Domain.Common.Result.Success());
-        
+
         _depositHandler = new DepositCommandHandler(UnitOfWork, Mapper, depositLogger, mockAccountAuth.Object);
     }
 
     protected override void ConfigureMapperMock(Mock<IMapper> mapperMock)
     {
         mapperMock.Setup(m => m.Map<TransactionResDto>(It.IsAny<Transaction>()))
-            .Returns((Transaction t) => new TransactionResDto 
-            { 
+            .Returns((Transaction t) => new TransactionResDto
+            {
                 TransactionType = t.TransactionType.ToString(),
                 Timestamp = t.Timestamp,
                 Amount = t.AccountTransactions?.FirstOrDefault()?.Amount ?? 0m
@@ -73,7 +73,7 @@ public class TransactionCommandHandlerTests : TestBase
         // Assert
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Value);
-        
+
         // Verify account balance updated
         Context.Entry(account).Reload();
         Assert.Equal(500m + amount, account.Balance);

@@ -13,17 +13,17 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class CurrencyRepository : GenericRepository<Currency, int>, ICurrencyRepository
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         private readonly ICacheService _cache;
 
         public CurrencyRepository(ApplicationDbContext context, ICacheService cache) : base(context)
@@ -31,7 +31,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             _cache = cache;
         }
 
-        public async Task<Currency> GetBaseCurrencyAsync()
+        public async Task<Currency?> GetBaseCurrencyAsync()
         {
             // Try cache first
             if (_cache.TryGetValue<Currency>("base_currency", out var cachedCurrency))
@@ -60,35 +60,34 @@ namespace BankingSystemAPI.Infrastructure.Repositories
                 .ToDictionaryAsync(c => c.Id, c => c.ExchangeRate);
         }
 
-        public override async Task<Currency> UpdateAsync(Currency entity)
+        public override async Task<Currency?> UpdateAsync(Currency entity, CancellationToken cancellationToken = default)
         {
-            var result = await base.UpdateAsync(entity);
-            
+            var result = await base.UpdateAsync(entity, cancellationToken).ConfigureAwait(false);
+
             // Clear relevant cache entries
             if (entity.IsBase)
                 _cache.Remove("base_currency");
-                
+
             return result;
         }
-
-        public override async Task DeleteAsync(Currency entity)
+        public override async Task DeleteAsync(Currency entity, CancellationToken cancellationToken = default)
         {
             if (entity.IsBase)
             {
                 _cache.Remove("base_currency");
             }
 
-            await base.DeleteAsync(entity);
+            await base.DeleteAsync(entity, cancellationToken).ConfigureAwait(false);
         }
 
-        public override async Task DeleteRangeAsync(IEnumerable<Currency> entities)
+        public override async Task DeleteRangeAsync(IEnumerable<Currency> entities, CancellationToken cancellationToken = default)
         {
             if (entities.Any(e => e.IsBase))
             {
                 _cache.Remove("base_currency");
             }
 
-            await base.DeleteRangeAsync(entities);
+            await base.DeleteRangeAsync(entities, cancellationToken).ConfigureAwait(false);
         }
     }
 }

@@ -89,14 +89,14 @@ namespace BankingSystemAPI.Application.Services
 
                 if (fromCurrency == null)
                     return Result<CurrencyPair>.BadRequest("From currency not found.");
-                
+
                 if (toCurrency == null)
                     return Result<CurrencyPair>.BadRequest("To currency not found.");
 
-                return Result<CurrencyPair>.Success(new CurrencyPair 
-                { 
-                    FromCurrency = fromCurrency, 
-                    ToCurrency = toCurrency 
+                return Result<CurrencyPair>.Success(new CurrencyPair
+                {
+                    FromCurrency = fromCurrency,
+                    ToCurrency = toCurrency
                 });
             }
             catch (Exception ex)
@@ -127,14 +127,14 @@ namespace BankingSystemAPI.Application.Services
 
                 if (fromCurrency == null)
                     return Result<CurrencyPair>.BadRequest($"Currency '{fromCode}' not found.");
-                
+
                 if (toCurrency == null)
                     return Result<CurrencyPair>.BadRequest($"Currency '{toCode}' not found.");
 
-                return Result<CurrencyPair>.Success(new CurrencyPair 
-                { 
-                    FromCurrency = fromCurrency, 
-                    ToCurrency = toCurrency 
+                return Result<CurrencyPair>.Success(new CurrencyPair
+                {
+                    FromCurrency = fromCurrency,
+                    ToCurrency = toCurrency
                 });
             }
             catch (Exception ex)
@@ -191,12 +191,12 @@ namespace BankingSystemAPI.Application.Services
                 {
                     result = (amount / currencies.FromCurrency.ExchangeRate) * currencies.ToCurrency.ExchangeRate;
                 }
-                
+
                 return Result<decimal>.Success(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Currency conversion failed: {FromCode} -> {ToCode}, Amount: {Amount}", 
+                _logger.LogError(ex, "Currency conversion failed: {FromCode} -> {ToCode}, Amount: {Amount}",
                     currencies.FromCurrency.Code, currencies.ToCurrency.Code, amount);
                 return Result<decimal>.BadRequest($"Currency conversion calculation failed: {ex.Message}");
             }

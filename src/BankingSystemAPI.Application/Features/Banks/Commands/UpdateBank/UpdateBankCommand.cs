@@ -11,19 +11,19 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Features.Banks.Commands.UpdateBank
 {
-    public record UpdateBankCommand(int id, BankEditDto bankDto): ICommand<BankResDto>
+    public record UpdateBankCommand(int id, BankEditDto bankDto) : ICommand<BankResDto>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
     }
 }
 

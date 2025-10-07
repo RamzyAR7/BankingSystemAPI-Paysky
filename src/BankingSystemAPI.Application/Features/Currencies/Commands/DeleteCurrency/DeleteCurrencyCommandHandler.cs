@@ -21,7 +21,7 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.DeleteCurren
         public async Task<Result> Handle(DeleteCurrencyCommand request, CancellationToken cancellationToken)
         {
             // This handler focuses on business logic validation and execution
-            
+
             var spec = new CurrencyByIdSpecification(request.Id);
             var currency = await _uow.CurrencyRepository.FindAsync(spec);
             if (currency == null)

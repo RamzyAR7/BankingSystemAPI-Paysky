@@ -58,7 +58,7 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Create
             var accountResult = currencyResult
                 .Bind(currency => userResult
                     .Bind(user => CreateAccountEntity(reqDto, currency)));
-                    
+
             return await accountResult.MapAsync(async entity => await PersistAndMapAsync(entity));
         }
 
@@ -66,7 +66,7 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Create
         {
             var currency = await _uow.CurrencyRepository.GetByIdAsync(currencyId);
             return currency.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Currency", currencyId))
-                .Bind(c => !c.IsActive 
+                .Bind(c => !c.IsActive
                     ? Result<Currency>.BadRequest(ApiResponseMessages.Validation.CurrencyInactive)
                     : Result<Currency>.Success(c));
         }
@@ -75,7 +75,7 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Create
         {
             var user = await _uow.UserRepository.FindAsync(new UserByIdSpecification(userId));
             return user.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "User", userId))
-                .Bind(u => !u.IsActive 
+                .Bind(u => !u.IsActive
                     ? Result<ApplicationUser>.BadRequest(ApiResponseMessages.Validation.AccountNotFound)
                     : Result<ApplicationUser>.Success(u));
         }
@@ -94,7 +94,7 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Create
             entity.AccountNumber = $"CHK-{Guid.NewGuid().ToString()[..8].ToUpper()}";
             entity.CreatedDate = DateTime.UtcNow;
             entity.Currency = currency;
-            
+
             return Result<CheckingAccount>.Success(entity);
         }
 

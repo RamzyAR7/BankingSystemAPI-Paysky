@@ -13,18 +13,7 @@ namespace BankingSystemAPI.Application.DTOs.Account
     /// </summary>
     public class AccountReqDto
     {
-    #region Fields
-    #endregion
-
-    #region Constructors
-    #endregion
-
-    #region Properties
-    #endregion
-
-    #region Methods
-    #endregion
-        public string UserId { get; set; }
+        public required string UserId { get; set; } = string.Empty;
 
         public int CurrencyId { get; set; }
 

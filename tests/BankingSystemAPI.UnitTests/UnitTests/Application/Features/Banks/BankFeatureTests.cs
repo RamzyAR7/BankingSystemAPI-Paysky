@@ -56,36 +56,36 @@ public class BankFeatureTests : TestBase
     protected override void ConfigureMapperMock(Mock<IMapper> mapperMock)
     {
         mapperMock.Setup(m => m.Map<Bank>(It.IsAny<BankReqDto>()))
-            .Returns((BankReqDto req) => new Bank 
-            { 
+            .Returns((BankReqDto req) => new Bank
+            {
                 Name = req.Name,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             });
 
         mapperMock.Setup(m => m.Map<BankResDto>(It.IsAny<Bank>()))
-            .Returns((Bank b) => new BankResDto 
-            { 
-                Id = b.Id, 
-                Name = b.Name, 
-                IsActive = b.IsActive, 
-                CreatedAt = b.CreatedAt 
+            .Returns((Bank b) => new BankResDto
+            {
+                Id = b.Id,
+                Name = b.Name,
+                IsActive = b.IsActive,
+                CreatedAt = b.CreatedAt
             });
 
         mapperMock.Setup(m => m.Map<List<BankSimpleResDto>>(It.IsAny<IEnumerable<Bank>>()))
-            .Returns((IEnumerable<Bank> banks) => banks.Select(b => new BankSimpleResDto 
-            { 
-                Id = b.Id, 
-                Name = b.Name, 
-                IsActive = b.IsActive, 
-                CreatedAt = b.CreatedAt 
+            .Returns((IEnumerable<Bank> banks) => banks.Select(b => new BankSimpleResDto
+            {
+                Id = b.Id,
+                Name = b.Name,
+                IsActive = b.IsActive,
+                CreatedAt = b.CreatedAt
             }).ToList());
 
         mapperMock.Setup(m => m.Map(It.IsAny<BankEditDto>(), It.IsAny<Bank>()))
-            .Returns((BankEditDto dto, Bank existing) => 
-            { 
-                existing.Name = dto.Name; 
-                return existing; 
+            .Returns((BankEditDto dto, Bank existing) =>
+            {
+                existing.Name = dto.Name;
+                return existing;
             });
     }
 
@@ -149,7 +149,7 @@ public class BankFeatureTests : TestBase
         var request = new BankReqDto { Name = null };
 
         // Act & Assert
-        await Assert.ThrowsAsync<NullReferenceException>(() => 
+        await Assert.ThrowsAsync<NullReferenceException>(() =>
             _createHandler.Handle(new CreateBankCommand(request), CancellationToken.None));
     }
 

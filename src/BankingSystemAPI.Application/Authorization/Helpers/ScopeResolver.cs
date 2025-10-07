@@ -17,17 +17,17 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
 {
     public class ScopeResolver : IScopeResolver
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         private readonly ICurrentUserService _currentUser;
         private readonly ILogger<ScopeResolver> _logger;
 
@@ -43,12 +43,12 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
             {
                 var role = await _currentUser.GetRoleFromStoreAsync();
                 var scope = DetermineAccessScope(role.Name);
-                
+
                 // Use ResultExtensions for consistent logging patterns
                 var result = Result<AccessScope>.Success(scope);
-                result.OnSuccess(() => 
+                result.OnSuccess(() =>
                     {
-                        _logger.LogDebug(ApiResponseMessages.Logging.ScopeResolved, 
+                        _logger.LogDebug(ApiResponseMessages.Logging.ScopeResolved,
                             _currentUser.UserId, role.Name, scope);
                     });
 
@@ -58,11 +58,11 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
             {
                 // Use ResultExtensions for error handling
                 var errorResult = Result<AccessScope>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
-                errorResult.OnFailure(errors => 
+                errorResult.OnFailure(errors =>
                     {
                         _logger.LogError(ex, ApiResponseMessages.Logging.ScopeResolveFailed, _currentUser.UserId, ex.Message);
                     });
-                
+
                 // Default to most restrictive scope on error
                 return AccessScope.Self;
             }
@@ -72,13 +72,13 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
         {
             // Use functional approach with ResultExtensions patterns
             var scopeResult = ProcessRoleToScope(roleName);
-            
-            scopeResult.OnSuccess(() => 
+
+            scopeResult.OnSuccess(() =>
                 {
-                    _logger.LogDebug("[AUTHORIZATION] Role processed successfully: {Role} -> {Scope}", 
+                    _logger.LogDebug("[AUTHORIZATION] Role processed successfully: {Role} -> {Scope}",
                         roleName, scopeResult.Value);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning("[AUTHORIZATION] Role processing failed: {Role}, using default scope", roleName);
                 });
@@ -93,10 +93,10 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
 
             if (RoleHelper.IsSuperAdmin(roleName))
                 return Result<AccessScope>.Success(AccessScope.Global);
-            
+
             if (RoleHelper.IsClient(roleName))
                 return Result<AccessScope>.Success(AccessScope.Self);
-            
+
             // Default to bank level for other roles (Admin, etc.)
             return Result<AccessScope>.Success(AccessScope.BankLevel);
         }

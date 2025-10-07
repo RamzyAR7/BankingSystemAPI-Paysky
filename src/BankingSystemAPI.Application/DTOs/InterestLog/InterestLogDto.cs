@@ -11,22 +11,22 @@ namespace BankingSystemAPI.Application.DTOs.InterestLog
 {
     public class InterestLogDto
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public int Id { get; set; }
         public decimal Amount { get; set; }
         public DateTime Timestamp { get; set; }
         public int SavingsAccountId { get; set; }
-        public string SavingsAccountNumber { get; set; }
+        public string SavingsAccountNumber { get; set; } = string.Empty;
     }
 }
 

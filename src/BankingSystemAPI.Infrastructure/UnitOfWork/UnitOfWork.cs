@@ -4,6 +4,7 @@ using BankingSystemAPI.Application.Interfaces.UnitOfWork;
 using BankingSystemAPI.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using System.Threading;
 #endregion
 
 
@@ -23,7 +24,7 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
         public IInterestLogRepository InterestLogRepository { get; }
         public ICurrencyRepository CurrencyRepository { get; }
         public IBankRepository BankRepository { get; }
-        
+
         private readonly ApplicationDbContext _context;
         private IDbContextTransaction? _transaction;
 
@@ -33,8 +34,13 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
         // prevent multiple disposals
         private bool _disposed;
 
-        // share same transaction state across async calls(threads) in same request
-        public static AsyncLocal<bool> TransactionActive = new AsyncLocal<bool>();
+        // simple instance flag to track whether a transaction is active for this UnitOfWork
+        private bool _transactionActiveFlag;
+        private bool TransactionActive
+        {
+            get => _transactionActiveFlag;
+            set => _transactionActiveFlag = value;
+        }
 
         public UnitOfWork(
             IUserRepository userRepository,
@@ -60,7 +66,7 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
 
         #region Transaction Management
 
-        public async Task BeginTransactionAsync()
+        public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
         {
             if (_transaction != null || _noOpTransaction)
                 throw new InvalidOperationException("Transaction already in progress.");
@@ -70,39 +76,45 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
             if (provider.Contains("InMemory", StringComparison.OrdinalIgnoreCase))
             {
                 _noOpTransaction = true;
-                TransactionActive.Value = true;
+                TransactionActive = true;
                 return;
             }
 
-            _transaction = await _context.Database.BeginTransactionAsync();
-            TransactionActive.Value = true;
+            _transaction = await _context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            TransactionActive = true;
         }
 
-        public async Task CommitAsync()
+        // Parameterless wrapper to satisfy IUnitOfWork
+        public Task BeginTransactionAsync() => BeginTransactionAsync(CancellationToken.None);
+
+        public async Task CommitAsync(CancellationToken cancellationToken = default)
         {
             try
             {
                 if (_noOpTransaction)
                 {
-                    await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                     _noOpTransaction = false;
-                    TransactionActive.Value = false;
+                    TransactionActive = false;
                     return;
                 }
 
                 if (_transaction == null)
                     throw new InvalidOperationException("No transaction in progress.");
 
-                await _context.SaveChangesAsync();
-                await _transaction.CommitAsync();
+                await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await _transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             }
             finally
             {
-                await CleanupTransactionAsync();
+                await CleanupTransactionAsync().ConfigureAwait(false);
             }
         }
 
-        public async Task RollbackAsync()
+        // Parameterless wrapper to satisfy IUnitOfWork
+        public Task CommitAsync() => CommitAsync(CancellationToken.None);
+
+        public async Task RollbackAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -116,34 +128,40 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
                             entry.State = EntityState.Detached;
                     }
                     _noOpTransaction = false;
-                    TransactionActive.Value = false;
+                    TransactionActive = false;
                     return;
                 }
 
                 if (_transaction == null)
                     throw new InvalidOperationException("No transaction in progress.");
 
-                await _transaction.RollbackAsync();
+                await _transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
             }
             finally
             {
-                await CleanupTransactionAsync();
+                await CleanupTransactionAsync().ConfigureAwait(false);
             }
         }
 
-        public async Task SaveAsync()
+        // Parameterless wrapper to satisfy IUnitOfWork
+        public Task RollbackAsync() => RollbackAsync(CancellationToken.None);
+
+        public async Task SaveAsync(CancellationToken cancellationToken = default)
         {
             // If in transaction mode, defer the save
-            if (TransactionActive.Value)
+            if (TransactionActive)
             {
                 // Changes will be saved during CommitAsync
                 return;
             }
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        public async Task ReloadTrackedEntitiesAsync()
+        // Parameterless wrapper to satisfy IUnitOfWork
+        public Task SaveAsync() => SaveAsync(CancellationToken.None);
+
+        public async Task ReloadTrackedEntitiesAsync(CancellationToken cancellationToken = default)
         {
             var tasks = _context.ChangeTracker.Entries()
                 .Where(e => e.State != EntityState.Detached)
@@ -151,7 +169,7 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
                 {
                     try
                     {
-                        await entry.ReloadAsync();
+                        await entry.ReloadAsync(cancellationToken).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -162,8 +180,11 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
                     }
                 });
 
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks).ConfigureAwait(false);
         }
+
+        // Parameterless wrapper to satisfy IUnitOfWork
+        public Task ReloadTrackedEntitiesAsync() => ReloadTrackedEntitiesAsync(CancellationToken.None);
 
         #endregion
 
@@ -172,7 +193,7 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
         public void DetachEntity<T>(T entity) where T : class
         {
             if (entity == null) return;
-            
+
             var entry = _context.Entry(entity);
             if (entry.State != EntityState.Detached)
             {
@@ -188,18 +209,18 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
         {
             if (_transaction != null)
             {
-                await _transaction.DisposeAsync();
+                await _transaction.DisposeAsync().ConfigureAwait(false);
                 _transaction = null;
             }
-            TransactionActive.Value = false;
+            TransactionActive = false;
         }
 
         public void Dispose()
         {
             if (!_disposed)
             {
+                // Do not dispose injected DbContext here. DI container controls its lifecycle.
                 _transaction?.Dispose();
-                _context?.Dispose();
                 _disposed = true;
             }
         }

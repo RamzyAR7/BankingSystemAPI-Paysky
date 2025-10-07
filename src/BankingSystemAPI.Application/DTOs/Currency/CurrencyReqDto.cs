@@ -11,23 +11,23 @@ namespace BankingSystemAPI.Application.DTOs.Currency
     /// </summary>
     public class CurrencyReqDto
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         /// <summary>
         /// Currency code (e.g., USD).
         /// </summary>
         [Required]
         [StringLength(5, MinimumLength = 3)]
-        public string Code { get; set; }
+        public string Code { get; set; } = string.Empty;
 
         /// <summary>
         /// Indicates if this is the base currency.

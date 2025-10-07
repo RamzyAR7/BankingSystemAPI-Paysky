@@ -10,27 +10,27 @@ namespace BankingSystemAPI.Application.Specifications.AccountSpecification
     /// </summary>
     public class AccountsByIdsSpecification : BaseSpecification<Account>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
-        public AccountsByIdsSpecification(System.Collections.Generic.IEnumerable<int> ids) 
+        #region Methods
+        #endregion
+        public AccountsByIdsSpecification(System.Collections.Generic.IEnumerable<int> ids)
             : base(a => ids.Contains(a.Id))
         {
             // Include user for authorization checks
             AddInclude(a => a.User);
-            
+
             // No tracking for read operations by default
             AsNoTracking = true;
         }
-        
+
         /// <summary>
         /// Create specification for operations requiring tracking (like delete)
         /// </summary>

@@ -7,5 +7,5 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Features.Banks.Commands.SetBankActiveStatus
 {
-    public record SetBankActiveStatusCommand(int id , bool isActive): ICommand;
+    public record SetBankActiveStatusCommand(int id, bool isActive) : ICommand;
 }

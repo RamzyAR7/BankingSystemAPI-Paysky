@@ -149,22 +149,22 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
                         throw new InvalidOperationException(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", account.Id));
 
                     // Create transaction record
-                    trx = new Transaction 
-                    { 
-                        Timestamp = DateTime.UtcNow, 
-                        TransactionType = TransactionType.Deposit 
+                    trx = new Transaction
+                    {
+                        Timestamp = DateTime.UtcNow,
+                        TransactionType = TransactionType.Deposit
                     };
 
-                    var accountTransaction = new AccountTransaction 
-                    { 
-                        AccountId = trackedAccount.Id, 
-                        Transaction = trx, 
+                    var accountTransaction = new AccountTransaction
+                    {
+                        AccountId = trackedAccount.Id,
+                        Transaction = trx,
                         TransactionCurrency = trackedAccount.Currency?.Code, // Remove ?? string.Empty to allow null
-                        Amount = Math.Round(req.Amount, 2), 
-                        Role = TransactionRole.Target, 
-                        Fees = 0m 
+                        Amount = Math.Round(req.Amount, 2),
+                        Role = TransactionRole.Target,
+                        Fees = 0m
                     };
-                    
+
                     trx.AccountTransactions = new List<AccountTransaction> { accountTransaction };
 
                     // Use domain method for deposit (includes business logic and rounding)
@@ -181,7 +181,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
                     // Persist changes
                     await _uow.TransactionRepository.AddAsync(trx);
                     await _uow.AccountRepository.UpdateAsync(trackedAccount);
-                    
+
                     await _uow.SaveAsync();
                 });
 

@@ -6,7 +6,9 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  <!-- Tests frequently don't include XML doc comments; avoid CS1591 noise during refactors -->
+  <NoWarn>1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

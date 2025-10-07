@@ -10,17 +10,17 @@ namespace BankingSystemAPI.Presentation.Swagger
 {
     public class RateLimitResponsesOperationFilter : IOperationFilter
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
             var endpointMetadata = context.ApiDescription.ActionDescriptor?.EndpointMetadata;

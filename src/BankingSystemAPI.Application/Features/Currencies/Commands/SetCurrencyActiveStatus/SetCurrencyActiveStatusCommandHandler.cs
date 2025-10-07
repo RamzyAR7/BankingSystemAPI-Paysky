@@ -30,18 +30,18 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.SetCurrencyA
                 return currencyResult;
 
             var updateResult = await UpdateCurrencyStatusAsync(currencyResult.Value!, request.IsActive);
-            
+
             // Add side effects using ResultExtensions
-            updateResult.OnSuccess(() => 
+            updateResult.OnSuccess(() =>
             {
                 // Use standardized update message and include structured fields
-                _logger.LogInformation("{Message} CurrencyId={CurrencyId}, IsActive={IsActive}", 
+                _logger.LogInformation("{Message} CurrencyId={CurrencyId}, IsActive={IsActive}",
                     string.Format(ApiResponseMessages.Generic.UpdatedFormat, "Currency"), request.Id, request.IsActive);
             })
-            .OnFailure(errors => 
+            .OnFailure(errors =>
             {
                 // Use controller-level operation failed logging template for consistency
-                _logger.LogWarning(ApiResponseMessages.Logging.OperationFailedController, 
+                _logger.LogWarning(ApiResponseMessages.Logging.OperationFailedController,
                     "currency", "setcurrencyactivestatus", string.Join(", ", errors));
             });
 

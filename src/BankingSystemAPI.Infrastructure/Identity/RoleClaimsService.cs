@@ -32,24 +32,24 @@ namespace BankingSystemAPI.Infrastructure.Services
                 .BindAsync(async validDto => await FindRoleAsync(validDto.RoleName))
                 .BindAsync(async role => await RemoveExistingClaimsAsync(role))
                 .BindAsync(async role => await AddNewClaimsAsync(role, dto.Claims))
-                .MapAsync(async role => CreateSuccessResultAsync(role, dto.Claims))
-                .OnSuccess(() => 
+                .MapAsync(role => Task.FromResult(CreateSuccessResultAsync(role, dto.Claims)))
+                .OnSuccess(() =>
                 {
                     _logger.LogInformation("Role claims updated successfully for role: {RoleName}", dto.RoleName);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning("Role claims update failed for role: {RoleName}. Errors: {Errors}",
                         dto?.RoleName, string.Join(", ", errors));
                 });
         }
 
-        public async Task<Result<ICollection<RoleClaimsResDto>>> GetAllClaimsByGroup()
+        public Task<Result<ICollection<RoleClaimsResDto>>> GetAllClaimsByGroup()
         {
             try
             {
                 var result = BuildClaimsByGroup();
-                
+
                 // Add side effects without changing return type
                 if (result.IsSuccess)
                 {
@@ -61,25 +61,27 @@ namespace BankingSystemAPI.Infrastructure.Services
                         string.Join(", ", result.Errors));
                 }
 
-                return result;
+                return Task.FromResult(result);
             }
             catch (Exception ex)
             {
                 var errorMessage = string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message);
                 _logger.LogError(ex, errorMessage);
-                return Result<ICollection<RoleClaimsResDto>>.BadRequest(errorMessage);
+                return Task.FromResult(Result<ICollection<RoleClaimsResDto>>.BadRequest(errorMessage));
             }
         }
 
-        private async Task<Result<UpdateRoleClaimsDto>> ValidateInputAsync(UpdateRoleClaimsDto dto)
+        private Task<Result<UpdateRoleClaimsDto>> ValidateInputAsync(UpdateRoleClaimsDto dto)
         {
-            return dto.ToResult(string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Role claims"))
+            var res = dto.ToResult(string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Role claims"))
                 .Bind(d => string.IsNullOrWhiteSpace(d.RoleName)
                     ? Result<UpdateRoleClaimsDto>.BadRequest(string.Format(ApiResponseMessages.Validation.FieldRequiredFormat, "Role name"))
                     : Result<UpdateRoleClaimsDto>.Success(d))
                 .Bind(d => d.Claims == null
                     ? Result<UpdateRoleClaimsDto>.BadRequest(ApiResponseMessages.Validation.ClaimsListRequired)
                     : Result<UpdateRoleClaimsDto>.Success(d));
+
+            return Task.FromResult(res);
         }
 
         private async Task<Result<ApplicationRole>> FindRoleAsync(string roleName)
@@ -111,7 +113,7 @@ namespace BankingSystemAPI.Infrastructure.Services
         private async Task<Result<ApplicationRole>> AddNewClaimsAsync(ApplicationRole role, ICollection<string> claims)
         {
             var distinctClaims = claims.Where(c => !string.IsNullOrWhiteSpace(c)).Distinct().ToList();
-            
+
             foreach (var claim in distinctClaims)
             {
                 var addResult = await _roleManager.AddClaimAsync(role, new Claim("Permission", claim));
@@ -128,7 +130,7 @@ namespace BankingSystemAPI.Infrastructure.Services
         private RoleClaimsUpdateResultDto CreateSuccessResultAsync(ApplicationRole role, ICollection<string> claims)
         {
             var distinctClaims = claims.Where(c => !string.IsNullOrWhiteSpace(c)).Distinct().ToList();
-            
+
             return new RoleClaimsUpdateResultDto
             {
                 RoleName = role.Name ?? string.Empty,
@@ -146,7 +148,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 foreach (var controller in controllers)
                 {
                     var permissions = GetPermissionsForController(controller);
-                    
+
 
                     result.Add(new RoleClaimsResDto
                     {

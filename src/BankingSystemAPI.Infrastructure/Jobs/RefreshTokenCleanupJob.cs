@@ -95,7 +95,7 @@ namespace BankingSystemAPI.Infrastructure.Jobs
 
                 removedTokens += batchRemoved;
                 var batchEnd = DateTime.UtcNow;
-                _logger.LogInformation(ApiResponseMessages.Logging.CleanupJobBatch, batchNumber, batchRemoved, (batchEnd - batchStart).TotalSeconds);
+                _logger.LogInformation("CleanupJobBatch: Batch={BatchNumber}, Removed={Removed}, DurationSeconds={Duration}", batchNumber, batchRemoved, (batchEnd - batchStart).TotalSeconds);
             }
 
             var jobEnd = DateTime.UtcNow;
@@ -103,7 +103,7 @@ namespace BankingSystemAPI.Infrastructure.Jobs
             Console.WriteLine(foundMsg);
             var removedMsg = string.Format("{0}[CleanupJob] Removed {1} expired/invalid refresh tokens.{2}", cyan, removedTokens, reset);
             Console.WriteLine(removedMsg);
-            _logger.LogInformation(ApiResponseMessages.Logging.CleanupJobRunCompleted, totalTokens, removedTokens, (jobEnd - jobStart).TotalSeconds);
+            _logger.LogInformation("CleanupJobRunCompleted: Found={TotalTokens}, Removed={RemovedTokens}, DurationSeconds={Duration}", totalTokens, removedTokens, (jobEnd - jobStart).TotalSeconds);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -145,7 +145,7 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                         var bgLogger = loggerFactory?.CreateLogger("BankingSystemAPI.Presentation.Middlewares.ExceptionHandlingMiddleware");
                         if (bgLogger != null)
                         {
-                            bgLogger.LogError(ex, ApiResponseMessages.Logging.MiddlewareExceptionHandled, new object[] { "Background", nameof(RefreshTokenCleanupJob), ex.GetType().Name, ex.Message });
+                            bgLogger.LogError(ex, "{Context} {JobName} {ExceptionType} {Message}", "Background", nameof(RefreshTokenCleanupJob), ex.GetType().Name, ex.Message);
                         }
                     }
                     catch

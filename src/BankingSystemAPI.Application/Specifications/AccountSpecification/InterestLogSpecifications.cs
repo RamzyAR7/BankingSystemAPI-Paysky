@@ -11,17 +11,17 @@ namespace BankingSystemAPI.Application.Specifications.AccountSpecification
 {
     public class InterestLogsPagedSpecification : BaseSpecification<InterestLog>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public InterestLogsPagedSpecification(int skip, int take)
             : base(l => true)
         {
@@ -43,17 +43,17 @@ namespace BankingSystemAPI.Application.Specifications.AccountSpecification
 
     public class InterestLogsByAccountPagedSpecification : BaseSpecification<InterestLog>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public InterestLogsByAccountPagedSpecification(int accountId, int skip, int take)
             : base(l => l.SavingsAccountId == accountId)
         {

@@ -19,7 +19,7 @@ namespace BankingSystemAPI.Domain.Entities
     public abstract class Account
     {
         #region Properties
-        
+
         /// <summary>
         /// Primary key identifier for the account.
         /// </summary>
@@ -41,7 +41,7 @@ namespace BankingSystemAPI.Domain.Entities
         /// </summary>
         [Required]
         [Column(TypeName = "decimal(18,2)")]
-        [Range(typeof(decimal), "-999999999999999999", "999999999999999999", 
+        [Range(typeof(decimal), "-999999999999999999", "999999999999999999",
                ErrorMessage = "Balance must be within valid range")]
         public decimal Balance { get; set; }
 
@@ -72,30 +72,30 @@ namespace BankingSystemAPI.Domain.Entities
         /// </summary>
         [Required]
         public bool IsActive { get; set; } = true;
-        
+
         #endregion
 
         #region Navigation Properties
-        
+
         /// <summary>
         /// Navigation property to the account owner.
         /// </summary>
         public virtual ApplicationUser User { get; set; } = null!;
-        
+
         /// <summary>
         /// Navigation property to the account currency.
         /// </summary>
         public virtual Currency Currency { get; set; } = null!;
-        
+
         /// <summary>
         /// Navigation property to all transactions involving this account.
         /// </summary>
         public virtual ICollection<AccountTransaction> AccountTransactions { get; set; } = new List<AccountTransaction>();
-        
+
         #endregion
 
         #region Concurrency Control
-        
+
         /// <summary>
         /// Row version for optimistic concurrency control.
         /// Automatically managed by Entity Framework.
@@ -103,20 +103,20 @@ namespace BankingSystemAPI.Domain.Entities
         [Timestamp]
         [ConcurrencyCheck]
         public byte[] RowVersion { get; set; } = Array.Empty<byte>();
-        
+
         #endregion
 
         #region Abstract Members
-        
+
         /// <summary>
         /// Gets the account type for polymorphic identification.
         /// </summary>
         public abstract AccountType AccountType { get; }
-        
+
         #endregion
 
         #region Domain Operations
-        
+
         /// <summary>
         /// Performs a deposit operation on the account.
         /// </summary>
@@ -124,9 +124,9 @@ namespace BankingSystemAPI.Domain.Entities
         /// <exception cref="InvalidOperationException">Thrown when amount is not positive</exception>
         public virtual void Deposit(decimal amount)
         {
-            if (amount <= 0) 
+            if (amount <= 0)
                 throw new InvalidOperationException("Deposit amount must be greater than zero.");
-            
+
             Balance = Math.Round(Balance + amount, 2);
         }
 
@@ -145,12 +145,12 @@ namespace BankingSystemAPI.Domain.Entities
         /// <exception cref="InvalidOperationException">Thrown when amount is invalid or insufficient funds</exception>
         public void WithdrawForTransfer(decimal totalAmount)
         {
-            if (totalAmount <= 0) 
+            if (totalAmount <= 0)
                 throw new InvalidOperationException("Transfer amount must be greater than zero.");
-            
-            if (totalAmount > Balance) 
+
+            if (totalAmount > Balance)
                 throw new InvalidOperationException($"Insufficient funds for transfer. Available balance: {Balance:C}, Required: {totalAmount:C}. Overdraft is not available for transfers.");
-            
+
             Balance = Math.Round(Balance - totalAmount, 2);
         }
 
@@ -173,7 +173,7 @@ namespace BankingSystemAPI.Domain.Entities
         {
             return Balance;
         }
-        
+
         #endregion
     }
 }

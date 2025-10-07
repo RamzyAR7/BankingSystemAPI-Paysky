@@ -21,17 +21,17 @@ namespace BankingSystemAPI.Application.Mapping
 {
     public partial class MappingProfile : Profile
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public MappingProfile()
         {
             ConfigureUserMappings();
@@ -81,7 +81,7 @@ namespace BankingSystemAPI.Application.Mapping
                                 SavingsAccount sav => (AccountDto)context.Mapper.Map<SavingsAccountDto>(sav),
                                 _ => context.Mapper.Map<AccountDto>(a)
                             }).ToList()
-                        : new List<AccountDto>() ))
+                        : new List<AccountDto>()))
                 // Ensure all string properties handle nulls
                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email ?? string.Empty))
                 .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FullName ?? string.Empty))
@@ -143,7 +143,7 @@ namespace BankingSystemAPI.Application.Mapping
         private void ConfigureInterestLogMappings()
         {
             #region InterestLog
-            CreateMap<InterestLog, InterestLogDto>();            
+            CreateMap<InterestLog, InterestLogDto>();
             #endregion
         }
 
@@ -233,7 +233,7 @@ namespace BankingSystemAPI.Application.Mapping
             #region Role Mappings
             CreateMap<ApplicationRole, RoleResDto>()
                 .ForMember(dest => dest.Claims, opt => opt.Ignore()); // Claims will be populated by the service
-            
+
             CreateMap<RoleReqDto, ApplicationRole>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.NormalizedName, opt => opt.Ignore())

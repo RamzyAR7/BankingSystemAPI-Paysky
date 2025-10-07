@@ -16,17 +16,17 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class TransactionRepository : GenericRepository<Transaction, int>, ITransactionRepository
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public TransactionRepository(ApplicationDbContext context) : base(context)
         {
         }

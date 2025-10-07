@@ -32,7 +32,7 @@ namespace BankingSystemAPI.Infrastructure.Configuration_Classes
                    .WithOne(u => u.Bank)
                    .HasForeignKey(u => u.BankId)
                    .OnDelete(DeleteBehavior.Restrict)
-                   .IsRequired(false);   
+                   .IsRequired(false);
         }
     }
 }

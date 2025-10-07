@@ -55,14 +55,14 @@ namespace BankingSystemAPI.Infrastructure.Identity
                 return CreateFailureAuthResult(tokenResult.Errors);
 
             var loginResult = CreateSuccessAuthResult(tokenResult.Value!);
-            
+
             // Add side effects using ResultExtensions
             var result = Result<AuthResultDto>.Success(loginResult);
-            result.OnSuccess(() => 
+            result.OnSuccess(() =>
                 {
                     _logger.LogInformation("User logged in successfully: {Email}", request.Email);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning("Login failed for: {Email}. Errors: {Errors}",
                         request.Email, string.Join(", ", errors));
@@ -78,20 +78,20 @@ namespace BankingSystemAPI.Infrastructure.Identity
                 return CreateFailureAuthResult(userResult.Errors);
 
             var logoutResult = await ExecuteLogoutAsync(userResult.Value!, userId);
-            
+
             // Add side effects using ResultExtensions
-            logoutResult.OnSuccess(() => 
+            logoutResult.OnSuccess(() =>
                 {
                     _logger.LogInformation("User logged out successfully: {UserId}", userId);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning("Logout failed for: {UserId}. Errors: {Errors}",
                         userId, string.Join(", ", errors));
                 });
 
-            return logoutResult.IsSuccess 
-                ? CreateSuccessLogoutResult() 
+            return logoutResult.IsSuccess
+                ? CreateSuccessLogoutResult()
                 : CreateFailureAuthResult(logoutResult.Errors);
         }
 
@@ -102,20 +102,20 @@ namespace BankingSystemAPI.Infrastructure.Identity
                 return CreateFailureAuthResult(tokenValidationResult.Errors);
 
             var refreshResult = await ExecuteTokenRefreshAsync(tokenValidationResult.Value!);
-            
+
             // Add side effects using ResultExtensions
-            refreshResult.OnSuccess(() => 
+            refreshResult.OnSuccess(() =>
                 {
                     _logger.LogDebug("Token refreshed successfully for user: {UserId}", tokenValidationResult.Value!.User.Id);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning("Token refresh failed. Errors: {Errors}",
                         string.Join(", ", errors));
                 });
 
-            return refreshResult.IsSuccess 
-                ? refreshResult.Value! 
+            return refreshResult.IsSuccess
+                ? refreshResult.Value!
                 : CreateFailureAuthResult(refreshResult.Errors);
         }
 
@@ -126,20 +126,20 @@ namespace BankingSystemAPI.Infrastructure.Identity
                 return CreateFailureAuthResult(userResult.Errors);
 
             var revokeResult = await ExecuteTokenRevocationAsync(userResult.Value!, userId);
-            
+
             // Add side effects using ResultExtensions
-            revokeResult.OnSuccess(() => 
+            revokeResult.OnSuccess(() =>
                 {
                     _logger.LogInformation("Tokens revoked successfully for user: {UserId}", userId);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning("Token revocation failed for: {UserId}. Errors: {Errors}",
                         userId, string.Join(", ", errors));
                 });
 
-            return revokeResult.IsSuccess 
-                ? CreateSuccessRevocationResult() 
+            return revokeResult.IsSuccess
+                ? CreateSuccessRevocationResult()
                 : CreateFailureAuthResult(revokeResult.Errors);
         }
 
@@ -156,7 +156,7 @@ namespace BankingSystemAPI.Infrastructure.Identity
                 return Result<ApplicationUser>.BadRequest("Email or Password is incorrect!");
 
             var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
-            return passwordValid 
+            return passwordValid
                 ? Result<ApplicationUser>.Success(user)
                 : Result<ApplicationUser>.BadRequest("Email or Password is incorrect!");
         }
@@ -228,7 +228,7 @@ namespace BankingSystemAPI.Infrastructure.Identity
         private async Task<Result<RefreshTokenValidationResult>> ValidateRefreshTokenAsync(string? tokenFromRequest)
         {
             var token = tokenFromRequest ?? _httpContextAccessor.HttpContext?.Request?.Cookies["refreshToken"];
-            
+
             if (string.IsNullOrEmpty(token))
                 return Result<RefreshTokenValidationResult>.BadRequest("No refresh token provided");
 
@@ -241,23 +241,23 @@ namespace BankingSystemAPI.Infrastructure.Identity
                 return Result<RefreshTokenValidationResult>.BadRequest("Invalid refresh token");
 
             // Business validation using ResultExtensions patterns
-            var bankValidation = user.Bank?.IsActive != false 
-                ? Result.Success() 
+            var bankValidation = user.Bank?.IsActive != false
+                ? Result.Success()
                 : Result.BadRequest("Cannot refresh token: user's bank is inactive.");
-            
+
             if (bankValidation.IsFailure)
                 return Result<RefreshTokenValidationResult>.Failure(bankValidation.ErrorItems);
 
             var refreshToken = user.RefreshTokens.FirstOrDefault(x => x.Token == token);
             var tokenValidation = ValidateRefreshTokenState(refreshToken);
-            
+
             if (tokenValidation.IsFailure)
                 return Result<RefreshTokenValidationResult>.Failure(tokenValidation.ErrorItems);
 
-            return Result<RefreshTokenValidationResult>.Success(new RefreshTokenValidationResult 
-            { 
-                User = user, 
-                RefreshToken = refreshToken! 
+            return Result<RefreshTokenValidationResult>.Success(new RefreshTokenValidationResult
+            {
+                User = user,
+                RefreshToken = refreshToken!
             });
         }
 

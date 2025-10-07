@@ -36,13 +36,13 @@ namespace BankingSystemAPI.Presentation.Controllers
             _mediator = mediator;
         }
 
-    /// <summary>
-    /// Get all users with pagination.
-    /// </summary>
-    /// <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
-    /// <param name="pageSize">Number of items per page. Defaults to 10.</param>
-    /// <param name="orderBy">Optional. Property name to sort by. Common values: "Id", "UserName", "Email", "CreatedDate" (exact allowed properties depend on the backing entity). Invalid values may cause a Bad Request.</param>
-    /// <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC" (case-insensitive). Defaults to "ASC" when omitted.</param>
+        /// <summary>
+        /// Get all users with pagination.
+        /// </summary>
+        /// <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+        /// <param name="pageSize">Number of items per page. Defaults to 10.</param>
+        /// <param name="orderBy">Optional. Property name to sort by. Common values: "Id", "UserName", "Email", "CreatedDate" (exact allowed properties depend on the backing entity). Invalid values may cause a Bad Request.</param>
+        /// <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC" (case-insensitive). Defaults to "ASC" when omitted.</param>
         [HttpGet]
         [PermissionFilterFactory(Permission.User.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -211,8 +211,9 @@ namespace BankingSystemAPI.Presentation.Controllers
         {
             var userId = User.FindFirst("uid")?.Value;
             if (string.IsNullOrWhiteSpace(userId))
-                return BadRequest(new { 
-                    success = false, 
+                return BadRequest(new
+                {
+                    success = false,
                     errors = new[] { "User is not authenticated." },
                     message = "User is not authenticated."
                 });

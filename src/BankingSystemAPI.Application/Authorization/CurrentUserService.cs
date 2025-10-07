@@ -39,15 +39,15 @@ namespace BankingSystemAPI.Application.Authorization
             }
 
             var role = new ApplicationRole { Name = roleName };
-            
+
             // Add side effects using ResultExtensions patterns
             var result = Result.Success();
-            result.OnSuccess(() => 
+            result.OnSuccess(() =>
                 {
                     if (!string.IsNullOrEmpty(roleName))
                         _logger.LogDebug("[AUTHORIZATION] Role retrieved from store: {RoleName}", roleName);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning("[AUTHORIZATION] Failed to retrieve role from store");
                 });
@@ -65,15 +65,15 @@ namespace BankingSystemAPI.Application.Authorization
                 return Task.FromResult(false);
             }
 
-            var inRole = user.Claims.Any(c => 
-                (c.Type == System.Security.Claims.ClaimTypes.Role || c.Type == "role") && 
+            var inRole = user.Claims.Any(c =>
+                (c.Type == System.Security.Claims.ClaimTypes.Role || c.Type == "role") &&
                 string.Equals(c.Value, roleName, System.StringComparison.OrdinalIgnoreCase));
 
             // Add side effects using ResultExtensions patterns
             var roleCheckResult = Result<bool>.Success(inRole);
-            roleCheckResult.OnSuccess(() => 
+            roleCheckResult.OnSuccess(() =>
                 {
-                    _logger.LogDebug("[AUTHORIZATION] Role check completed: UserId={UserId}, Role={RoleName}, IsInRole={IsInRole}", 
+                    _logger.LogDebug("[AUTHORIZATION] Role check completed: UserId={UserId}, Role={RoleName}, IsInRole={IsInRole}",
                         UserId, roleName, inRole);
                 });
 
@@ -83,18 +83,18 @@ namespace BankingSystemAPI.Application.Authorization
         private string? GetUserIdWithLogging()
         {
             var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("uid")?.Value;
-            
+
             // Use ResultExtensions for consistent logging patterns
             var result = userId.ToResult("User ID not found in claims");
             result.OnSuccess(() => _logger.LogDebug("[AUTHORIZATION] User ID retrieved: {UserId}", userId));
-            
+
             return userId;
         }
 
         private int? GetBankIdWithLogging()
         {
             var bankClaim = _httpContextAccessor.HttpContext?.User?.FindFirst("bankid")?.Value;
-            
+
             if (int.TryParse(bankClaim, out var bankId))
             {
                 var result = Result<int>.Success(bankId);
@@ -115,10 +115,10 @@ namespace BankingSystemAPI.Application.Authorization
         private bool GetAuthenticationStatusWithLogging()
         {
             var isAuthenticated = _httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
-            
+
             // Use ResultExtensions patterns for consistent logging
             var result = Result<bool>.Success(isAuthenticated);
-            result.OnSuccess(() => 
+            result.OnSuccess(() =>
                 {
                     if (isAuthenticated)
                         _logger.LogDebug("[AUTHORIZATION] User is authenticated: {UserId}", UserId);

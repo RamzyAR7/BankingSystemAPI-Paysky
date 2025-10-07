@@ -38,8 +38,8 @@ namespace BankingSystemAPI.Presentation.Filters
             var roles = user?.Claims?.Where(c => c.Type == "role").Select(c => c.Value).ToList();
 
             // Read request body if possible
-            string requestBody = null;
-            if (request.ContentLength > 0 && request.Body.CanSeek)
+            string? requestBody = null;
+            if (request.ContentLength.GetValueOrDefault() > 0 && request.Body.CanSeek)
             {
                 request.Body.Position = 0;
                 using var reader = new StreamReader(request.Body, leaveOpen: true);
@@ -69,11 +69,11 @@ namespace BankingSystemAPI.Presentation.Filters
 
             // Log a concise info line and keep the full payload at Debug level
             _logger.LogInformation("Incoming request: {Method} {Path} UserId={UserId} Query={Query}", request.Method, request.Path, userId ?? "-", request.QueryString);
-            _logger.LogDebug(ApiResponseMessages.Logging.IncomingRequest + "\n{Request}", requestJson);
+            _logger.LogDebug(ApiResponseMessages.Logging.IncomingRequest, requestJson);
 
             // Execute the action
-            ActionExecutedContext executedContext = null;
-            Exception exception = null;
+            ActionExecutedContext? executedContext = null;
+            Exception? exception = null;
             try
             {
                 executedContext = await next();
@@ -88,11 +88,11 @@ namespace BankingSystemAPI.Presentation.Filters
 
             // Prepare response info
             int? statusCode = null;
-            object resultValue = null;
-            Dictionary<string, string> responseHeaders = null;
-            string responseBody = null;
-            string errorMessage = null;
-            string errorStack = null;
+            object? resultValue = null;
+            Dictionary<string, string>? responseHeaders = null;
+            string? responseBody = null;
+            string? errorMessage = null;
+            string? errorStack = null;
 
             if (executedContext?.Result is ObjectResult objectResult)
             {
@@ -119,8 +119,8 @@ namespace BankingSystemAPI.Presentation.Filters
             }
 
             // Try to extract username/roles for summary if present in resultValue
-            string username = null;
-            string resultRoles = null;
+            string? username = null;
+            string? resultRoles = null;
             if (resultValue != null)
             {
                 var resultType = resultValue.GetType();
@@ -154,7 +154,7 @@ namespace BankingSystemAPI.Presentation.Filters
 
             // Log concise response summary at Information and full payload at Debug
             _logger.LogInformation("Outgoing response: {Method} {Path} StatusCode={Status} ElapsedMs={Elapsed} UserId={UserId}", request.Method, request.Path, statusCode, sw.ElapsedMilliseconds, userId ?? "-");
-            _logger.LogDebug(ApiResponseMessages.Logging.OutgoingResponse + "\n{Response}", responseJson);
+            _logger.LogDebug(ApiResponseMessages.Logging.OutgoingResponse, responseJson);
 
             if (username != null || resultRoles != null || userId != null)
             {

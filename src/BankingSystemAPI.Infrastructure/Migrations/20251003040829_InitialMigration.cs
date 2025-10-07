@@ -11,17 +11,17 @@ namespace BankingSystemAPI.Infrastructure.Migrations
     /// <inheritdoc />
     public partial class InitialMigration : Migration
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {

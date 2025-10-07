@@ -11,22 +11,22 @@ namespace BankingSystemAPI.Application.Interfaces.Authorization
 {
     public interface ITransactionAuthorizationService
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         /// <summary>
         /// Validates if the current user can initiate a transfer between the specified accounts
         /// </summary>
         Task<Result> CanInitiateTransferAsync(int sourceAccountId, int targetAccountId);
-        
+
         /// <summary>
         /// Filters transactions based on current user's permissions and returns paginated results
         /// </summary>

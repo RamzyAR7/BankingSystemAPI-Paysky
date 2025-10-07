@@ -13,17 +13,17 @@ namespace BankingSystemAPI.Application.Features.Banks.Queries.GetBankById
     public class GetBankByIdQueryValidator
         : AbstractValidator<GetBankByIdQuery>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public GetBankByIdQueryValidator()
         {
             RuleFor(x => x.id)

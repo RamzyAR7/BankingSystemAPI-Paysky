@@ -26,8 +26,8 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
         private readonly ILogger<CreateSavingsAccountCommandHandler> _logger;
 
         public CreateSavingsAccountCommandHandler(
-            IUnitOfWork uow, 
-            IMapper mapper, 
+            IUnitOfWork uow,
+            IMapper mapper,
             ILogger<CreateSavingsAccountCommandHandler> logger,
             IAccountAuthorizationService accountAuth)
         {
@@ -55,13 +55,13 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
                 return Result<SavingsAccountDto>.Failure(userResult.ErrorItems);
 
             var createResult = await CreateSavingsAccountAsync(req, currencyResult.Value!);
-            
+
             // Add side effects using ResultExtensions
-            createResult.OnSuccess(() => 
+            createResult.OnSuccess(() =>
             {
                 _logger.LogInformation(ApiResponseMessages.Logging.SavingsAccountCreated, createResult.Value?.AccountNumber ?? "", req.UserId, currencyResult.Value!.Code);
             })
-            .OnFailure(errors => 
+            .OnFailure(errors =>
             {
                 _logger.LogWarning(ApiResponseMessages.Logging.SavingsAccountCreateFailed, req.UserId, string.Join(", ", errors));
             });
@@ -74,8 +74,8 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
             try
             {
                 var authResult = await _accountAuth.CanCreateAccountForUserAsync(userId);
-                return authResult.IsSuccess 
-                    ? Result.Success() 
+                return authResult.IsSuccess
+                    ? Result.Success()
                     : Result.Failure(authResult.ErrorItems);
             }
             catch (Exception ex)
@@ -87,20 +87,20 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
         private async Task<Result<Currency>> ValidateCurrencyAsync(int currencyId)
         {
             var currency = await _uow.CurrencyRepository.GetByIdAsync(currencyId);
-            
+
             return currency.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Currency", currencyId))
-                .Bind(c => c.IsActive 
-                    ? Result<Currency>.Success(c) 
+                .Bind(c => c.IsActive
+                    ? Result<Currency>.Success(c)
                     : Result<Currency>.BadRequest(ApiResponseMessages.Validation.CurrencyInactive));
         }
 
         private async Task<Result<ApplicationUser>> ValidateUserAsync(string userId)
         {
             var user = await _uow.UserRepository.FindAsync(new UserByIdSpecification(userId));
-            
+
             return user.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "User", userId))
-                .Bind(u => u.IsActive 
-                    ? Result<ApplicationUser>.Success(u) 
+                .Bind(u => u.IsActive
+                    ? Result<ApplicationUser>.Success(u)
                     : Result<ApplicationUser>.BadRequest(ApiResponseMessages.Validation.UserInactive));
         }
 
@@ -110,19 +110,19 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.CreateS
             {
                 // Create and map entity
                 var entity = _mapper.Map<SavingsAccount>(req);
-                
+
                 // Convert percentage to decimal (e.g., 20% -> 0.20)
                 if (entity.InterestRate > 1.0000m)
                 {
                     entity.InterestRate = entity.InterestRate / 100m;
                 }
-                
+
                 // Validate interest rate after conversion
                 if (entity.InterestRate < 0.0000m || entity.InterestRate > 1.0000m)
                 {
                     return Result<SavingsAccountDto>.BadRequest(ApiResponseMessages.Validation.InterestRateRange);
                 }
-                
+
                 entity.AccountNumber = $"SAV-{Guid.NewGuid().ToString()[..8].ToUpper()}";
                 entity.CreatedDate = DateTime.UtcNow;
                 entity.Balance = req.InitialBalance; // Set the balance from InitialBalance

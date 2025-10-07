@@ -93,11 +93,13 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
             return account.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", accountId));
         }
 
-        private async Task<Result<Account>> ValidateAccountStateAsync(Account account)
+        private Task<Result<Account>> ValidateAccountStateAsync(Account account)
         {
-            return account.CanPerformTransactions()
+            var res = account.CanPerformTransactions()
                 ? Result<Account>.Success(account)
                 : Result<Account>.BadRequest(ApiResponseMessages.Validation.AccountNotFound);
+
+            return Task.FromResult(res);
         }
 
         private async Task<Result<Account>> ValidateBankAsync(Account account)
@@ -121,16 +123,16 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
                     var maxAllowed = checkingAccount.GetMaxWithdrawalAmount();
                     var balance = checkingAccount.Balance;
                     var overdraftAvailable = checkingAccount.GetAvailableOverdraftCredit();
-                    
+
                     // Format balance with minus sign for negative values instead of parentheses
                     var balanceFormatted = balance >= 0 ? $"${balance:F2}" : $"-${Math.Abs(balance):F2}";
-                    
+
                     return Result<Account>.BadRequest(
                         string.Format(ApiResponseMessages.BankingErrors.InsufficientFundsFormat, maxAllowed.ToString("C"), balanceFormatted));
                 }
                 return Result<Account>.Success(account);
             }
-            
+
             // For other account types (Savings), use balance only - no overdraft
             var availableBalance = account.GetAvailableBalance();
             return amount > availableBalance
@@ -158,22 +160,22 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
                         throw new InvalidOperationException(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", account.Id));
 
                     // Create transaction record
-                    trx = new Transaction 
-                    { 
-                        Timestamp = DateTime.UtcNow, 
-                        TransactionType = TransactionType.Withdraw 
+                    trx = new Transaction
+                    {
+                        Timestamp = DateTime.UtcNow,
+                        TransactionType = TransactionType.Withdraw
                     };
 
-                    var accountTransaction = new AccountTransaction 
-                    { 
-                        AccountId = trackedAccount.Id, 
-                        Transaction = trx, 
+                    var accountTransaction = new AccountTransaction
+                    {
+                        AccountId = trackedAccount.Id,
+                        Transaction = trx,
                         TransactionCurrency = trackedAccount.Currency?.Code, // Remove ?? string.Empty to allow null
-                        Amount = Math.Round(req.Amount, 2), 
-                        Role = TransactionRole.Source, 
-                        Fees = 0m 
+                        Amount = Math.Round(req.Amount, 2),
+                        Role = TransactionRole.Source,
+                        Fees = 0m
                     };
-                    
+
                     trx.AccountTransactions = new List<AccountTransaction> { accountTransaction };
 
                     // Use domain method for withdrawal (includes business logic and account-specific rules)
@@ -190,7 +192,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
                     // Persist changes
                     await _uow.TransactionRepository.AddAsync(trx);
                     await _uow.AccountRepository.UpdateAsync(trackedAccount);
-                    
+
                     // - Checks RowVersion in WHERE clause
                     // - Throws DbUpdateConcurrencyException if conflict
                     // - Updates RowVersion on success

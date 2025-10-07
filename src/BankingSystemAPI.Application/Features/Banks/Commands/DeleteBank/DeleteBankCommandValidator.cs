@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Features.Banks.Commands.DeleteBank
 {
-    public class DeleteBankCommandValidator: AbstractValidator<DeleteBankCommand>
+    public class DeleteBankCommandValidator : AbstractValidator<DeleteBankCommand>
     {
         public DeleteBankCommandValidator()
         {

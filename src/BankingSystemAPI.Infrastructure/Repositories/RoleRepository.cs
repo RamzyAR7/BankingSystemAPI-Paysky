@@ -14,30 +14,30 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class RoleRepository : GenericRepository<ApplicationRole, string>, IRoleRepository
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
-        private static readonly Func<ApplicationDbContext, string, string> _compiledGetRoleIdByUserId =
+        #region Methods
+        #endregion
+        private static readonly Func<ApplicationDbContext, string, string?> _compiledGetRoleIdByUserId =
             EF.CompileQuery((ApplicationDbContext ctx, string userId) =>
                 ctx.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.RoleId).FirstOrDefault());
 
         private readonly ICacheService _cache;
-        
+
         public RoleRepository(ApplicationDbContext context, ICacheService cache) : base(context)
         {
             _cache = cache;
         }
 
         // This method fetches role for a single userId
-        public async Task<ApplicationRole> GetRoleByUserIdAsync(string userId)
+        public async Task<ApplicationRole?> GetRoleByUserIdAsync(string userId)
         {
             if (string.IsNullOrWhiteSpace(userId)) return null;
 
@@ -66,10 +66,10 @@ namespace BankingSystemAPI.Infrastructure.Repositories
         }
 
         // this method fetches roles for multiple userIds and returns a dictionary of userId -> roleName
-        public async Task<Dictionary<string, string>> GetRolesByUserIdsAsync(IEnumerable<string> userIds)
+        public async Task<Dictionary<string, string?>> GetRolesByUserIdsAsync(IEnumerable<string> userIds)
         {
             if (userIds == null || !userIds.Any())
-                return new Dictionary<string, string>();
+                return new Dictionary<string, string?>();
 
             // Use Role navigation to fetch role name in a single query
             var userRoles = await _context.Users
@@ -78,9 +78,9 @@ namespace BankingSystemAPI.Infrastructure.Repositories
                 .Select(u => new { u.Id, RoleName = u.Role.Name })
                 .ToDictionaryAsync(x => x.Id, x => x.RoleName);
 
-            return userRoles;
+            return userRoles.ToDictionary(kv => kv.Key, kv => (string?)kv.Value);
         }
-        
+
         public IQueryable<string> UsersWithRoleQuery(string roleName)
         {
             if (string.IsNullOrWhiteSpace(roleName))
@@ -91,10 +91,10 @@ namespace BankingSystemAPI.Infrastructure.Repositories
                 .Where(u => u.Role != null && u.Role.Name == roleName)
                 .Select(u => u.Id);
         }
-        
-        public override async Task<ApplicationRole> UpdateAsync(ApplicationRole entity)
+
+        public override async Task<ApplicationRole?> UpdateAsync(ApplicationRole entity, CancellationToken cancellationToken = default)
         {
-            var result = await base.UpdateAsync(entity);
+            var result = await base.UpdateAsync(entity, cancellationToken).ConfigureAwait(false);
             if (result != null)
             {
                 var userIds = await _context.Users.Where(u => u.RoleId == result.Id).Select(u => u.Id).ToListAsync();
@@ -106,7 +106,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             return result;
         }
 
-        public override async Task DeleteAsync(ApplicationRole entity)
+        public override async Task DeleteAsync(ApplicationRole entity, CancellationToken cancellationToken = default)
         {
             var usersWithRole = await _context.Users.Where(u => u.RoleId == entity.Id).ToListAsync();
             if (usersWithRole.Any())
@@ -117,7 +117,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
                 }
             }
 
-            await base.DeleteAsync(entity);
+            await base.DeleteAsync(entity, cancellationToken).ConfigureAwait(false);
 
             // Remove cached entries
             foreach (var uid in usersWithRole.Select(u => u.Id))

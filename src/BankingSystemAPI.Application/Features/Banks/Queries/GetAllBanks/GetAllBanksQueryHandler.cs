@@ -20,17 +20,17 @@ namespace BankingSystemAPI.Application.Features.Banks.Queries.GetAllBanks
 {
     public class GetAllBanksQueryHandler : IQueryHandler<GetAllBanksQuery, List<BankSimpleResDto>>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
         private readonly ILogger<GetAllBanksQueryHandler> _logger;
@@ -50,14 +50,14 @@ namespace BankingSystemAPI.Application.Features.Banks.Queries.GetAllBanks
                 return Result<List<BankSimpleResDto>>.Failure(parametersResult.ErrorItems);
 
             var queryResult = await ExecuteQueryAsync(parametersResult.Value!);
-            
+
             // Add side effects using ResultExtensions
-            queryResult.OnSuccess(() => 
+            queryResult.OnSuccess(() =>
                 {
-                    _logger.LogDebug("Retrieved {Count} banks with pagination: Page={Page}, Size={Size}", 
+                    _logger.LogDebug("Retrieved {Count} banks with pagination: Page={Page}, Size={Size}",
                         queryResult.Value!.Count, parametersResult.Value!.PageNumber, parametersResult.Value.PageSize);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning("Failed to retrieve banks. Errors: {Errors}",
                         string.Join(", ", errors));
@@ -89,9 +89,9 @@ namespace BankingSystemAPI.Application.Features.Banks.Queries.GetAllBanks
             try
             {
                 var spec = new PagedSpecification<Bank>(
-                    parameters.Skip, 
-                    parameters.PageSize, 
-                    parameters.OrderBy, 
+                    parameters.Skip,
+                    parameters.PageSize,
+                    parameters.OrderBy,
                     parameters.OrderDirection);
 
                 var banks = await _uow.BankRepository.ListAsync(spec);
@@ -107,17 +107,17 @@ namespace BankingSystemAPI.Application.Features.Banks.Queries.GetAllBanks
 
         private class QueryParameters
         {
-    #region Fields
-    #endregion
+            #region Fields
+            #endregion
 
-    #region Constructors
-    #endregion
+            #region Constructors
+            #endregion
 
-    #region Properties
-    #endregion
+            #region Properties
+            #endregion
 
-    #region Methods
-    #endregion
+            #region Methods
+            #endregion
             public int PageNumber { get; set; }
             public int PageSize { get; set; }
             public int Skip { get; set; }

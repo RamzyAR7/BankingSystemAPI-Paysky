@@ -13,22 +13,22 @@ namespace BankingSystemAPI.Application.Interfaces.Repositories
 {
     public interface IUserRepository : IGenericRepository<ApplicationUser, string>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         /// <summary>
         /// Gets users by bank ID for validation purposes
         /// </summary>
         Task<IEnumerable<ApplicationUser>> GetUsersByBankIdAsync(int bankId);
-        
+
         /// <summary>
         /// Query users by bank ID
         /// </summary>

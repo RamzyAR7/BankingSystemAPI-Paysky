@@ -16,7 +16,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.RevokeTok
         private readonly IUserAuthorizationService? _userAuthorizationService;
 
         public RevokeTokenCommandHandler(
-            IAuthService authService, 
+            IAuthService authService,
             IUserAuthorizationService? userAuthorizationService = null)
         {
             _authService = authService;

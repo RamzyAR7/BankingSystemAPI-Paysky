@@ -22,17 +22,17 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiExplorerSettings(GroupName = "UserRoles")]
     public class UserRolesController : BaseApiController
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         private readonly IMediator _mediator;
 
         public UserRolesController(IMediator mediator)
@@ -61,7 +61,7 @@ namespace BankingSystemAPI.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> UpdateUserRole(
-            [FromRoute] string userId, 
+            [FromRoute] string userId,
             [FromBody] UpdateUserRoleRequestDto updateDto)
         {
             var command = new UpdateUserRolesCommand(userId ?? string.Empty, updateDto?.Role ?? string.Empty);

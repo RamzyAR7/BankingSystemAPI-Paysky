@@ -54,13 +54,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
 
             // Validate business rules and execute password change
             var changeResult = await ValidateAndExecutePasswordChangeAsync(request, contextResult.Value!);
-            
+
             // Add side effects using ResultExtensions
-            changeResult.OnSuccess(() => 
+            changeResult.OnSuccess(() =>
             {
                 _logger.LogInformation(ApiResponseMessages.Logging.PasswordChanged, request.UserId);
             })
-            .OnFailure(errors => 
+            .OnFailure(errors =>
             {
                 _logger.LogWarning(ApiResponseMessages.Logging.PasswordChangeFailed, request.UserId, string.Join(", ", errors));
             });
@@ -88,7 +88,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             var actingRole = await _currentUserService.GetRoleFromStoreAsync();
             var actingRoleName = actingRole?.Name ?? string.Empty;
             var actingBankId = _currentUserService.BankId;
-            
+
             // Get target user information
             var targetUserResult = await _userService.GetUserByIdAsync(userId);
             if (targetUserResult.IsFailure)
@@ -163,7 +163,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
 
             // Execute password change
             var result = await _userService.ChangeUserPasswordAsync(request.UserId, changePasswordDto);
-            
+
             // Enhanced error handling for password change failures
             if (result.IsFailure)
             {

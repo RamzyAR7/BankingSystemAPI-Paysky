@@ -11,19 +11,19 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Interfaces.Repositories
 {
-    public interface IAccountTransactionRepository: IGenericRepository<AccountTransaction, int>
+    public interface IAccountTransactionRepository : IGenericRepository<AccountTransaction, int>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
     }
 }
 

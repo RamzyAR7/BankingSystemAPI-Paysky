@@ -10,30 +10,30 @@ namespace BankingSystemAPI.Infrastructure.SpecificationEvaluatorClass
 {
     internal static class SpecificationEvaluator
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public static IQueryable<T> ApplySpecification<T>(IQueryable<T> query, ISpecification<T> spec, bool evaluatePaging = true) where T : class
         {
-    #region Fields
-    #endregion
+            #region Fields
+            #endregion
 
-    #region Constructors
-    #endregion
+            #region Constructors
+            #endregion
 
-    #region Properties
-    #endregion
+            #region Properties
+            #endregion
 
-    #region Methods
-    #endregion
+            #region Methods
+            #endregion
             if (spec == null) return query;
 
             if (spec.AsNoTracking)
@@ -42,7 +42,7 @@ namespace BankingSystemAPI.Infrastructure.SpecificationEvaluatorClass
             if (spec.Criteria != null)
                 query = query.Where(spec.Criteria);
 
-            foreach (var include in spec.Includes ?? Enumerable.Empty<Expression<Func<T, object?>>>() )
+            foreach (var include in spec.Includes ?? Enumerable.Empty<Expression<Func<T, object?>>>())
                 query = query.Include(include);
 
             if (spec.OrderBy != null)

@@ -38,13 +38,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
         {
             // Validate authorization
             var authResult = await ValidateAuthorizationAsync();
-			if (authResult.IsFailure)
-				return Result<UserResDto>.Failure(authResult.ErrorItems);
+            if (authResult.IsFailure)
+                return Result<UserResDto>.Failure(authResult.ErrorItems);
 
             // Determine user context
             var contextResult = await DetermineUserContextAsync();
-			if (contextResult.IsFailure)
-				return Result<UserResDto>.Failure(contextResult.ErrorItems);
+            if (contextResult.IsFailure)
+                return Result<UserResDto>.Failure(contextResult.ErrorItems);
 
             // Create user with context
             var createResult = await CreateUserWithContextAsync(request.UserRequest, contextResult.Value!);

@@ -11,17 +11,17 @@ namespace BankingSystemAPI.Application.DTOs.Auth
 {
     public class RevokeTokenDto
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public string? Token { get; set; }
     }
 }

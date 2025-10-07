@@ -27,8 +27,8 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
         private readonly ILogger<UpdateSavingsAccountCommandHandler> _logger;
 
         public UpdateSavingsAccountCommandHandler(
-            IUnitOfWork uow, 
-            IMapper mapper, 
+            IUnitOfWork uow,
+            IMapper mapper,
             ILogger<UpdateSavingsAccountCommandHandler> logger,
             IAccountAuthorizationService accountAuth)
         {
@@ -58,13 +58,13 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
                 return Result<SavingsAccountDto>.Failure(currencyResult.ErrorItems);
 
             var updateResult = await ExecuteUpdateAsync(accountResult.Value!, request.Req, currencyResult.Value!);
-            
+
             // Add side effects using ResultExtensions
-            updateResult.OnSuccess(() => 
+            updateResult.OnSuccess(() =>
                 {
                     _logger.LogInformation(ApiResponseMessages.Logging.SavingsAccountUpdated, request.Id, request.Req.UserId, request.Req.CurrencyId);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning(ApiResponseMessages.Logging.SavingsAccountUpdateFailed, request.Id, request.Req.UserId, string.Join(", ", errors));
                 });
@@ -77,8 +77,8 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
             try
             {
                 var authResult = await _accountAuth.CanModifyAccountAsync(accountId, AccountModificationOperation.Edit);
-                return authResult.IsSuccess 
-                    ? Result.Success() 
+                return authResult.IsSuccess
+                    ? Result.Success()
                     : Result.Failure(authResult.ErrorItems);
             }
             catch (Exception ex)
@@ -93,7 +93,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
             {
                 var spec = new SavingsAccountByIdSpecification(accountId);
                 var account = await _uow.AccountRepository.FindAsync(spec);
-                
+
                 return account is SavingsAccount savingsAccount
                     ? Result<SavingsAccount>.Success(savingsAccount)
                     : Result<SavingsAccount>.BadRequest(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Savings account", accountId));
@@ -116,10 +116,10 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
             try
             {
                 var currency = await _uow.CurrencyRepository.GetByIdAsync(currencyId);
-                
+
                 return currency.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Currency", currencyId))
-                    .Bind(c => c.IsActive 
-                        ? Result<Currency>.Success(c) 
+                    .Bind(c => c.IsActive
+                        ? Result<Currency>.Success(c)
                         : Result<Currency>.BadRequest(ApiResponseMessages.Validation.CurrencyInactive));
             }
             catch (Exception ex)
@@ -158,7 +158,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
 
                 // Set navigation property for proper mapping
                 account.Currency = currency;
-                
+
                 var resultDto = _mapper.Map<SavingsAccountDto>(account);
                 return Result<SavingsAccountDto>.Success(resultDto);
             }

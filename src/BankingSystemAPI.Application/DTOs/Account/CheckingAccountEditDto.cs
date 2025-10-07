@@ -10,18 +10,18 @@ namespace BankingSystemAPI.Application.DTOs.Account
     /// </summary>
     public class CheckingAccountEditDto
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
-        public string UserId { get; set; }
+        #region Methods
+        #endregion
+        public required string UserId { get; set; } = string.Empty;
 
         public int CurrencyId { get; set; }
         public decimal OverdraftLimit { get; set; }

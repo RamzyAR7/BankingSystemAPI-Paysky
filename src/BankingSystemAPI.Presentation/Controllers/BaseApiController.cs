@@ -24,7 +24,17 @@ namespace BankingSystemAPI.Presentation.Controllers
             if (result.IsSuccess)
             {
                 LogSuccess();
-                return Ok(result.Value);
+
+                // Standardized response envelope for success with data
+                var body = new
+                {
+                    success = true,
+                    message = GetSuccessMessage(),
+                    data = result.Value,
+                    errors = Array.Empty<object>()
+                };
+
+                return Ok(body);
             }
 
             LogFailure(result.Errors);
@@ -35,7 +45,16 @@ namespace BankingSystemAPI.Presentation.Controllers
             if (result.IsSuccess)
             {
                 LogSuccess();
-                return Ok(new { success = true, message = GetSuccessMessage() });
+
+                var body = new
+                {
+                    success = true,
+                    message = GetSuccessMessage(),
+                    data = (object?)null,
+                    errors = Array.Empty<object>()
+                };
+
+                return Ok(body);
             }
 
             LogFailure(result.Errors);
@@ -60,9 +79,26 @@ namespace BankingSystemAPI.Presentation.Controllers
                                controller.Contains("active", StringComparison.OrdinalIgnoreCase);
 
                 if (isPassword || isStatus)
-                    return Ok(new { success = true, message = GetSuccessMessage() });
+                {
+                    // For password/status updates return message only (no data)
+                    var msgBody = new
+                    {
+                        success = true,
+                        message = GetSuccessMessage()
+                    };
 
-                return Ok(new { success = true, message = GetSuccessMessage(), data = result.Value });
+                    return Ok(msgBody);
+                }
+
+                var body = new
+                {
+                    success = true,
+                    message = GetSuccessMessage(),
+                    data = result.Value,
+                    errors = Array.Empty<object>()
+                };
+
+                return Ok(body);
             }
 
             LogFailure(result.Errors);
@@ -79,10 +115,18 @@ namespace BankingSystemAPI.Presentation.Controllers
 
             Logger.LogInformation("Resource created successfully. Controller: {Controller}, Action: {Action}", GetControllerName(), GetActionName());
 
-            if (!string.IsNullOrWhiteSpace(actionName))
-                return CreatedAtAction(actionName, routeValues, result.Value);
+            var body = new
+            {
+                success = true,
+                message = GetSuccessMessage(),
+                data = result.Value,
+                errors = Array.Empty<object>()
+            };
 
-            return StatusCode(201, result.Value);
+            if (!string.IsNullOrWhiteSpace(actionName))
+                return CreatedAtAction(actionName, routeValues, body);
+
+            return StatusCode(201, body);
         }
         #endregion
 

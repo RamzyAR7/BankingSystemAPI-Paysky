@@ -26,7 +26,7 @@ namespace BankingSystemAPI.Infrastructure.Services
         private readonly ILogger<UserService> _logger;
 
         public UserService(
-            UserManager<ApplicationUser> userManager, 
+            UserManager<ApplicationUser> userManager,
             RoleManager<ApplicationRole> roleManager,
             IMapper mapper,
             ILogger<UserService> logger)
@@ -117,7 +117,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             var user = await _userManager.Users
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Id == userId);
-            
+
             if (user == null)
             {
                 var result = Result<string?>.Failure(new ResultError(ErrorType.NotFound, ApiResponseMessages.Validation.UserNotFound));
@@ -152,7 +152,7 @@ namespace BankingSystemAPI.Infrastructure.Services
 
             var userDtos = _mapper.Map<List<UserResDto>>(users);
             var result = Result<IList<UserResDto>>.Success(userDtos);
-            
+
             result.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.UsersRetrievedForBankId, users.Count, bankId));
             return result;
         }
@@ -170,7 +170,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 .Where(u => u.BankId == bankId)
                 .Select(u => u.Bank)
                 .FirstOrDefaultAsync();
-            
+
             var isActive = contextBank?.IsActive ?? false;
             var result = Result<bool>.Success(isActive);
             result.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.BankActiveStatusChecked, bankId, isActive));
@@ -200,10 +200,10 @@ namespace BankingSystemAPI.Infrastructure.Services
             }
 
             var entity = _mapper.Map<ApplicationUser>(user);
-            
+
             entity.BankId = user.BankId;
             entity.IsActive = true;
-            
+
             ApplicationRole? targetRole = null;
             if (!string.IsNullOrEmpty(user.Role))
             {
@@ -214,7 +214,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                     result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailedRoleNotFound, user.Role));
                     return result;
                 }
-                
+
                 entity.RoleId = targetRole.Id;
             }
             else
@@ -430,7 +430,7 @@ namespace BankingSystemAPI.Infrastructure.Services
 
             user.IsActive = isActive;
             var identityResult = await _userManager.UpdateAsync(user);
-            
+
             if (!identityResult.Succeeded)
             {
                 var errors = identityResult.Errors.Select(e => e.Description);

@@ -28,13 +28,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
         public async Task<Result> Handle(DeleteUsersCommand request, CancellationToken cancellationToken)
         {
             var distinctIds = request.UserIds.Distinct().ToList();
-            
+
             if (!distinctIds.Any())
                 return Result.ValidationFailed(ApiResponseMessages.Validation.AtLeastOneUserIdProvided);
 
             // Business validation: Prevent self-deletion
             var actingUserId = _currentUserService.UserId;
-            if (!string.IsNullOrEmpty(actingUserId) && distinctIds.Any(id => 
+            if (!string.IsNullOrEmpty(actingUserId) && distinctIds.Any(id =>
                 string.Equals(actingUserId, id, StringComparison.OrdinalIgnoreCase)))
             {
                 return Result.ValidationFailed(ApiResponseMessages.Validation.CannotDeleteSelfBulk);
@@ -82,7 +82,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
 
             if (errors.Any())
             {
-                    return Result.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)).ToList());
+                return Result.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)).ToList());
             }
 
             if (!usersToDelete.Any())
@@ -92,12 +92,12 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
 
             // Perform bulk deletion using the existing service method - returns Result<bool>
             var deleteResult = await _userService.DeleteRangeOfUsersAsync(usersToDelete);
-            
+
             if (!deleteResult.IsSuccess)
             {
                 return Result.Failure(deleteResult.ErrorItems);
             }
-            
+
             return Result.Success();
         }
     }

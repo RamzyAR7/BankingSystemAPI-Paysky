@@ -12,17 +12,17 @@ namespace BankingSystemAPI.Application.DTOs.Account
 {
     public class CheckingAccountDto : AccountDto
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public decimal OverdraftLimit { get; set; }
 
         public CheckingAccountDto() => Type = AccountType.Checking.ToString();

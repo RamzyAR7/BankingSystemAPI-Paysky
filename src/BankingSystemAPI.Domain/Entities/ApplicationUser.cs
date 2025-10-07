@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Domain.Entities
 {
-    public class ApplicationUser:IdentityUser
+    public class ApplicationUser : IdentityUser
     {
         public string NationalId { get; set; }
         public string FullName { get; set; }

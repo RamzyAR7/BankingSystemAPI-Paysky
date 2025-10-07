@@ -331,7 +331,7 @@ namespace BankingSystemAPI.Domain.Constant
             public const string IncomingRequest = "Incoming request:\n{Request}";
             public const string OutgoingResponse = "Outgoing response:\n{Response}";
             public const string ResponseSummary = "Response summary: StatusCode={StatusCode}, Username={Username}, Roles={Roles}, UserId={UserId}";
-                // Removed unused constants: BankNameTooLong, RoleNameLength, ClaimsListRequired, PasswordConfirmationMismatch, FullNameLettersOnly, AgeRange, InvalidPhoneNumberFormat, NationalIdDigits, UserIdInvalidFormat, UserIdsCollectionCannotBeNull, AllUserIdsMustBeValid, DuplicateUserIdsNotAllowed, OrderDirectionMustBeAscOrDesc, RoleNameCannotExceed, RoleNameInvalidFormat
+            // Removed unused constants: BankNameTooLong, RoleNameLength, ClaimsListRequired, PasswordConfirmationMismatch, FullNameLettersOnly, AgeRange, InvalidPhoneNumberFormat, NationalIdDigits, UserIdInvalidFormat, UserIdsCollectionCannotBeNull, AllUserIdsMustBeValid, DuplicateUserIdsNotAllowed, OrderDirectionMustBeAscOrDesc, RoleNameCannotExceed, RoleNameInvalidFormat
             public const string RoleCreateFailed = "Role creation failed for: {RoleName}. Errors: {Errors}";
 
             public const string RoleDeleted = "Role deleted successfully: RoleId={RoleId}, Name={RoleName}";

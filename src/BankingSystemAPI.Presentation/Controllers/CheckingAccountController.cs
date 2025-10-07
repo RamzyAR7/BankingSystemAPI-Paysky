@@ -22,17 +22,17 @@ namespace BankingSystemAPI.Presentation.Controllers
     [ApiExplorerSettings(GroupName = "CheckingAccounts")]
     public class CheckingAccountController : BaseApiController
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         private readonly IMediator _mediator;
 
         public CheckingAccountController(IMediator mediator)
@@ -40,13 +40,13 @@ namespace BankingSystemAPI.Presentation.Controllers
             _mediator = mediator;
         }
 
-    /// <summary>
-    /// Get paginated list of checking accounts.
-    /// </summary>
-    /// <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
-    /// <param name="pageSize">Number of items per page. Defaults to 10.</param>
-    /// <param name="orderBy">Optional. Property name to sort by. Common values: "Id", "AccountNumber", "UserId", "CreatedDate". If not specified a default order will be applied.</param>
-    /// <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC" (case-insensitive). Defaults to "ASC".</param>
+        /// <summary>
+        /// Get paginated list of checking accounts.
+        /// </summary>
+        /// <param name="pageNumber">Page number to retrieve. Defaults to 1.</param>
+        /// <param name="pageSize">Number of items per page. Defaults to 10.</param>
+        /// <param name="orderBy">Optional. Property name to sort by. Common values: "Id", "AccountNumber", "UserId", "CreatedDate". If not specified a default order will be applied.</param>
+        /// <param name="orderDirection">Optional. Sort direction: "ASC" or "DESC" (case-insensitive). Defaults to "ASC".</param>
         [HttpGet]
         [PermissionFilterFactory(Permission.CheckingAccount.ReadAll)]
         [ProducesResponseType(StatusCodes.Status200OK)]

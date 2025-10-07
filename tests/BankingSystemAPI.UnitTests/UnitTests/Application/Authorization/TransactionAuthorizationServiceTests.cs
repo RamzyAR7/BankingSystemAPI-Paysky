@@ -36,15 +36,18 @@ public class TransactionAuthorizationServiceTests
     private readonly Mock<IUnitOfWork> _uowMock = new();
     private readonly Mock<IScopeResolver> _scopeResolverMock = new();
     private readonly Mock<ILogger<TransactionAuthorizationService>> _loggerMock = new();
+    private readonly Mock<BankingSystemAPI.Application.Interfaces.Infrastructure.IDbCapabilities> _dbCapabilitiesMock = new();
     private readonly TransactionAuthorizationService _service;
 
     public TransactionAuthorizationServiceTests()
     {
+        _dbCapabilitiesMock.Setup(x => x.SupportsEfCoreAsync).Returns(false);
         _service = new TransactionAuthorizationService(
             _currentUserMock.Object,
             _uowMock.Object,
             _scopeResolverMock.Object,
-            _loggerMock.Object
+            _loggerMock.Object,
+            _dbCapabilitiesMock.Object
         );
     }
 
@@ -58,9 +61,10 @@ public class TransactionAuthorizationServiceTests
         var account = TestEntityFactory.CreateCheckingAccount(userId, 1, balance: 100m);
         account.UserId = userId;
         account.Id = sourceAccountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
         // Act
         var result = await _service.CanInitiateTransferAsync(sourceAccountId, targetAccountId);
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
         Assert.True(result.IsSuccess);
     }
 
@@ -75,9 +79,10 @@ public class TransactionAuthorizationServiceTests
         account.User = new ApplicationUser { BankId = 1, Id = "client1" };
         account.UserId = "client1";
         account.Id = sourceAccountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync("client1")).ReturnsAsync(new ApplicationRole { Name = "Client" });
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 1 });
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 1 });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
         // Act
         var result = await _service.CanInitiateTransferAsync(sourceAccountId, targetAccountId);
         Assert.True(result.IsSuccess);
@@ -93,9 +98,10 @@ public class TransactionAuthorizationServiceTests
         var account = TestEntityFactory.CreateCheckingAccount("otheruser", 1, balance: 100m);
         account.UserId = "otheruser";
         account.Id = sourceAccountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
         // Act
         var result = await _service.CanInitiateTransferAsync(sourceAccountId, targetAccountId);
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
         Assert.False(result.IsSuccess);
         Assert.Contains(AuthorizationConstants.ErrorMessages.CannotUseOthersAccounts, result.Errors);
     }
@@ -107,9 +113,10 @@ public class TransactionAuthorizationServiceTests
         string userId = "user3";
         _currentUserMock.Setup(x => x.UserId).Returns(userId);
         _scopeResolverMock.Setup(x => x.GetScopeAsync()).ReturnsAsync(AccessScope.Self);
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync((Account)null!);
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync((Account)null!);
         // Act
         var result = await _service.CanInitiateTransferAsync(sourceAccountId, targetAccountId);
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync((Account)null!);
         Assert.False(result.IsSuccess);
         Assert.Contains($"Source account with ID '{sourceAccountId}' not found.", result.Errors[0]);
     }
@@ -125,9 +132,10 @@ public class TransactionAuthorizationServiceTests
         account.User = new ApplicationUser { BankId = 2, Id = "client2" };
         account.UserId = "client2";
         account.Id = sourceAccountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync("client2")).ReturnsAsync(new ApplicationRole { Name = "Admin" });
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 2 });
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 2 });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
         // Act
         var result = await _service.CanInitiateTransferAsync(sourceAccountId, targetAccountId);
         Assert.False(result.IsSuccess);
@@ -145,9 +153,10 @@ public class TransactionAuthorizationServiceTests
         account.User = new ApplicationUser { BankId = 3, Id = "client3" };
         account.UserId = "client3";
         account.Id = sourceAccountId;
-        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>())).ReturnsAsync(account);
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
         _uowMock.Setup(x => x.RoleRepository.GetRoleByUserIdAsync("client3")).ReturnsAsync(new ApplicationRole { Name = "Client" });
-        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 99 });
+        _uowMock.Setup(x => x.UserRepository.FindAsync(It.IsAny<ISpecification<ApplicationUser>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new ApplicationUser { Id = userId, BankId = 99 });
+        _uowMock.Setup(x => x.AccountRepository.FindAsync(It.IsAny<ISpecification<Account>>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(account);
         // Act
         var result = await _service.CanInitiateTransferAsync(sourceAccountId, targetAccountId);
         Assert.False(result.IsSuccess);

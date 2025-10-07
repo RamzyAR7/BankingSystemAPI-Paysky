@@ -16,17 +16,17 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class UserRepository : GenericRepository<ApplicationUser, string>, IUserRepository
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public UserRepository(ApplicationDbContext context) : base(context)
         {
         }

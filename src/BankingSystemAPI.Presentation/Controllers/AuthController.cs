@@ -79,8 +79,9 @@ namespace BankingSystemAPI.Presentation.Controllers
         {
             var userId = User?.FindFirst("uid")?.Value;
             if (string.IsNullOrEmpty(userId))
-                return BadRequest(new { 
-                    success = false, 
+                return BadRequest(new
+                {
+                    success = false,
                     errors = new[] { "User is not authenticated." },
                     message = "User is not authenticated."
                 });
@@ -104,8 +105,9 @@ namespace BankingSystemAPI.Presentation.Controllers
         public async Task<IActionResult> RevokeToken([FromRoute] string userId)
         {
             if (string.IsNullOrEmpty(userId))
-                return BadRequest(new { 
-                    success = false, 
+                return BadRequest(new
+                {
+                    success = false,
                     errors = new[] { "UserId is required." },
                     message = "UserId is required."
                 });

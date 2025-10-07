@@ -9,17 +9,17 @@ namespace BankingSystemAPI.Infrastructure.Seeding
 {
     public static class BankSeeding
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public static async Task SeedAsync(DbContext context)
         {
             // Prevent reseeding if banks already exist

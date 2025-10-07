@@ -44,13 +44,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
                 return Result<UserResDto>.Failure(uniquenessResult.ErrorItems);
 
             var updateResult = await ExecuteUpdateAsync(request);
-            
+
             // Add side effects using ResultExtensions
-            updateResult.OnSuccess(() => 
+            updateResult.OnSuccess(() =>
             {
                 _logger.LogInformation(ApiResponseMessages.Logging.UserUpdated, request.UserId);
             })
-            .OnFailure(errors => 
+            .OnFailure(errors =>
             {
                 _logger.LogWarning(ApiResponseMessages.Logging.UserUpdateFailed, request.UserId, string.Join(", ", errors));
             });
@@ -88,13 +88,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
 
             // Efficient conflict detection using functional patterns
             var conflicts = CheckForConflicts(request, usersInSameBank);
-            
+
             return conflicts.Any()
                 ? Result<UpdateValidationContext>.BadRequest(string.Format(ApiResponseMessages.Validation.UserConflictExistsFormat, string.Join(", ", conflicts)))
-                : Result<UpdateValidationContext>.Success(new UpdateValidationContext 
-                { 
+                : Result<UpdateValidationContext>.Success(new UpdateValidationContext
+                {
                     ExistingUser = existingUser,
-                    UsersInBank = usersInSameBank 
+                    UsersInBank = usersInSameBank
                 });
         }
 
@@ -107,7 +107,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
         private List<string> CheckForConflicts(UpdateUserCommand request, IList<UserResDto> usersInBank)
         {
             var conflicts = new List<string>();
-            
+
             var conflictingUser = usersInBank.FirstOrDefault(u =>
                 u.Id != request.UserId &&
                 (string.Equals(u.Username, request.UserEdit.Username, StringComparison.OrdinalIgnoreCase) ||

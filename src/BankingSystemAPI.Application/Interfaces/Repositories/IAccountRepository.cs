@@ -10,19 +10,19 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.Interfaces.Repositories
 {
-    public interface IAccountRepository: IGenericRepository<Account, int>
+    public interface IAccountRepository : IGenericRepository<Account, int>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         Task<IEnumerable<T>> GetAccountsByTypeAsync<T>(int pageNumber = 1, int pageSize = 10) where T : Account;
         Task<(IEnumerable<Account> Accounts, int TotalCount)> GetFilteredAccountsAsync(IQueryable<Account> query, int pageNumber, int pageSize);
         IQueryable<Account> Table { get; }

@@ -31,7 +31,7 @@ namespace BankingSystemAPI.Infrastructure.Configuration_Classes
                 .HasDefaultValue(0m);
 
             builder.Property(at => at.Role)
-                .HasConversion<string>() 
+                .HasConversion<string>()
                 .IsRequired();
 
             builder.HasOne(at => at.Account)

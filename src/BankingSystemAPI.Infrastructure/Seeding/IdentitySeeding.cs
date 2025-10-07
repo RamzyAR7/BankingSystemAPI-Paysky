@@ -15,17 +15,17 @@ namespace BankingSystemAPI.Infrastructure.Seeding
 {
     public static class IdentitySeeding
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public static async Task SeedingRoleAsync(RoleManager<ApplicationRole> _roleManager)
         {
             if (!_roleManager.Roles.Any())

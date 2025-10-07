@@ -69,11 +69,11 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 return HandleAccountError(accountResult);
 
             var authorizationResult = await ValidateViewAuthorizationAsync(accountResult.Value!, scopeResult.Value);
-            
+
             LogAuthorizationResult(
-                AuthorizationCheckType.View, 
-                accountId.ToString(), 
-                authorizationResult, 
+                AuthorizationCheckType.View,
+                accountId.ToString(),
+                authorizationResult,
                 scopeResult.Value);
 
             return authorizationResult;
@@ -90,11 +90,11 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 return HandleScopeError(scopeResult);
 
             var authorizationResult = await ValidateCreationAuthorizationAsync(targetUserId, scopeResult.Value);
-            
+
             LogAuthorizationResult(
-                AuthorizationCheckType.Create, 
-                targetUserId, 
-                authorizationResult, 
+                AuthorizationCheckType.Create,
+                targetUserId,
+                authorizationResult,
                 scopeResult.Value);
 
             return authorizationResult;
@@ -120,23 +120,23 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
             // Critical security check - highest priority for financial operations
             var selfModificationResult = ValidateSelfModificationRules(
-                actingUserResult.Value!, 
-                accountResult.Value!, 
+                actingUserResult.Value!,
+                accountResult.Value!,
                 operation);
             if (selfModificationResult.IsFailure)
                 return selfModificationResult;
 
             var authorizationResult = await ValidateModificationAuthorizationAsync(
-                accountResult.Value!, 
-                operation, 
-                scopeResult.Value, 
+                accountResult.Value!,
+                operation,
+                scopeResult.Value,
                 actingUserResult.Value!);
-            
+
             LogAuthorizationResult(
-                AuthorizationCheckType.Modify, 
-                accountId.ToString(), 
-                authorizationResult, 
-                scopeResult.Value, 
+                AuthorizationCheckType.Modify,
+                accountId.ToString(),
+                authorizationResult,
+                scopeResult.Value,
                 operation.ToString());
 
             return authorizationResult;
@@ -156,12 +156,12 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             if (roleResult.IsFailure)
                 return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Failure(roleResult.ErrorItems);
             var filteringResult = await ApplyRoleBasedFilteringAsync(
-                query, 
-                roleResult.Value!, 
-                pageNumber, 
+                query,
+                roleResult.Value!,
+                pageNumber,
                 pageSize);
-            
-            LogFilteringResult(filteringResult, roleResult.Value!.Name, pageNumber, pageSize);
+
+            LogFilteringResult(filteringResult, roleResult.Value?.Name ?? "Unknown", pageNumber, pageSize);
 
             return filteringResult;
         }
@@ -177,8 +177,8 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             if (roleResult.IsFailure)
                 return Result<IQueryable<Account>>.Failure(roleResult.ErrorItems);
             var queryFilteringResult = await ApplyRoleBasedQueryFilteringAsync(query, roleResult.Value!);
-            
-            LogQueryFilteringResult(queryFilteringResult, roleResult.Value!.Name);
+
+            LogQueryFilteringResult(queryFilteringResult, roleResult.Value?.Name ?? "Unknown");
 
             return queryFilteringResult;
         }
@@ -215,9 +215,9 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         /// Order: Self-modification rules → Scope validation → Role validation → Financial protection
         /// </summary>
         private async Task<Result> ValidateModificationAuthorizationAsync(
-            Account account, 
-            AccountModificationOperation operation, 
-            AccessScope scope, 
+            Account account,
+            AccountModificationOperation operation,
+            AccessScope scope,
             ApplicationUser actingUser)
         {
             return scope switch
@@ -312,8 +312,8 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         /// Order: Risk level from highest to lowest impact for financial operations
         /// </summary>
         private Result ValidateSelfModificationRules(
-            ApplicationUser actingUser, 
-            Account account, 
+            ApplicationUser actingUser,
+            Account account,
             AccountModificationOperation operation)
         {
             if (!IsSelfAccess(actingUser.Id, account.UserId))
@@ -322,19 +322,19 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             return operation switch
             {
                 // CRITICAL RISK: Account structure modifications
-                AccountModificationOperation.Edit => 
+                AccountModificationOperation.Edit =>
                     Result.Forbidden(AuthorizationConstants.ErrorMessages.CannotModifyOwnAccount),
-                AccountModificationOperation.Delete => 
+                AccountModificationOperation.Delete =>
                     Result.Forbidden(AuthorizationConstants.ErrorMessages.CannotDeleteSelf),
-                
+
                 // HIGH RISK: Account status changes
-                AccountModificationOperation.Freeze or AccountModificationOperation.Unfreeze => 
+                AccountModificationOperation.Freeze or AccountModificationOperation.Unfreeze =>
                     Result.Forbidden(AuthorizationConstants.ErrorMessages.CannotFreezeOrUnfreezeOwnAccount),
-                
+
                 // LOW RISK: Financial transactions (allowed)
-                AccountModificationOperation.Deposit or AccountModificationOperation.Withdraw => 
+                AccountModificationOperation.Deposit or AccountModificationOperation.Withdraw =>
                     Result.Success(),
-                
+
                 // Default: Operation not permitted
                 _ => Result.Forbidden(AuthorizationConstants.ErrorMessages.CannotModifyOwnAccount)
             };
@@ -389,9 +389,9 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         /// Order: Role complexity from simple to complex
         /// </summary>
         private async Task<Result<(IEnumerable<Account> Accounts, int TotalCount)>> ApplyRoleBasedFilteringAsync(
-            IQueryable<Account> query, 
-            ApplicationRole role, 
-            int pageNumber, 
+            IQueryable<Account> query,
+            ApplicationRole role,
+            int pageNumber,
             int pageSize)
         {
             try
@@ -454,7 +454,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             var filteredQuery = query
                 .Where(a => clientUserIds.Contains(a.UserId) && a.User.BankId == actingUserResult.Value!.BankId)
                 .OrderBy(a => a.Id);
-            
+
             var result = await _uow.AccountRepository.GetFilteredAccountsAsync(filteredQuery, pageNumber, pageSize);
             return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Success(result);
         }
@@ -489,7 +489,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 var filteredQuery = query
                     .Where(a => clientUserIds.Contains(a.UserId) && a.User.BankId == actingUserResult.Value!.BankId)
                     .OrderBy(a => a.Id);
-                
+
                 return Result<IQueryable<Account>>.Success(filteredQuery);
             }
             catch (Exception ex)
@@ -520,6 +520,9 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         private async Task<Result<ApplicationUser>> GetActingUserAsync()
         {
+            if (string.IsNullOrWhiteSpace(_currentUser.UserId))
+                return Result<ApplicationUser>.Failure(ErrorType.Unauthorized, "Acting user is not available in the current context.");
+
             var actingUserSpec = new UserByIdSpecification(_currentUser.UserId);
             var actingUser = await _uow.UserRepository.FindAsync(actingUserSpec);
             return actingUser.ToResult("Acting user not found.");
@@ -554,20 +557,21 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         }
 
         // Validation Helpers
-        private bool IsSelfAccess(string targetUserId) => 
-            _currentUser.UserId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase);
+        private bool IsSelfAccess(string targetUserId) =>
+            !string.IsNullOrEmpty(_currentUser.UserId) &&
+            string.Equals(_currentUser.UserId, targetUserId, StringComparison.OrdinalIgnoreCase);
 
-        private bool IsSelfAccess(string actingUserId, string targetUserId) => 
-            actingUserId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase);
+        private bool IsSelfAccess(string actingUserId, string targetUserId) =>
+            string.Equals(actingUserId, targetUserId, StringComparison.OrdinalIgnoreCase);
 
         // Error Handling Helpers
-        private Result HandleScopeError(Result<AccessScope> scopeResult) => 
+        private Result HandleScopeError(Result<AccessScope> scopeResult) =>
             Result.BadRequest(scopeResult.Errors.FirstOrDefault() ?? AuthorizationConstants.ErrorMessages.SystemError);
 
-        private Result HandleUserError(Result<ApplicationUser> userResult) => 
+        private Result HandleUserError(Result<ApplicationUser> userResult) =>
             Result.BadRequest(userResult.Errors.FirstOrDefault() ?? AuthorizationConstants.ErrorMessages.ResourceNotFound);
 
-        private Result HandleAccountError(Result<Account> accountResult) => 
+        private Result HandleAccountError(Result<Account> accountResult) =>
             Result.BadRequest(accountResult.Errors.FirstOrDefault() ?? "Account not found or inaccessible.");
 
         #endregion
@@ -575,10 +579,10 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         #region Logging Methods - Organized by Log Level and Category
 
         private void LogAuthorizationResult(
-            AuthorizationCheckType checkType, 
-            string? targetId, 
-            Result authResult, 
-            AccessScope scope, 
+            AuthorizationCheckType checkType,
+            string? targetId,
+            Result authResult,
+            AccessScope scope,
             string? additionalInfo = null)
         {
             if (authResult.IsSuccess)
@@ -604,9 +608,9 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         }
 
         private void LogFilteringResult<T>(
-            Result<T> filterResult, 
-            string roleName, 
-            int pageNumber, 
+            Result<T> filterResult,
+            string roleName,
+            int pageNumber,
             int pageSize)
         {
             if (filterResult.IsSuccess)

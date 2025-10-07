@@ -10,21 +10,21 @@ using System.Threading.Tasks;
 
 namespace BankingSystemAPI.Application.DTOs.Account
 {
-    public class SavingsAccountDto: AccountDto
+    public class SavingsAccountDto : AccountDto
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public decimal InterestRate { get; set; }
-        public string InterestType { get; set; }
+        public required string InterestType { get; set; } = string.Empty;
 
         public SavingsAccountDto()
         {

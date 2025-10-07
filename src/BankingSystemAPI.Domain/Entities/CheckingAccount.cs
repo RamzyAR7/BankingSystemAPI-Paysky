@@ -76,7 +76,7 @@ namespace BankingSystemAPI.Domain.Entities
         /// <exception cref="InvalidOperationException">Thrown when withdrawal exceeds limits</exception>
         public override void Withdraw(decimal amount)
         {
-            if (amount <= 0) 
+            if (amount <= 0)
                 throw new InvalidOperationException("Withdrawal amount must be greater than zero.");
 
             if (!CanWithdraw(amount))
@@ -84,7 +84,7 @@ namespace BankingSystemAPI.Domain.Entities
                 var maxAllowed = GetMaxWithdrawalAmount();
                 var balanceFormatted = Balance >= 0 ? $"${Balance:F2}" : $"-${Math.Abs(Balance):F2}";
                 var overdraftAvailable = GetAvailableOverdraftCredit();
-                
+
                 throw new InvalidOperationException(
                     $"Insufficient funds. Maximum withdrawal: ${maxAllowed:F2} " +
                     $"(Balance: {balanceFormatted}, Overdraft available: ${overdraftAvailable:F2})");

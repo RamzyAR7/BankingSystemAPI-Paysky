@@ -57,7 +57,7 @@ namespace BankingSystemAPI.Domain.Common
 
         public static Result Success() => new Result(true, Array.Empty<ResultError>());
 
-    // Removed string[] overload for Failure to enforce structured error usage
+        // Removed string[] overload for Failure to enforce structured error usage
         public static Result Failure(ErrorType type, string message, ResultErrorDetails? details = null) =>
             Failure(new ResultError(type, message, details));
         public static Result Failure(params ResultError[] errors) =>
@@ -127,7 +127,7 @@ namespace BankingSystemAPI.Domain.Common
         public static Result<T> Failure(IEnumerable<ResultError> errors) =>
             new Result<T>(false, default, errors?.ToList().AsReadOnly() ?? new List<ResultError>().AsReadOnly());
 
-       
+
         public static Result<T> Failure(ErrorType type, string message, ResultErrorDetails? details = null) =>
             Failure(new ResultError(type, message, details));
         #endregion

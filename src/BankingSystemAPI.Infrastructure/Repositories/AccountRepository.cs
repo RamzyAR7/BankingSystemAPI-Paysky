@@ -18,17 +18,17 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 {
     public class AccountRepository : GenericRepository<Account, int>, IAccountRepository
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public AccountRepository(ApplicationDbContext context) : base(context)
         {
         }
@@ -60,13 +60,13 @@ namespace BankingSystemAPI.Infrastructure.Repositories
                 .Include(a => a.Currency)
                 .Skip(skip)
                 .Take(pageSize)
-                .AsNoTracking() 
+                .AsNoTracking()
                 .ToListAsync();
         }
 
         public async Task<(IEnumerable<Account> Accounts, int TotalCount)> GetFilteredAccountsAsync(
-            IQueryable<Account> query, 
-            int pageNumber, 
+            IQueryable<Account> query,
+            int pageNumber,
             int pageSize)
         {
             if (pageNumber < 1) pageNumber = 1;
@@ -75,7 +75,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
             var skip = (pageNumber - 1) * pageSize;
 
             var totalCount = await query.CountAsync();
-            
+
             var items = await query
                 .OrderBy(a => a.Id)  // Add explicit ordering before Skip/Take to fix split query issue
                 .Skip(skip)

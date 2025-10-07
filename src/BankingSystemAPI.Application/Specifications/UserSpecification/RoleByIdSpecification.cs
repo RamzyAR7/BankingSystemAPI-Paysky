@@ -12,17 +12,17 @@ namespace BankingSystemAPI.Application.Specifications.UserSpecifications
 {
     public class RoleByIdSpecification : BaseSpecification<ApplicationRole>
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         public RoleByIdSpecification(string id) : base(r => r.Id == id) { }
     }
 }

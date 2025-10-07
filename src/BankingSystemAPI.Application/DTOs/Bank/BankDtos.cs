@@ -12,7 +12,7 @@ namespace BankingSystemAPI.Application.DTOs.Bank
     public class BankResDto
     {
         public int Id { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
         public List<UserResDto> Users { get; set; } = new();
@@ -21,7 +21,7 @@ namespace BankingSystemAPI.Application.DTOs.Bank
     public class BankSimpleResDto
     {
         public int Id { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
     }

@@ -18,7 +18,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Queries.GetAllRol
         private readonly ILogger<GetAllRolesQueryHandler> _logger;
 
         public GetAllRolesQueryHandler(
-            IRoleService roleService, 
+            IRoleService roleService,
             ICurrentUserService currentUserService,
             ILogger<GetAllRolesQueryHandler> logger)
         {
@@ -34,13 +34,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Queries.GetAllRol
                 return Result<List<RoleResDto>>.Failure(authorizationResult.ErrorItems);
 
             var rolesResult = await RetrieveRolesAsync();
-            
+
             // Add side effects using ResultExtensions
-            rolesResult.OnSuccess(() => 
+            rolesResult.OnSuccess(() =>
                 {
                     _logger.LogDebug(ApiResponseMessages.Logging.RoleRetrieved, rolesResult.Value!.Count);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning(ApiResponseMessages.Logging.RoleRetrieveFailed, string.Join(", ", errors));
                 });
@@ -54,12 +54,12 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Queries.GetAllRol
             {
                 var userRole = await _currentUserService.GetRoleFromStoreAsync();
                 var authorizationResult = ValidateRolePermissions(userRole.Name);
-                
-                authorizationResult.OnSuccess(() => 
+
+                authorizationResult.OnSuccess(() =>
                 {
                     _logger.LogDebug(ApiResponseMessages.Logging.OperationCompletedController, _currentUserService.UserId, userRole.Name);
                 })
-                .OnFailure(errors => 
+                .OnFailure(errors =>
                 {
                     _logger.LogWarning(ApiResponseMessages.Logging.OperationFailedController, _currentUserService.UserId, userRole.Name, string.Join(", ", errors));
                 });

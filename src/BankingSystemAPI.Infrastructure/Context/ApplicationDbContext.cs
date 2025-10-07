@@ -17,7 +17,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace BankingSystemAPI.Infrastructure.Context
 {
-    public class ApplicationDbContext:IdentityDbContext<ApplicationUser, ApplicationRole, string>
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, string>
     {
         public DbSet<Bank> Banks { get; set; }
         public DbSet<CheckingAccount> CheckingAccounts { get; set; }
@@ -31,7 +31,7 @@ namespace BankingSystemAPI.Infrastructure.Context
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
-            
+
         }
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -45,7 +45,7 @@ namespace BankingSystemAPI.Infrastructure.Context
             builder.ApplyConfiguration(new BankConfiguration());
             builder.ApplyConfiguration(new ApplicationUserConfiguration());
             builder.ApplyConfiguration(new ApplicationRoleConfiguration());
-            builder.ApplyConfiguration(new RefreshTokenConfiguration());    
+            builder.ApplyConfiguration(new RefreshTokenConfiguration());
             builder.ApplyConfiguration(new AccountConfiguration());
             builder.ApplyConfiguration(new CheckingAccountConfiguration());
             builder.ApplyConfiguration(new SavingsAccountConfiguration());

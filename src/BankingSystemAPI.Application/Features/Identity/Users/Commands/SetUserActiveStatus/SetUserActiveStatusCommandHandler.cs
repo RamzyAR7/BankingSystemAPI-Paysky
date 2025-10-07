@@ -37,15 +37,15 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.SetUserA
             if (_userAuthorizationService != null)
             {
                 var authResult = await _userAuthorizationService.CanModifyUserAsync(request.UserId, UserModificationOperation.Edit);
-                if(!authResult)
+                if (!authResult)
                 {
                     return Result.Failure(authResult.ErrorItems);
                 }
             }
-            
+
             // The UserService now returns Result
             var result = await _userService.SetUserActiveStatusAsync(request.UserId, request.IsActive);
-            
+
             if (!result) // Using implicit bool operator!
             {
                 return Result.Failure(result.ErrorItems);

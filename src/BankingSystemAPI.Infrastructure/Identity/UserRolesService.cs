@@ -47,7 +47,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             var user = userResult.Value!;
 
             // Process based on role assignment
-            return string.IsNullOrEmpty(dto.Role) 
+            return string.IsNullOrEmpty(dto.Role)
                 ? await RemoveAllRolesAsync(user)
                 : await UpdateUserRoleAsync(user, dto.Role);
         }
@@ -56,7 +56,7 @@ namespace BankingSystemAPI.Infrastructure.Services
         {
             if (dto == null || string.IsNullOrWhiteSpace(dto.UserId))
                 return Result.BadRequest("User ID cannot be null or empty.");
-            
+
             return Result.Success();
         }
 
@@ -69,28 +69,28 @@ namespace BankingSystemAPI.Infrastructure.Services
         private async Task<Result<UserRoleUpdateResultDto>> RemoveAllRolesAsync(ApplicationUser user)
         {
             var userRoles = await _userManager.GetRolesAsync(user);
-            
+
             // Remove existing roles if any
             if (userRoles.Any())
             {
-                    var removeResult = await _userManager.RemoveFromRolesAsync(user, userRoles);
-                        if (!removeResult.Succeeded)
-                        {
-                            var errors = removeResult.Errors.Select(e => e.Description);
-                            return Result<UserRoleUpdateResultDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
-                        }
+                var removeResult = await _userManager.RemoveFromRolesAsync(user, userRoles);
+                if (!removeResult.Succeeded)
+                {
+                    var errors = removeResult.Errors.Select(e => e.Description);
+                    return Result<UserRoleUpdateResultDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
+                }
             }
 
             // Clear FK on user
             user.RoleId = string.Empty;
             var updateResult = await _userManager.UpdateAsync(user);
-            
+
             if (updateResult.Succeeded)
             {
                 var successResult = CreateSuccessResult(user, null);
                 return Result<UserRoleUpdateResultDto>.Success(successResult);
             }
-                else
+            else
             {
                 var errors = updateResult.Errors.Select(e => e.Description);
                 return Result<UserRoleUpdateResultDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));

@@ -6,7 +6,7 @@ using BankingSystemAPI.Domain.Constant;
 
 namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
 {
-    public class CreateBankCommandValidator: AbstractValidator<CreateBankCommand>
+    public class CreateBankCommandValidator : AbstractValidator<CreateBankCommand>
     {
         public CreateBankCommandValidator()
         {

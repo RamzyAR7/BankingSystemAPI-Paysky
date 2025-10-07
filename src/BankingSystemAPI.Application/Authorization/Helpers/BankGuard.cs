@@ -13,17 +13,17 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
 {
     public static class BankGuard
     {
-    #region Fields
-    #endregion
+        #region Fields
+        #endregion
 
-    #region Constructors
-    #endregion
+        #region Constructors
+        #endregion
 
-    #region Properties
-    #endregion
+        #region Properties
+        #endregion
 
-    #region Methods
-    #endregion
+        #region Methods
+        #endregion
         /// <summary>
         /// Validates that both banks are the same for cross-bank operations
         /// </summary>
@@ -40,7 +40,7 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
             if (targetValidation.IsFailure)
                 return targetValidation;
 
-            return actingBankId != targetBankId 
+            return actingBankId != targetBankId
                 ? Result.Forbidden("Access forbidden due to bank isolation policy.")
                 : Result.Success();
         }
