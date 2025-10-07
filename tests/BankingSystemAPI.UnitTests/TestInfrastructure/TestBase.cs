@@ -9,6 +9,7 @@ using AutoMapper;
 using Moq;
 using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Cache;
+using Microsoft.Extensions.Caching.Memory;
 #endregion
 
 
@@ -19,17 +20,6 @@ namespace BankingSystemAPI.UnitTests.TestInfrastructure;
 /// </summary>
 public abstract class TestBase : IDisposable
 {
-    #region Fields
-    #endregion
-
-    #region Constructors
-    #endregion
-
-    #region Properties
-    #endregion
-
-    #region Methods
-    #endregion
     protected readonly ApplicationDbContext Context;
     protected readonly IUnitOfWork UnitOfWork;
     protected readonly IMapper Mapper;
@@ -55,8 +45,8 @@ public abstract class TestBase : IDisposable
 
     private MemoryCacheService CreateCacheService()
     {
-        var memoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
-            new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+        var memoryCache = new MemoryCache(
+            new MemoryCacheOptions());
         var cacheLogger = new NullLogger<MemoryCacheService>();
         return new MemoryCacheService(memoryCache, cacheLogger);
     }

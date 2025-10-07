@@ -10,17 +10,6 @@ namespace BankingSystemAPI.Application.DTOs.User
     /// </summary>
     public class UserEditDto
     {
-        #region Fields
-        #endregion
-
-        #region Constructors
-        #endregion
-
-        #region Properties
-        #endregion
-
-        #region Methods
-        #endregion
         /// <summary>
         /// Email address of user.
         /// </summary>

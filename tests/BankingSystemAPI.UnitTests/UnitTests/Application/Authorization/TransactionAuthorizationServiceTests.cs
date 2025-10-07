@@ -21,33 +21,19 @@ namespace BankingSystemAPI.UnitTests.UnitTests.Application.Authorization;
 
 public class TransactionAuthorizationServiceTests
 {
-    #region Fields
-    #endregion
-
-    #region Constructors
-    #endregion
-
-    #region Properties
-    #endregion
-
-    #region Methods
-    #endregion
     private readonly Mock<ICurrentUserService> _currentUserMock = new();
     private readonly Mock<IUnitOfWork> _uowMock = new();
     private readonly Mock<IScopeResolver> _scopeResolverMock = new();
     private readonly Mock<ILogger<TransactionAuthorizationService>> _loggerMock = new();
-    private readonly Mock<BankingSystemAPI.Application.Interfaces.Infrastructure.IDbCapabilities> _dbCapabilitiesMock = new();
     private readonly TransactionAuthorizationService _service;
 
     public TransactionAuthorizationServiceTests()
     {
-        _dbCapabilitiesMock.Setup(x => x.SupportsEfCoreAsync).Returns(false);
         _service = new TransactionAuthorizationService(
             _currentUserMock.Object,
             _uowMock.Object,
             _scopeResolverMock.Object,
-            _loggerMock.Object,
-            _dbCapabilitiesMock.Object
+            _loggerMock.Object
         );
     }
 

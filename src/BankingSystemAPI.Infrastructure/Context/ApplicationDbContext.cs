@@ -41,7 +41,22 @@ namespace BankingSystemAPI.Infrastructure.Context
 
             // Define a single sequence that all Account tables will share for their primary key.
             // This ensures that Account IDs are globally unique across all account types.
-            builder.HasSequence<int>("AccountIdSequence");
+            // Some providers (SQLite) do not support sequences. Skip sequence creation for those providers.
+            try
+            {
+                var provider = this.Database.ProviderName ?? string.Empty;
+                if (!provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+                {
+                    builder.HasSequence<int>("AccountIdSequence");
+                }
+            }
+            catch
+            {
+                // If Database is not yet configured or provider cannot be determined, fallback to creating the sequence.
+                // In rare cases this may throw for unsupported providers; callers that need SQLite should ensure
+                // the provider is set before calling EnsureCreated.
+                try { builder.HasSequence<int>("AccountIdSequence"); } catch { }
+            }
             builder.ApplyConfiguration(new BankConfiguration());
             builder.ApplyConfiguration(new ApplicationUserConfiguration());
             builder.ApplyConfiguration(new ApplicationRoleConfiguration());
@@ -53,6 +68,38 @@ namespace BankingSystemAPI.Infrastructure.Context
             builder.ApplyConfiguration(new TransactionConfiguration());
             builder.ApplyConfiguration(new AccountTransactionConfiguration());
             builder.ApplyConfiguration(new CurrencyConfiguration());
+
+            // Provider-specific adjustments: SQLite does not support SQL Server's GETUTCDATE().
+            // Replace any defaultValueSql using GETUTCDATE() with CURRENT_TIMESTAMP for SQLite.
+            try
+            {
+                var provider = this.Database.ProviderName ?? string.Empty;
+                if (provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var entityType in builder.Model.GetEntityTypes())
+                    {
+                        foreach (var prop in entityType.GetProperties())
+                        {
+                            var defSql = prop.GetDefaultValueSql();
+                            if (!string.IsNullOrEmpty(defSql) && defSql.Contains("GETUTCDATE", StringComparison.OrdinalIgnoreCase))
+                            {
+                                prop.SetDefaultValueSql("CURRENT_TIMESTAMP");
+                            }
+                            // If RowVersion is configured to be database-generated, SQLite cannot generate it.
+                            // Make EF send the value by disabling ValueGenerated for SQLite when the property is a byte[] named RowVersion.
+                            if (string.Equals(prop.Name, "RowVersion", StringComparison.OrdinalIgnoreCase)
+                                && prop.ClrType == typeof(byte[]))
+                            {
+                                prop.ValueGenerated = Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.Never;
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // If anything goes wrong (e.g., Database not configured), ignore and proceed.
+            }
         }
     }
 }

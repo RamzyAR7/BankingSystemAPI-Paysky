@@ -33,7 +33,6 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         private readonly IUnitOfWork _uow;
         private readonly IScopeResolver _scopeResolver;
         private readonly ILogger<TransactionAuthorizationService> _logger;
-        private readonly BankingSystemAPI.Application.Interfaces.Infrastructure.IDbCapabilities _dbCapabilities;
 
         #endregion
 
@@ -43,14 +42,12 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             ICurrentUserService currentUser,
             IUnitOfWork uow,
             IScopeResolver scopeResolver,
-            ILogger<TransactionAuthorizationService> logger,
-            BankingSystemAPI.Application.Interfaces.Infrastructure.IDbCapabilities dbCapabilities)
+            ILogger<TransactionAuthorizationService> logger)
         {
             _currentUser = currentUser;
             _uow = uow;
             _scopeResolver = scopeResolver;
             _logger = logger;
-            _dbCapabilities = dbCapabilities;
         }
 
         #endregion
@@ -223,10 +220,8 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 // Order query by timestamp
                 var orderedQuery = filteredQuery.OrderByDescending(t => t.Timestamp);
 
-                // Detect EF Core provider heuristically (provider assembly contains 'EntityFrameworkCore')
-                var isEfCore = _dbCapabilities?.SupportsEfCoreAsync ?? false;
-
-                if (isEfCore)
+                // If the query supports async enumeration (EF Core provider), use async methods.
+                if (orderedQuery is IAsyncEnumerable<Transaction>)
                 {
                     var efQuery = orderedQuery.AsNoTracking();
                     var totalAsync = await efQuery.CountAsync();
@@ -246,25 +241,6 @@ namespace BankingSystemAPI.Application.AuthorizationServices
                 LogSystemError("Failed to filter transactions", ex);
                 return Result<(IEnumerable<Transaction> Transactions, int TotalCount)>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
-        }
-
-        /// <summary>
-        /// Bank-level transaction filtering - moderately restrictive (Admin access to Client transactions within bank)
-        /// </summary>
-        private async Task<Result<IQueryable<Transaction>>> ApplyBankLevelTransactionFilterAsync(IQueryable<Transaction> query)
-        {
-            var actingUserResult = await GetActingUserAsync();
-            if (actingUserResult.IsFailure)
-                return Result<IQueryable<Transaction>>.Success(query.Where(_ => false));
-
-            // Filter to show only transactions involving Client users within the same bank
-            var clientUserIds = _uow.RoleRepository.UsersWithRoleQuery(UserRole.Client.ToString());
-            var filteredQuery = query.Where(t =>
-                t.AccountTransactions.Any(at =>
-                    clientUserIds.Contains(at.Account.UserId) &&
-                    at.Account.User.BankId == actingUserResult.Value!.BankId));
-
-            return Result<IQueryable<Transaction>>.Success(filteredQuery);
         }
 
         #endregion

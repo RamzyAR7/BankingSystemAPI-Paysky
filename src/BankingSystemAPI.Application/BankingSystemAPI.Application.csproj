@@ -18,4 +18,8 @@
     <ProjectReference Include="..\BankingSystemAPI.Domain\BankingSystemAPI.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Interfaces\Infrastructure\" />
+  </ItemGroup>
+
 </Project>

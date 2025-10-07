@@ -97,7 +97,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
         {
             var res = account.CanPerformTransactions()
                 ? Result<Account>.Success(account)
-                : Result<Account>.BadRequest(ApiResponseMessages.Validation.AccountNotFound);
+                : Result<Account>.BadRequest(string.Format(ApiResponseMessages.BankingErrors.AccountInactiveFormat, account?.AccountNumber ?? account?.GetHashCode().ToString() ?? ""));
 
             return Task.FromResult(res);
         }

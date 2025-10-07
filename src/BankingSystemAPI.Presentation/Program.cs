@@ -19,7 +19,7 @@ using BankingSystemAPI.Infrastructure.Jobs;
 using BankingSystemAPI.Infrastructure.Repositories;
 using BankingSystemAPI.Infrastructure.Seeding;
 using BankingSystemAPI.Infrastructure.Services;
-using BankingSystemAPI.Infrastructure.Setting;
+using BankingSystemAPI.Infrastructure.Setting; 
 using BankingSystemAPI.Infrastructure.UnitOfWork;
 using BankingSystemAPI.Presentation.Filters;
 using BankingSystemAPI.Presentation.Middlewares;
@@ -37,6 +37,7 @@ using System.Text.Json;
 using System.Threading.RateLimiting;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.Services;
+using BankingSystemAPI.Infrastructure.Cache;
 #endregion
 
 
@@ -229,7 +230,7 @@ builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBeh
 
 #region Register Repositories and Unit of Work
 // Register Optimized Unit of Work
-builder.Services.AddScoped<IUnitOfWork, BankingSystemAPI.Infrastructure.UnitOfWork.UnitOfWork>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Register High-Performance Repositories
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
@@ -258,8 +259,6 @@ builder.Services.AddScoped<IAccountAuthorizationService, AccountAuthorizationSer
 builder.Services.AddScoped<IUserAuthorizationService, UserAuthorizationService>();
 
 // Register DB capabilities and TransactionAuthorizationService
-builder.Services.Configure<BankingSystemAPI.Application.Interfaces.Infrastructure.DbCapabilitiesOptions>(builder.Configuration.GetSection("DbCapabilities"));
-builder.Services.AddSingleton<BankingSystemAPI.Application.Interfaces.Infrastructure.IDbCapabilities, BankingSystemAPI.Infrastructure.Setting.DbCapabilities>();
 builder.Services.AddScoped<ITransactionAuthorizationService, TransactionAuthorizationService>();
 
 // Register CurrentUserService helper (extracts JWT claims)
