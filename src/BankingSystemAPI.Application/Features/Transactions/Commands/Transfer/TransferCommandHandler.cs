@@ -48,28 +48,28 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
             // Sequential validation using ResultExtensions
             var basicValidationResult = ValidateBasicInput(req);
             if (!basicValidationResult) // Using implicit bool operator!
-                return Result<TransactionResDto>.Failure(basicValidationResult.Errors);
+                return Result<TransactionResDto>.Failure(basicValidationResult.ErrorItems);
 
             var accountsResult = await LoadAccountsAsync(req);
             if (!accountsResult) // Using implicit bool operator!
-                return Result<TransactionResDto>.Failure(accountsResult.Errors);
+                return Result<TransactionResDto>.Failure(accountsResult.ErrorItems);
 
             var accountValidationResult = ValidateAccounts(accountsResult.Value!);
             if (!accountValidationResult) // Using implicit bool operator!
-                return Result<TransactionResDto>.Failure(accountValidationResult.Errors);
+                return Result<TransactionResDto>.Failure(accountValidationResult.ErrorItems);
 
             var bankValidationResult = await ValidateBanksAsync(accountsResult.Value!);
             if (!bankValidationResult) // Using implicit bool operator!
-                return Result<TransactionResDto>.Failure(bankValidationResult.Errors);
+                return Result<TransactionResDto>.Failure(bankValidationResult.ErrorItems);
 
             var authorizationResult = await ValidateAuthorizationAsync(accountsResult.Value!.Source, accountsResult.Value.Target, req);
             if (!authorizationResult) // Using implicit bool operator!
-                return Result<TransactionResDto>.Failure(authorizationResult.Errors);
+                return Result<TransactionResDto>.Failure(authorizationResult.ErrorItems);
 
             // Validate balance with accurate fee calculation
             var balanceResult = await ValidateBalanceWithFeesAsync(accountsResult.Value!.Source, accountsResult.Value.Target, req.Amount);
             if (!balanceResult) // Using implicit bool operator!
-                return Result<TransactionResDto>.Failure(balanceResult.Errors);
+                return Result<TransactionResDto>.Failure(balanceResult.ErrorItems);
 
             var transferResult = await ExecuteTransferAsync(accountsResult.Value!, req);
 
@@ -81,6 +81,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
             })
             .OnFailure(errors => 
             {
+                // Result.OnFailure supplies IReadOnlyList<string>
                 _logger.LogWarning(ApiResponseMessages.Logging.TransactionTransferFailed,
                     req.SourceAccountId, req.TargetAccountId, req.Amount, string.Join(", ", errors));
             });
@@ -127,10 +128,10 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
 
                 return Result<AccountPair>.Success(new AccountPair { Source = src, Target = tgt });
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _logger.LogError(ex, ApiResponseMessages.Logging.TransactionLoadAccountsFailed, req.SourceAccountId, req.TargetAccountId);
-                return Result<AccountPair>.BadRequest(string.Format(ApiResponseMessages.Logging.TransactionValidateBanksFailed, ex.Message));
+                _logger.LogError(e, ApiResponseMessages.Logging.TransactionLoadAccountsFailed, req.SourceAccountId, req.TargetAccountId);
+                return Result<AccountPair>.BadRequest(string.Format(ApiResponseMessages.Logging.TransactionValidateBanksFailed, e.Message));
             }
         }
 
@@ -188,9 +189,9 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
                     if (banks.TryGetValue(bankId, out var bank) && !bank.IsActive)
                     {
                         if (bankId == accounts.Source.User.BankId)
-                            bankValidations.Add(Result.Conflict(ApiResponseMessages.Status.Bank.Deactivated));
+                            bankValidations.Add(Result.Conflict(string.Format(ApiResponseMessages.Generic.DeactivatedFormat, "Bank")));
                         if (bankId == accounts.Target.User.BankId)
-                            bankValidations.Add(Result.Conflict(ApiResponseMessages.Status.Bank.Deactivated));
+                            bankValidations.Add(Result.Conflict(string.Format(ApiResponseMessages.Generic.DeactivatedFormat, "Bank")));
                     }
                     else if (!banks.ContainsKey(bankId))
                     {
@@ -204,9 +205,9 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
 
                 return ResultExtensions.ValidateAll(bankValidations.ToArray());
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _logger.LogError(ex, ApiResponseMessages.Logging.TransactionValidateBanksFailed, ex.Message);
+                _logger.LogError(e, ApiResponseMessages.Logging.TransactionValidateBanksFailed, e.Message);
                 return Result.BadRequest(ApiResponseMessages.Infrastructure.DbGenericError);
             }
         }
@@ -217,21 +218,21 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
             {
                 var authResult = await _transactionAuth.CanInitiateTransferAsync(req.SourceAccountId, req.TargetAccountId);
                 if (!authResult) // Using implicit bool operator!
-                    return Result.Forbidden(string.Join("; ", authResult.Errors)); // Maps to 403
+                    return Result.Failure(authResult.ErrorItems);
 
                 var accountAuthResult = await _accountAuth.CanModifyAccountAsync(req.SourceAccountId, AccountModificationOperation.Withdraw);
                 if (!accountAuthResult) // Using implicit bool operator!
-                    return Result.Forbidden(string.Join("; ", accountAuthResult.Errors)); // Maps to 403
+                    return Result.Failure(accountAuthResult.ErrorItems);
 
                 return Result.Success();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return Result.Forbidden(AuthorizationConstants.ErrorMessages.SystemError);
             }
         }
 
-        private async Task<Result> ValidateBalanceWithFeesAsync(Account source, Account target, decimal amount)
+    private Task<Result> ValidateBalanceWithFeesAsync(Account source, Account target, decimal amount)
         {
             // Calculate accurate fees based on currency difference
             var sourceCurrencyId = source.CurrencyId;
@@ -245,9 +246,9 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
             // For transfers, NEVER allow overdraft - only use actual balance
             decimal availableBalance = source.Balance;
             
-            return availableBalance >= totalRequired
+            return Task.FromResult(availableBalance >= totalRequired
                 ? Result.Success()
-                : Result.InsufficientFunds(totalRequired, availableBalance); // Maps to 409 Conflict
+                : Result.InsufficientFunds(totalRequired, availableBalance)); // Maps to 409 Conflict
         }
 
         private async Task<Result<TransactionResDto>> ExecuteTransferAsync(AccountPair accounts, TransferReqDto req)
@@ -329,7 +330,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Transfer
                 src.WithdrawForTransfer(totalWithdrawal);  // This enforces no overdraft for transfers
                 tgt.Deposit(targetAmount);
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException)
             {
                 throw new InvalidOperationException(string.Format(ApiResponseMessages.BankingErrors.AccountInactiveFormat, src.Id));
             }

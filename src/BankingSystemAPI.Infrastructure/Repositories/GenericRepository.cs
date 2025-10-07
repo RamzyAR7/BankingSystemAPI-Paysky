@@ -15,17 +15,6 @@ namespace BankingSystemAPI.Infrastructure.Repositories
     /// </summary>
     public abstract class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : class
     {
-    #region Fields
-    #endregion
-
-    #region Constructors
-    #endregion
-
-    #region Properties
-    #endregion
-
-    #region Methods
-    #endregion
         protected readonly ApplicationDbContext _context;
         protected readonly DbSet<T> _dbSet;
 
@@ -37,7 +26,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 
         public IQueryable<T> Table => _dbSet;
 
-        #region Read Operations
+        #region Query Operations
 
         public virtual async Task<T> GetByIdAsync(TKey id)
         {
@@ -90,7 +79,7 @@ namespace BankingSystemAPI.Infrastructure.Repositories
 
         #endregion
 
-        #region Write Operations
+        #region Command Operations
 
         public virtual async Task<T> AddAsync(T entity)
         {

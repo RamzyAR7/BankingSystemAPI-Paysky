@@ -33,7 +33,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetAllUse
         {
             if (request.PageNumber <= 0 || request.PageSize <= 0)
             {
-                return Result<IList<UserResDto>>.Failure(new[] { ApiResponseMessages.Validation.PageNumberAndPageSizeGreaterThanZero });
+                return Result<IList<UserResDto>>.Failure(new ResultError(ErrorType.Validation, ApiResponseMessages.Validation.PageNumberAndPageSizeGreaterThanZero));
             }
 
             try
@@ -47,7 +47,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetAllUse
                     request.OrderDirection);
 
                 if (filterResult.IsFailure)
-                    return Result<IList<UserResDto>>.Failure(filterResult.Errors);
+                    return Result<IList<UserResDto>>.Failure(filterResult.ErrorItems);
 
                 var (users, totalCount) = filterResult.Value!;
 
@@ -57,7 +57,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetAllUse
             }
             catch (Exception ex)
             {
-                return Result<IList<UserResDto>>.Failure(new[] { ex.Message });
+                return Result<IList<UserResDto>>.Failure(new ResultError(ErrorType.Validation, ex.Message));
             }
         }
     }

@@ -145,7 +145,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
             if (authResult.IsFailure)
                 return Result<TransactionResDto>.Failure(authResult.ErrorItems);
 
-            Transaction trx = null;
+            Transaction? trx = null;
 
             try
             {
@@ -197,7 +197,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Withdraw
                     await _uow.SaveAsync();
                 });
 
-                var dto = _mapper.Map<TransactionResDto>(trx);
+                var dto = _mapper.Map<TransactionResDto>(trx!);
                 return Result<TransactionResDto>.Success(dto);
             }
             catch (BusinessRuleException ex)

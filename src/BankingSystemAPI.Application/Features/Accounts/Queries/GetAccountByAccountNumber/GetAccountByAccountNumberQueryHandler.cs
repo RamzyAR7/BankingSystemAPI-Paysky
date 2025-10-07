@@ -29,11 +29,11 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountByAcc
         {
             var spec = new AccountByAccountNumberSpecification(request.AccountNumber);
             var account = await _uow.AccountRepository.FindAsync(spec);
-            if (account == null) return Result<AccountDto>.Failure(new[] { string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", request.AccountNumber) });
+            if (account == null) return Result<AccountDto>.NotFound("Account", request.AccountNumber);
 
             var authResult = await _accountAuth.CanViewAccountAsync(account.Id);
             if (authResult.IsFailure)
-                return Result<AccountDto>.Failure(authResult.Errors);
+                return Result<AccountDto>.Failure(authResult.ErrorItems);
 
             return Result<AccountDto>.Success(_mapper.Map<AccountDto>(account));
         }

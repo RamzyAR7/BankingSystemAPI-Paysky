@@ -30,14 +30,17 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.SetUserA
                 string.Equals(roleResult.Value, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase) &&
                 !request.IsActive)
             {
-                return Result.Failure(ApiResponseMessages.Validation.SuperAdminCannotBeDeactivated);
+                return Result.Failure(ErrorType.Validation, ApiResponseMessages.Validation.SuperAdminCannotBeDeactivated);
             }
 
             // Next perform authorization checks
-            var authResult = await _userAuthorizationService.CanModifyUserAsync(request.UserId, UserModificationOperation.Edit);
-            if(!authResult)
+            if (_userAuthorizationService != null)
             {
-                return Result.Failure(authResult.Errors);
+                var authResult = await _userAuthorizationService.CanModifyUserAsync(request.UserId, UserModificationOperation.Edit);
+                if(!authResult)
+                {
+                    return Result.Failure(authResult.ErrorItems);
+                }
             }
             
             // The UserService now returns Result
@@ -45,7 +48,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.SetUserA
             
             if (!result) // Using implicit bool operator!
             {
-                return Result.Failure(result.Errors);
+                return Result.Failure(result.ErrorItems);
             }
 
             return Result.Success();

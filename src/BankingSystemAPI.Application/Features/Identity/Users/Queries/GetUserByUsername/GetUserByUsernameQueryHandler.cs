@@ -1,5 +1,7 @@
-﻿#region Usings
+﻿
+#region Usings
 using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Authorization;
@@ -25,21 +27,21 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserBy
         public async Task<Result<UserResDto>> Handle(GetUserByUsernameQuery request, CancellationToken cancellationToken)
         {
             var result = await _userService.GetUserByUsernameAsync(request.Username);
-            
-            if (!result)
+            if (!result.IsSuccess || result.Value == null)
             {
-                return Result<UserResDto>.Failure(result.Errors);
+                return Result<UserResDto>.Failure(result.ErrorItems);
             }
 
-            var userDto = result.Value!;
+            var userDto = result.Value;
+
+            if (_userAuthorizationService == null)
+                return Result<UserResDto>.Failure(new ResultError(ErrorType.Forbidden, "Authorization service not available."));
 
             var authResult = await _userAuthorizationService.CanViewUserAsync(userDto.Id);
-
-            if(!authResult)
+            if (!authResult)
             {
-                return Result<UserResDto>.Failure(authResult.Errors);
+                return Result<UserResDto>.Failure(authResult.ErrorItems);
             }
-
 
             return Result<UserResDto>.Success(userDto);
         }

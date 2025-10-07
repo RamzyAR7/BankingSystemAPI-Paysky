@@ -2,6 +2,7 @@
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
+using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.DTOs.Bank;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
@@ -34,7 +35,7 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
             // Business validation: Check bank name uniqueness
             var uniquenessResult = await ValidateUniquenessAsync(request.bankDto);
             if (!uniquenessResult) // Using implicit bool operator!
-                return Result<BankResDto>.Failure(uniquenessResult.Errors);
+                return Result<BankResDto>.Failure(uniquenessResult.ErrorItems);
 
             var createResult = await CreateAndPersistBankAsync(request.bankDto);
             
@@ -82,7 +83,7 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.CreateBank
             }
             catch (Exception ex)
             {
-                return Result<BankResDto>.Failure(new[] { $"Failed to create bank: {ex.Message}" });
+                return Result<BankResDto>.Failure(new ResultError(ErrorType.BusinessRule, $"Failed to create bank: {ex.Message}"));
             }
         }
     }

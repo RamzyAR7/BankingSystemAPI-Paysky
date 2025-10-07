@@ -155,7 +155,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         {
             var scopeResult = await GetScopeAsync();
             if (scopeResult.IsFailure)
-                return Result<(IEnumerable<ApplicationUser> Users, int TotalCount)>.Failure(scopeResult.Errors);
+                return Result<(IEnumerable<ApplicationUser> Users, int TotalCount)>.Failure(scopeResult.ErrorItems);
 
             var filteringResult = await ApplyScopeFilteringAsync(
                 scopeResult.Value, 

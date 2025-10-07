@@ -246,13 +246,13 @@ namespace BankingSystemAPI.Infrastructure.Identity
                 : Result.BadRequest("Cannot refresh token: user's bank is inactive.");
             
             if (bankValidation.IsFailure)
-                return Result<RefreshTokenValidationResult>.Failure(bankValidation.Errors);
+                return Result<RefreshTokenValidationResult>.Failure(bankValidation.ErrorItems);
 
             var refreshToken = user.RefreshTokens.FirstOrDefault(x => x.Token == token);
             var tokenValidation = ValidateRefreshTokenState(refreshToken);
             
             if (tokenValidation.IsFailure)
-                return Result<RefreshTokenValidationResult>.Failure(tokenValidation.Errors);
+                return Result<RefreshTokenValidationResult>.Failure(tokenValidation.ErrorItems);
 
             return Result<RefreshTokenValidationResult>.Success(new RefreshTokenValidationResult 
             { 

@@ -29,7 +29,7 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.SetAccountActi
 
             var spec = new AccountByIdSpecification(request.Id);
             var account = await _uow.AccountRepository.FindAsync(spec);
-            if (account == null) return Result.Failure(new[] { string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", request.Id) });
+            if (account == null) return Result.Failure(new List<ResultError> { new ResultError(ErrorType.Validation, string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", request.Id)) });
             account.IsActive = request.IsActive;
             await _uow.AccountRepository.UpdateAsync(account);
             await _uow.SaveAsync();

@@ -84,7 +84,7 @@ namespace BankingSystemAPI.Application.Behaviors
 
                 var validationFailureResult = Result.Failure(structuredErrors);
                 
-                // Use ResultExtensions for structured validation failure logging
+                // Use ResultExtensions for structured validation failure logging (OnFailure supplies string list)
                 validationFailureResult.OnFailure(errs => 
                     _logger.LogWarning(ApiResponseMessages.Logging.ValidationPipelineFailed, 
                         typeof(TRequest).Name, string.Join(", ", errs), _validators.Count()));
@@ -107,11 +107,9 @@ namespace BankingSystemAPI.Application.Behaviors
             if (typeof(TResponse) == typeof(Result))
             {
                 var failure = Result.Failure(errors);
-                
                 // Use ResultExtensions for logging
                 failure.OnFailure(errs => 
                     _logger.LogInformation(ApiResponseMessages.Logging.ValidationPipelineReturningFailure, "Result", requestTypeName));
-                
                 return (TResponse)(object)failure;
             }
 

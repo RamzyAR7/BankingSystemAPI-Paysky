@@ -40,7 +40,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetAllSa
 
             var filterResult = await _accountAuth.FilterAccountsAsync(accountQuery, pageNumber, pageSize);
             if (filterResult.IsFailure)
-                return Result<List<SavingsAccountDto>>.Failure(filterResult.Errors);
+                return Result<List<SavingsAccountDto>>.Failure(filterResult.ErrorItems);
 
             var (accounts, total) = filterResult.Value!;
             var mapped = accounts.OfType<SavingsAccount>().Select(a => _mapper.Map<SavingsAccountDto>(a)).ToList();

@@ -26,13 +26,13 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccount
         {
             var authResult = await _accountAuth.CanModifyAccountAsync(request.Id, AccountModificationOperation.Delete);
             if (authResult.IsFailure)
-                return Result.Failure(authResult.Errors);
+                return Result.Failure(authResult.ErrorItems);
 
             var spec = new AccountByIdSpecification(request.Id);
             var account = await _uow.AccountRepository.FindAsync(spec);
-            if (account == null) return Result.Failure(new[] { string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Account", request.Id) });
+            if (account == null) return Result.NotFound("Account", request.Id);
 
-            if (account.Balance > 0) return Result.Failure(new[] { string.Format(ApiResponseMessages.Validation.CannotDeleteAccountPositiveBalanceFormat, account.AccountNumber, account.Balance) });
+            if (account.Balance > 0) return Result.BadRequest(string.Format(ApiResponseMessages.Validation.CannotDeleteAccountPositiveBalanceFormat, account.AccountNumber, account.Balance));
 
             await _uow.AccountRepository.DeleteAsync(account);
             await _uow.SaveAsync();

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using BankingSystemAPI.Domain.Constant;
+using System.Linq;
 #endregion
 
 
@@ -44,7 +45,7 @@ namespace BankingSystemAPI.Infrastructure.Services
         {
             var validationResult = ValidateStringInput(username, "Username");
             if (validationResult.IsFailure)
-                return Result<UserResDto>.Failure(validationResult.Errors);
+                return Result<UserResDto>.Failure(validationResult.ErrorItems);
 
             var user = await _userManager.Users
                 .Include(u => u.Accounts).ThenInclude(a => a.Currency)
@@ -65,7 +66,7 @@ namespace BankingSystemAPI.Infrastructure.Services
         {
             var validationResult = ValidateStringInput(userId, "User ID");
             if (validationResult.IsFailure)
-                return Result<UserResDto>.Failure(validationResult.Errors);
+                return Result<UserResDto>.Failure(validationResult.ErrorItems);
 
             var user = await _userManager.Users
                 .Include(u => u.Accounts).ThenInclude(a => a.Currency)
@@ -86,7 +87,7 @@ namespace BankingSystemAPI.Infrastructure.Services
         {
             var validationResult = ValidateStringInput(email, "Email");
             if (validationResult.IsFailure)
-                return Result<UserResDto>.Failure(validationResult.Errors);
+                return Result<UserResDto>.Failure(validationResult.ErrorItems);
 
             var user = await _userManager.Users
                 .Include(u => u.Accounts).ThenInclude(a => a.Currency)
@@ -111,7 +112,7 @@ namespace BankingSystemAPI.Infrastructure.Services
         {
             var validationResult = ValidateStringInput(userId, "User ID");
             if (validationResult.IsFailure)
-                return Result<string?>.Failure(validationResult.Errors);
+                return Result<string?>.Failure(validationResult.ErrorItems);
 
             var user = await _userManager.Users
                 .Include(u => u.Role)
@@ -119,7 +120,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             
             if (user == null)
             {
-                var result = Result<string?>.Failure(ApiResponseMessages.Validation.UserNotFound);
+                var result = Result<string?>.Failure(new ResultError(ErrorType.NotFound, ApiResponseMessages.Validation.UserNotFound));
                 result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRoleRetrieveFailed, userId, string.Join(", ", errors)));
                 return result;
             }
@@ -225,7 +226,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             if (!identityResult.Succeeded)
             {
                 var errors = identityResult.Errors.Select(e => e.Description);
-                var result = Result<UserResDto>.Failure(errors);
+                var result = Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
                 result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.UserCreationFailed, user.Username, string.Join(", ", errs)));
                 return result;
             }
@@ -237,7 +238,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 {
                     await _userManager.DeleteAsync(entity);
                     var errors = roleResult.Errors.Select(e => e.Description);
-                    var result = Result<UserResDto>.Failure(errors);
+                    var result = Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
                     result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.UserCreationFailed, user.Username, string.Join(", ", errs)));
                     return result;
                 }
@@ -258,7 +259,7 @@ namespace BankingSystemAPI.Infrastructure.Services
         {
             var validationResult = ValidateStringInput(userId, "User ID");
             if (validationResult.IsFailure)
-                return Result<UserResDto>.Failure(validationResult.Errors);
+                return Result<UserResDto>.Failure(validationResult.ErrorItems);
 
             var existingUser = await _userManager.Users
                 .Include(u => u.Accounts)
@@ -279,7 +280,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             if (!identityResult.Succeeded)
             {
                 var errors = identityResult.Errors.Select(e => e.Description);
-                var result = Result<UserResDto>.Failure(errors);
+                var result = Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
                 result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.UserUpdateFailed, userId, string.Join(", ", errs)));
                 return result;
             }
@@ -295,7 +296,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             // Validate input using ResultExtensions
             var validationResult = ValidateStringInput(userId, "User ID");
             if (validationResult.IsFailure)
-                return Result<UserResDto>.Failure(validationResult.Errors);
+                return Result<UserResDto>.Failure(validationResult.ErrorItems);
 
             var existingUser = await _userManager.Users
                 .Include(u => u.Bank)
@@ -325,7 +326,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             if (!changeResult.Succeeded)
             {
                 var errors = changeResult.Errors.Select(e => e.Description);
-                var result = Result<UserResDto>.Failure(errors);
+                var result = Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
                 result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.PasswordChangeFailed, userId, string.Join(", ", errs)));
                 return result;
             }
@@ -341,7 +342,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             // Validate input using ResultExtensions
             var validationResult = ValidateStringInput(userId, "User ID");
             if (validationResult.IsFailure)
-                return Result<UserResDto>.Failure(validationResult.Errors);
+                return Result<UserResDto>.Failure(validationResult.ErrorItems);
 
             var existingUser = await _userManager.Users
                 .Include(u => u.Accounts)
@@ -362,7 +363,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             if (!identityResult.Succeeded)
             {
                 var errors = identityResult.Errors.Select(e => e.Description);
-                var result = Result<UserResDto>.Failure(errors);
+                var result = Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
                 result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.UserDeletionFailed, userId, string.Join(", ", errs)));
                 return result;
             }
@@ -391,7 +392,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                     if (!identityResult.Succeeded)
                     {
                         var errors = identityResult.Errors.Select(e => e.Description);
-                        var result = Result<bool>.Failure(errors);
+                        var result = Result<bool>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
                         result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.BulkUserDeletionFailed, userId, string.Join(", ", errs)));
                         return result;
                     }
@@ -408,7 +409,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             // Validate input using ResultExtensions
             var validationResult = ValidateStringInput(userId, "User ID");
             if (validationResult.IsFailure)
-                return Result.Failure(validationResult.Errors);
+                return Result.Failure(validationResult.ErrorItems);
 
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
@@ -422,7 +423,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             var roles = await _userManager.GetRolesAsync(user);
             if (roles != null && roles.Any(r => string.Equals(r, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase)) && !isActive)
             {
-                var result = Result.Failure(ApiResponseMessages.Validation.SuperAdminCannotBeDeactivated);
+                var result = Result.Failure(new ResultError(ErrorType.Validation, ApiResponseMessages.Validation.SuperAdminCannotBeDeactivated));
                 result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.SetUserActiveStatusFailed, userId, string.Join(", ", errors)));
                 return result;
             }
@@ -433,7 +434,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             if (!identityResult.Succeeded)
             {
                 var errors = identityResult.Errors.Select(e => e.Description);
-                var result = Result.Failure(errors);
+                var result = Result.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
                 result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.SetUserActiveStatusFailed, userId, string.Join(", ", errs)));
                 return result;
             }

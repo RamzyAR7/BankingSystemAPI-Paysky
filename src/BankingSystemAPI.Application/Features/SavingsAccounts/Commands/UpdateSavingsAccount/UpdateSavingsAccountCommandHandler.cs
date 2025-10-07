@@ -51,7 +51,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Commands.UpdateS
 
             var ownershipResult = ValidateOwnership(accountResult.Value!, request.Req.UserId);
             if (ownershipResult.IsFailure)
-                return Result<SavingsAccountDto>.Failure(ownershipResult.Errors);
+                return Result<SavingsAccountDto>.Failure(ownershipResult.ErrorItems);
 
             var currencyResult = await ValidateCurrencyAsync(request.Req.CurrencyId);
             if (currencyResult.IsFailure)

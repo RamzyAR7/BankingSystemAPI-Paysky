@@ -64,7 +64,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
                 var existingUserResult = await _userService.GetUserByIdAsync(userId);
                 if (!existingUserResult) // Using implicit bool operator!
                 {
-                    errors.Add(string.Format("User {0}: {1}", userId, string.Join("; ", existingUserResult.Errors)));
+                    errors.Add(string.Format("User {0}: {1}", userId, string.Join("; ", existingUserResult.ErrorItems.Select(e => e.Message))));
                     continue;
                 }
 
@@ -82,7 +82,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
 
             if (errors.Any())
             {
-                return Result.Failure(errors);
+                    return Result.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)).ToList());
             }
 
             if (!usersToDelete.Any())
@@ -95,7 +95,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
             
             if (!deleteResult.IsSuccess)
             {
-                return Result.Failure(deleteResult.Errors);
+                return Result.Failure(deleteResult.ErrorItems);
             }
             
             return Result.Success();

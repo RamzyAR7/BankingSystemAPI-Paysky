@@ -14,17 +14,6 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
     /// </summary>
     public class UnitOfWork : IUnitOfWork, IDisposable
     {
-    #region Fields
-    #endregion
-
-    #region Constructors
-    #endregion
-
-    #region Properties
-    #endregion
-
-    #region Methods
-    #endregion
         // Repositories
         public IUserRepository UserRepository { get; }
         public IRoleRepository RoleRepository { get; }
@@ -37,10 +26,14 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
         
         private readonly ApplicationDbContext _context;
         private IDbContextTransaction? _transaction;
+
+        // for testing with InMemory provider which does not support transactions
         private bool _noOpTransaction;
+
+        // prevent multiple disposals
         private bool _disposed;
 
-        // Ambient flag to indicate repository methods should defer SaveChanges
+        // share same transaction state across async calls(threads) in same request
         public static AsyncLocal<bool> TransactionActive = new AsyncLocal<bool>();
 
         public UnitOfWork(
@@ -160,9 +153,12 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
                     {
                         await entry.ReloadAsync();
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // Ignore reload failures
+                        // Throw a meaningful exception including entity type and state, preserve original exception
+                        var entityType = entry.Entity?.GetType().FullName ?? "Unknown";
+                        var state = entry.State.ToString();
+                        throw new InvalidOperationException($"Failed to reload tracked entity '{entityType}' with state '{state}'.", ex);
                     }
                 });
 
@@ -175,17 +171,6 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
 
         public void DetachEntity<T>(T entity) where T : class
         {
-    #region Fields
-    #endregion
-
-    #region Constructors
-    #endregion
-
-    #region Properties
-    #endregion
-
-    #region Methods
-    #endregion
             if (entity == null) return;
             
             var entry = _context.Entry(entity);

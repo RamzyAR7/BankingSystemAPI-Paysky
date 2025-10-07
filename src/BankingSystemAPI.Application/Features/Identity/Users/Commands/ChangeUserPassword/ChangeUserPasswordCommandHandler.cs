@@ -40,7 +40,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
                 // Use structured logging with matching placeholders to avoid FormatException
                 _logger.LogWarning("Password change authorization failed for user {TargetUserId} by {ActorId}: {Errors}",
                     request.UserId, _currentUserService.UserId, string.Join(", ", authResult.Errors));
-                return Result<UserResDto>.Failure(authResult.Errors);
+                return Result<UserResDto>.Failure(authResult.ErrorItems);
             }
 
             // Get user context
@@ -49,7 +49,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             {
                 _logger.LogWarning("Failed to get password change context for user {TargetUserId}: {Errors}",
                     request.UserId, string.Join(", ", contextResult.Errors));
-                return Result<UserResDto>.Failure(contextResult.Errors);
+                return Result<UserResDto>.Failure(contextResult.ErrorItems);
             }
 
             // Validate business rules and execute password change
@@ -92,11 +92,11 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             // Get target user information
             var targetUserResult = await _userService.GetUserByIdAsync(userId);
             if (targetUserResult.IsFailure)
-                return Result<PasswordChangeContext>.Failure(targetUserResult.Errors);
+                return Result<PasswordChangeContext>.Failure(targetUserResult.ErrorItems);
 
             var targetRoleResult = await _userService.GetUserRoleAsync(userId);
             if (targetRoleResult.IsFailure)
-                return Result<PasswordChangeContext>.Failure(targetRoleResult.Errors);
+                return Result<PasswordChangeContext>.Failure(targetRoleResult.ErrorItems);
 
             var targetUser = targetUserResult.Value!;
             var targetRoleName = targetRoleResult.Value;
@@ -141,7 +141,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             // Determine password change rules using functional approach
             var passwordRulesResult = DeterminePasswordRules(context);
             if (passwordRulesResult.IsFailure)
-                return Result<UserResDto>.Failure(passwordRulesResult.Errors);
+                return Result<UserResDto>.Failure(passwordRulesResult.ErrorItems);
 
             var rules = passwordRulesResult.Value!;
 
@@ -171,8 +171,8 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
                 _logger.LogWarning(ApiResponseMessages.Logging.PasswordChangeFailed, request.UserId, string.Join(", ", result.Errors));
 
                 // Check for common password change error patterns and provide specific messages
-                var enhancedErrors = EnhancePasswordChangeErrors(result.Errors, context, rules);
-                return Result<UserResDto>.Failure(enhancedErrors);
+                // Optionally, you can still enhance errors, but Result<UserResDto>.Failure expects ResultError, not string
+                return Result<UserResDto>.Failure(result.ErrorItems);
             }
 
             return Result<UserResDto>.Success(result.Value!);
@@ -187,7 +187,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
             // Business rule validation using ResultExtensions patterns
             var authorizationValidation = ValidatePasswordChangeAuthorization(context, isSuperAdmin, isClient, isTargetClient);
             if (authorizationValidation.IsFailure)
-                return Result<PasswordChangeRules>.Failure(authorizationValidation.Errors);
+                return Result<PasswordChangeRules>.Failure(authorizationValidation.ErrorItems);
 
             var rules = new PasswordChangeRules
             {

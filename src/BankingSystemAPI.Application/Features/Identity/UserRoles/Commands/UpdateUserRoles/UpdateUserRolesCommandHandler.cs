@@ -52,7 +52,7 @@ namespace BankingSystemAPI.Application.Features.Identity.UserRoles.Commands.Upda
 
             if (!result) // Using implicit bool operator!
             {
-                return Result<UserRoleUpdateResultDto>.Failure(result.Errors);
+                return Result<UserRoleUpdateResultDto>.Failure(result.ErrorItems);
             }
 
             return Result<UserRoleUpdateResultDto>.Success(result.Value!);

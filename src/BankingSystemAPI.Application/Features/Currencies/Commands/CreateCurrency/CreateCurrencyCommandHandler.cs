@@ -33,7 +33,7 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.CreateCurren
             // Business validation: Check base currency business rule
             var baseValidationResult = await ValidateBaseCurrencyRuleAsync(request.Currency);
             if (baseValidationResult.IsFailure)
-                return Result<CurrencyDto>.Failure(baseValidationResult.Errors);
+                return Result<CurrencyDto>.Failure(baseValidationResult.ErrorItems);
 
             var createResult = await CreateCurrencyAsync(request.Currency);
             

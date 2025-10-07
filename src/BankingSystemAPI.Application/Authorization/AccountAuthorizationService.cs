@@ -152,9 +152,9 @@ namespace BankingSystemAPI.Application.AuthorizationServices
             int pageSize = 10)
         {
             var roleResult = await GetCurrentUserRoleAsync();
-            if (roleResult.IsFailure)
-                return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Failure(roleResult.Errors);
 
+            if (roleResult.IsFailure)
+                return Result<(IEnumerable<Account> Accounts, int TotalCount)>.Failure(roleResult.ErrorItems);
             var filteringResult = await ApplyRoleBasedFilteringAsync(
                 query, 
                 roleResult.Value!, 
@@ -173,9 +173,9 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         public async Task<Result<IQueryable<Account>>> FilterAccountsQueryAsync(IQueryable<Account> query)
         {
             var roleResult = await GetCurrentUserRoleAsync();
-            if (roleResult.IsFailure)
-                return Result<IQueryable<Account>>.Failure(roleResult.Errors);
 
+            if (roleResult.IsFailure)
+                return Result<IQueryable<Account>>.Failure(roleResult.ErrorItems);
             var queryFilteringResult = await ApplyRoleBasedQueryFilteringAsync(query, roleResult.Value!);
             
             LogQueryFilteringResult(queryFilteringResult, roleResult.Value!.Name);

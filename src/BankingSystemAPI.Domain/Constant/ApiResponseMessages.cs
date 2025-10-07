@@ -9,17 +9,25 @@ namespace BankingSystemAPI.Domain.Constant
     /// Constants for API response messages to maintain consistency and improve maintainability
     /// Enhanced to work seamlessly with semantic Result factory methods
     /// </summary>
-    #region ApiResponseMessages
     public static class ApiResponseMessages
     {
         #region Generic
         /// <summary>
-        /// Generic response messages
+        /// Generic response messages with format support
         /// </summary>
         public static class Generic
         {
             public const string OperationCompleted = "Operation completed successfully.";
             public const string UnknownError = "Unknown error occurred.";
+            public const string CreatedFormat = "{0} has been successfully created.";
+            public const string UpdatedFormat = "{0} has been successfully updated.";
+            public const string DeletedFormat = "{0} has been successfully deleted.";
+            public const string ActivatedFormat = "{0} has been successfully activated.";
+            public const string DeactivatedFormat = "{0} has been successfully deactivated.";
+            public const string RemovedFormat = "{0} has been successfully removed from the system.";
+            public const string ChangedFormat = "{0} has been successfully changed.";
+            public const string CompletedFormat = "{0} has been successfully completed.";
+            public const string ProcessedFormat = "{0} has been processed successfully.";
         }
         #endregion
 
@@ -229,291 +237,6 @@ namespace BankingSystemAPI.Domain.Constant
         }
         #endregion
 
-        #region Delete
-        /// <summary>
-        /// Delete operation messages
-        /// </summary>
-        public static class Delete
-        {
-            #region User
-            public static class User
-            {
-                public const string Success = "User has been successfully deleted from the system.";
-                public const string Deactivated = "User account has been successfully deactivated.";
-            }
-            #endregion
-
-            #region Bank
-            public static class Bank
-            {
-                public const string Success = "Bank has been successfully removed from the system.";
-            }
-            #endregion
-
-            #region Role
-            public static class Role
-            {
-                public const string Success = "Role has been successfully deleted and removed from all assignments.";
-            }
-            #endregion
-
-            #region Account
-            public static class Account
-            {
-                public const string Success = "Account has been successfully closed and removed.";
-            }
-            #endregion
-
-            #region Currency
-            public static class Currency
-            {
-                public const string Success = "Currency has been successfully removed from the system.";
-            }
-            #endregion
-
-            #region CheckingAccount
-            public static class CheckingAccount
-            {
-                public const string Success = "Checking account has been successfully deleted.";
-            }
-            #endregion
-
-            #region SavingsAccount
-            public static class SavingsAccount
-            {
-                public const string Success = "Savings account has been successfully deleted.";
-            }
-            #endregion
-
-            #region Generic
-            public static class Generic
-            {
-                public const string Success = "Resource has been successfully deleted.";
-            }
-            #endregion
-        }
-        #endregion
-
-        #region Update
-        /// <summary>
-        /// Update operation messages
-        /// </summary>
-        public static class Update
-        {
-            #region Password
-            public static class Password
-            {
-                public const string Success = "Password has been successfully changed.";
-            }
-            #endregion
-
-            #region User
-            public static class User
-            {
-                public const string Success = "User information has been successfully updated.";
-                public const string ProfileSuccess = "User profile has been successfully updated.";
-                public const string ContactSuccess = "Contact information has been successfully updated.";
-                public const string RoleSuccess = "User role has been successfully updated.";
-            }
-            #endregion
-
-            #region Bank
-            public static class Bank
-            {
-                public const string Success = "Bank details have been successfully updated.";
-                public const string BranchSuccess = "Bank branch information has been successfully updated.";
-                public const string SwiftSuccess = "SWIFT code has been successfully updated.";
-                public const string RoutingSuccess = "Routing number has been successfully updated.";
-                public const string AddressSuccess = "Bank address has been successfully updated.";
-            }
-            #endregion
-
-            #region Role
-            public static class Role
-            {
-
-                public const string Success = "Role has been successfully updated.";
-                public const string PermissionsSuccess = "Permissions have been successfully updated.";
-                public const string AssignmentSuccess = "Role assignment has been successfully updated.";
-            }
-            #endregion
-
-            #region Account
-            public static class Account
-            {
-                public const string Success = "Account information has been successfully updated.";
-                public const string BalanceSuccess = "Account balance has been successfully updated.";
-                public const string LimitsSuccess = "Account limits have been successfully updated.";
-                public const string TypeSuccess = "Account type has been successfully changed.";
-                public const string InterestSuccess = "Interest rate has been successfully updated.";
-                public const string OverdraftSuccess = "Overdraft settings have been successfully updated.";
-                public const string BeneficiarySuccess = "Beneficiary information has been successfully updated.";
-            }
-            #endregion
-
-            #region Currency
-            public static class Currency
-            {
-                public const string Success = "Currency has been successfully updated.";
-                public const string ExchangeRateSuccess = "Exchange rate has been successfully updated.";
-                public const string SymbolSuccess = "Currency symbol has been successfully updated.";
-            }
-            #endregion
-
-            #region CheckingAccount
-            public static class CheckingAccount
-            {
-                public const string Success = "Checking account has been successfully updated.";
-            }
-            #endregion
-
-            #region SavingsAccount
-            public static class SavingsAccount
-            {
-                public const string Success = "Savings account has been successfully updated.";
-            }
-            #endregion
-
-            #region Generic
-            public static class Generic
-            {
-                public const string Success = "Resource has been successfully updated.";
-                public const string SecuritySuccess = "Security settings have been successfully updated.";
-                public const string ProfileSuccess = "Profile information has been successfully updated.";
-            }
-            #endregion
-        }
-        #endregion
-
-        #region Create
-        /// <summary>
-        /// Creation operation messages
-        /// </summary>
-        public static class Create
-        {
-            public static class User
-            {
-                public const string Success = "User has been successfully created.";
-            }
-
-            public static class Account
-            {
-                public const string Success = "Account has been successfully created.";
-            }
-
-            public static class Bank
-            {
-                public const string Success = "Bank has been successfully created.";
-            }
-
-            public static class Currency
-            {
-                public const string Success = "Currency has been successfully created.";
-            }
-
-            public static class Generic
-            {
-                public const string Success = "Resource has been successfully created.";
-            }
-        }
-        #endregion
-
-        #region Status
-        /// <summary>
-        /// Active/Inactive status messages
-        /// </summary>
-        public static class Status
-        {
-            #region User
-            public static class User
-            {
-                public const string Activated = "User has been successfully activated.";
-                public const string Deactivated = "User has been successfully deactivated.";
-            }
-            #endregion
-
-            #region Bank
-            public static class Bank
-            {
-                public const string Activated = "Bank has been successfully activated.";
-                public const string Deactivated = "Bank has been successfully deactivated.";
-            }
-            #endregion
-
-            #region Account
-            public static class Account
-            {
-                public const string Activated = "Account has been successfully activated.";
-                public const string Deactivated = "Account has been successfully deactivated.";
-            }
-            #endregion
-
-            #region Currency
-            public static class Currency
-            {
-                public const string Activated = "Currency has been successfully activated.";
-                public const string Deactivated = "Currency has been successfully deactivated.";
-            }
-            #endregion
-
-            #region Generic
-            public static class Generic
-            {
-                public const string Activated = "Resource has been successfully activated.";
-                public const string Deactivated = "Resource has been successfully deactivated.";
-            }
-            #endregion
-        }
-        #endregion
-
-        #region Authentication
-        /// <summary>
-        /// Authentication and processing messages
-        /// </summary>
-        public static class Authentication
-        {
-            public const string LoginSuccess = "User has been successfully logged in.";
-            public const string LogoutSuccess = "User has been successfully logged out.";
-            public const string TokenRefreshed = "Authentication token has been successfully refreshed.";
-            public const string TokenRevoked = "User token has been successfully revoked.";
-            public const string OperationSuccess = "Authentication operation completed successfully.";
-        }
-        #endregion
-
-        #region Transaction
-        /// <summary>
-        /// Transaction processing messages
-        /// </summary>
-        public static class Transaction
-        {
-            public const string DepositSuccess = "Deposit transaction has been successfully processed.";
-            public const string WithdrawSuccess = "Withdrawal transaction has been successfully processed.";
-            public const string TransferSuccess = "Transfer transaction has been successfully completed.";
-            public const string ProcessedSuccess = "Transaction has been processed successfully.";
-        }
-        #endregion
-
-        #region RolePermissions
-        /// <summary>
-        /// Role and permission messages
-        /// </summary>
-        public static class RolePermissions
-        {
-            public const string AssignmentSuccess = "Role permissions have been successfully assigned.";
-            public const string UpdateSuccess = "User role has been successfully updated.";
-        }
-        #endregion
-
-        #region Processing
-        /// <summary>
-        /// General processing messages
-        /// </summary>
-        public static class Processing
-        {
-            public const string OperationSuccess = "Operation has been processed successfully.";
-        }
-        #endregion
-
         #region BankingErrors
         /// <summary>
         /// Banking-specific error messages that align with Result factory methods
@@ -557,6 +280,13 @@ namespace BankingSystemAPI.Domain.Constant
         /// </summary>
         public static class Logging
         {
+            public const string OperationCompletedController = "[CONTROLLER] Operation completed: Controller={Controller}, Action={Action}";
+            public const string OperationFailedController = "[CONTROLLER] Operation failed: Controller={Controller}, Action={Action}, Errors={Errors}";
+            public const string RoleCreated = "Role created successfully: {RoleName}";
+            public const string RoleRetrieved = "Role(s) retrieved successfully. Count: {Count}";
+            public const string RoleRetrieveFailed = "Failed to retrieve role(s). Errors: {Errors}";
+            public const string RoleRetrieveError = "Error occurred while retrieving role(s): {Error}";
+            public const string ExceptionOccurred = "[EXCEPTION] An exception occurred during request processing.";
             // Authorization
             public const string AuthorizationGranted = "{LogCategory} Account authorization granted: CheckType={CheckType}, TargetId={TargetId}, Scope={Scope}, Info={Info}";
             public const string AuthorizationDenied = "{LogCategory} Account authorization denied: CheckType={CheckType}, TargetId={TargetId}, ActingUserId={ActingUserId}, Scope={Scope}, Errors={Errors}, Info={Info}";
@@ -598,23 +328,10 @@ namespace BankingSystemAPI.Domain.Constant
             public const string CacheAccessFailed = "[CACHE] Cache access failed: Key={Key}, Type={Type}";
             public const string CacheSetFailed = "[CACHE] Failed to set cache: Key={Key}, Type={Type}";
             public const string CacheRemoveFailed = "[CACHE] Failed to remove cache: {Key}";
-
-            // Request/response
             public const string IncomingRequest = "Incoming request:\n{Request}";
             public const string OutgoingResponse = "Outgoing response:\n{Response}";
             public const string ResponseSummary = "Response summary: StatusCode={StatusCode}, Username={Username}, Roles={Roles}, UserId={UserId}";
-            public const string ExceptionOccurred = "Exception occurred during request execution: {Message}";
-
-            // Controller operation messages
-            public const string OperationCompletedController = "Operation completed successfully. Controller: {Controller}, Action: {Action}";
-            public const string OperationFailedController = "Operation failed. Controller: {Controller}, Action: {Action}, Errors: {Errors}";
-
-            // Role service specific
-            public const string RoleRetrieved = "Retrieved {Count} roles with claims successfully";
-            public const string RoleRetrieveFailed = "Failed to retrieve roles. Errors: {Errors}";
-            public const string RoleRetrieveError = "Failed to retrieve roles: {Message}";
-
-            public const string RoleCreated = "Role created successfully: {RoleName}";
+                // Removed unused constants: BankNameTooLong, RoleNameLength, ClaimsListRequired, PasswordConfirmationMismatch, FullNameLettersOnly, AgeRange, InvalidPhoneNumberFormat, NationalIdDigits, UserIdInvalidFormat, UserIdsCollectionCannotBeNull, AllUserIdsMustBeValid, DuplicateUserIdsNotAllowed, OrderDirectionMustBeAscOrDesc, RoleNameCannotExceed, RoleNameInvalidFormat
             public const string RoleCreateFailed = "Role creation failed for: {RoleName}. Errors: {Errors}";
 
             public const string RoleDeleted = "Role deleted successfully: RoleId={RoleId}, Name={RoleName}";
@@ -715,5 +432,4 @@ namespace BankingSystemAPI.Domain.Constant
         }
         #endregion
     }
-    #endregion
 }

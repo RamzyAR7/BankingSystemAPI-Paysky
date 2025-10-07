@@ -1,6 +1,7 @@
 ﻿#region Usings
 using AutoMapper;
 using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.DTOs.Bank;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Application.Interfaces.UnitOfWork;
@@ -18,17 +19,6 @@ namespace BankingSystemAPI.Application.Features.Banks.Queries.GetBankByName
     public sealed class GetBankByNameQueryHandler
             : IQueryHandler<GetBankByNameQuery, BankResDto>
     {
-    #region Fields
-    #endregion
-
-    #region Constructors
-    #endregion
-
-    #region Properties
-    #endregion
-
-    #region Methods
-    #endregion
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
 
@@ -44,7 +34,7 @@ namespace BankingSystemAPI.Application.Features.Banks.Queries.GetBankByName
             var bank = await _uow.BankRepository.FindAsync(spec);
 
             if (bank == null)
-                return Result<BankResDto>.Failure(new[] { "Bank not found." });
+                return Result<BankResDto>.Failure(new ResultError(ErrorType.NotFound, "Bank not found."));
 
             var dto = _mapper.Map<BankResDto>(bank);
             if (bank.ApplicationUsers != null)

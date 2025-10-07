@@ -36,19 +36,19 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
             // Chain validation and deletion using ResultExtensions
             var authResult = await ValidateAuthorizationAsync(request.UserId);
             if (authResult.IsFailure)
-                return Result<UserResDto>.Failure(authResult.Errors);
+                return Result<UserResDto>.Failure(authResult.ErrorItems);
 
             var selfDeletionResult = ValidateSelfDeletion(request.UserId);
             if (selfDeletionResult.IsFailure)
-                return Result<UserResDto>.Failure(selfDeletionResult.Errors);
+                return Result<UserResDto>.Failure(selfDeletionResult.ErrorItems);
 
             var userResult = await ValidateUserExistsAsync(request.UserId);
             if (userResult.IsFailure)
-                return Result<UserResDto>.Failure(userResult.Errors);
+                return Result<UserResDto>.Failure(userResult.ErrorItems);
 
             var accountsResult = ValidateNoExistingAccounts(userResult.Value!);
             if (accountsResult.IsFailure)
-                return Result<UserResDto>.Failure(accountsResult.Errors);
+                return Result<UserResDto>.Failure(accountsResult.ErrorItems);
 
             var deleteResult = await ExecuteUserDeletionAsync(request.UserId);
             
@@ -92,7 +92,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
             var result = await _userService.GetUserByIdAsync(userId);
             return result.IsSuccess
                 ? Result<UserResDto>.Success(result.Value!)
-                : Result<UserResDto>.Failure(result.Errors);
+                : Result<UserResDto>.Failure(result.ErrorItems);
         }
 
         private Result ValidateNoExistingAccounts(UserResDto user)
@@ -107,7 +107,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
             var result = await _userService.DeleteUserAsync(userId);
             return result.IsSuccess
                 ? Result<UserResDto>.Success(result.Value!)
-                : Result<UserResDto>.Failure(result.Errors);
+                : Result<UserResDto>.Failure(result.ErrorItems);
         }
     }
 }

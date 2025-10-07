@@ -38,26 +38,26 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
         {
             // Validate authorization
             var authResult = await ValidateAuthorizationAsync();
-            if (authResult.IsFailure)
-                return Result<UserResDto>.Failure(authResult.Errors);
+			if (authResult.IsFailure)
+				return Result<UserResDto>.Failure(authResult.ErrorItems);
 
             // Determine user context
             var contextResult = await DetermineUserContextAsync();
-            if (contextResult.IsFailure)
-                return Result<UserResDto>.Failure(contextResult.Errors);
+			if (contextResult.IsFailure)
+				return Result<UserResDto>.Failure(contextResult.ErrorItems);
 
             // Create user with context
             var createResult = await CreateUserWithContextAsync(request.UserRequest, contextResult.Value!);
-            
+
             // Add side effects using ResultExtensions
-            createResult.OnSuccess(() => 
-                {
-                    _logger.LogInformation(ApiResponseMessages.Logging.UserCreated, request.UserRequest.Username);
-                })
-                .OnFailure(errors => 
-                {
-                    _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailed, request.UserRequest.Username, string.Join(", ", errors));
-                });
+            createResult.OnSuccess(() =>
+            {
+                _logger.LogInformation(ApiResponseMessages.Logging.UserCreated, request.UserRequest.Username);
+            })
+            .OnFailure(errors =>
+            {
+                _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailed, request.UserRequest.Username, string.Join(", ", errors));
+            });
 
             return createResult;
         }
@@ -103,7 +103,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
 
             return result.IsSuccess
                 ? Result<UserResDto>.Success(result.Value!)
-                : Result<UserResDto>.Failure(result.Errors);
+                : Result<UserResDto>.Failure(result.ErrorItems);
         }
 
         private UserReqDto AdjustRequestForNonSuperAdmin(UserReqDto original, UserCreationContext context)

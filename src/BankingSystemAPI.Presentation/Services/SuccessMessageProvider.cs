@@ -28,14 +28,14 @@ namespace BankingSystemAPI.Presentation.Services
 
             return type switch
             {
-                ControllerType.User => ApiResponseMessages.Delete.User.Success,
-                ControllerType.Bank => ApiResponseMessages.Delete.Bank.Success,
-                ControllerType.Role => ApiResponseMessages.Delete.Role.Success,
-                ControllerType.Account => ApiResponseMessages.Delete.Account.Success,
-                ControllerType.Currency => ApiResponseMessages.Delete.Currency.Success,
-                ControllerType.CheckingAccount => ApiResponseMessages.Delete.CheckingAccount.Success,
-                ControllerType.SavingsAccount => ApiResponseMessages.Delete.SavingsAccount.Success,
-                _ => ApiResponseMessages.Delete.Generic.Success
+                ControllerType.User => string.Format(ApiResponseMessages.Generic.DeletedFormat, "User"),
+                ControllerType.Bank => string.Format(ApiResponseMessages.Generic.RemovedFormat, "Bank"),
+                ControllerType.Role => string.Format(ApiResponseMessages.Generic.DeletedFormat, "Role"),
+                ControllerType.Account => string.Format(ApiResponseMessages.Generic.RemovedFormat, "Account"),
+                ControllerType.Currency => string.Format(ApiResponseMessages.Generic.RemovedFormat, "Currency"),
+                ControllerType.CheckingAccount => string.Format(ApiResponseMessages.Generic.DeletedFormat, "Checking account"),
+                ControllerType.SavingsAccount => string.Format(ApiResponseMessages.Generic.DeletedFormat, "Savings account"),
+                _ => string.Format(ApiResponseMessages.Generic.DeletedFormat, "Resource")
             };
         }
         #endregion
@@ -44,7 +44,7 @@ namespace BankingSystemAPI.Presentation.Services
         private static string GetUpdateMessage(string controller, string action, IQueryCollection? query)
         {
             if (action.Contains("password", StringComparison.OrdinalIgnoreCase) || action.Contains("changepassword", StringComparison.OrdinalIgnoreCase))
-                return ApiResponseMessages.Update.Password.Success;
+                return string.Format(ApiResponseMessages.Generic.ChangedFormat, "Password");
 
             if (action.Contains("active", StringComparison.OrdinalIgnoreCase) || action.Contains("status", StringComparison.OrdinalIgnoreCase))
                 return GetStatusMessage(controller, query);
@@ -56,14 +56,14 @@ namespace BankingSystemAPI.Presentation.Services
 
             return type switch
             {
-                ControllerType.User => ApiResponseMessages.Update.User.Success,
-                ControllerType.Bank => ApiResponseMessages.Update.Bank.Success,
-                ControllerType.Role => ApiResponseMessages.Update.Role.Success,
-                ControllerType.Account => ApiResponseMessages.Update.Account.Success,
-                ControllerType.Currency => ApiResponseMessages.Update.Currency.Success,
-                ControllerType.CheckingAccount => ApiResponseMessages.Update.CheckingAccount.Success,
-                ControllerType.SavingsAccount => ApiResponseMessages.Update.SavingsAccount.Success,
-                _ => ApiResponseMessages.Update.Generic.Success
+                ControllerType.User => string.Format(ApiResponseMessages.Generic.UpdatedFormat, "User"),
+                ControllerType.Bank => string.Format(ApiResponseMessages.Generic.UpdatedFormat, "Bank"),
+                ControllerType.Role => string.Format(ApiResponseMessages.Generic.UpdatedFormat, "Role"),
+                ControllerType.Account => string.Format(ApiResponseMessages.Generic.UpdatedFormat, "Account"),
+                ControllerType.Currency => string.Format(ApiResponseMessages.Generic.UpdatedFormat, "Currency"),
+                ControllerType.CheckingAccount => string.Format(ApiResponseMessages.Generic.UpdatedFormat, "Checking account"),
+                ControllerType.SavingsAccount => string.Format(ApiResponseMessages.Generic.UpdatedFormat, "Savings account"),
+                _ => string.Format(ApiResponseMessages.Generic.UpdatedFormat, "Resource")
             };
         }
         private static string GetStatusMessage(string controller, IQueryCollection? query)
@@ -75,11 +75,11 @@ namespace BankingSystemAPI.Presentation.Services
 
             return type switch
             {
-                ControllerType.User => isActivating ? ApiResponseMessages.Status.User.Activated : ApiResponseMessages.Status.User.Deactivated,
-                ControllerType.Bank => isActivating ? ApiResponseMessages.Status.Bank.Activated : ApiResponseMessages.Status.Bank.Deactivated,
-                ControllerType.Account => isActivating ? ApiResponseMessages.Status.Account.Activated : ApiResponseMessages.Status.Account.Deactivated,
-                ControllerType.Currency => isActivating ? ApiResponseMessages.Status.Currency.Activated : ApiResponseMessages.Status.Currency.Deactivated,
-                _ => isActivating ? ApiResponseMessages.Status.Generic.Activated : ApiResponseMessages.Status.Generic.Deactivated
+                ControllerType.User => string.Format(isActivating ? ApiResponseMessages.Generic.ActivatedFormat : ApiResponseMessages.Generic.DeactivatedFormat, "User"),
+                ControllerType.Bank => string.Format(isActivating ? ApiResponseMessages.Generic.ActivatedFormat : ApiResponseMessages.Generic.DeactivatedFormat, "Bank"),
+                ControllerType.Account => string.Format(isActivating ? ApiResponseMessages.Generic.ActivatedFormat : ApiResponseMessages.Generic.DeactivatedFormat, "Account"),
+                ControllerType.Currency => string.Format(isActivating ? ApiResponseMessages.Generic.ActivatedFormat : ApiResponseMessages.Generic.DeactivatedFormat, "Currency"),
+                _ => string.Format(isActivating ? ApiResponseMessages.Generic.ActivatedFormat : ApiResponseMessages.Generic.DeactivatedFormat, "Resource")
             };
         }
         private static string GetSpecificUpdateMessage(string controller, string action)
@@ -89,11 +89,11 @@ namespace BankingSystemAPI.Presentation.Services
 
             // Handle user-roles controller (role assignment endpoint)
             if (ctrlType == ControllerType.UserRoles || controller == "user-roles" || controller == "userroles")
-                return ApiResponseMessages.RolePermissions.UpdateSuccess;
+                return string.Format(ApiResponseMessages.Generic.UpdatedFormat, "User role");
 
             // Role controller updates that represent assignments (kept for compatibility)
             if (ctrlType == ControllerType.Role || ctrlType == ControllerType.RoleClaims)
-                return ApiResponseMessages.Update.Role.AssignmentSuccess;
+                return string.Format(ApiResponseMessages.Generic.UpdatedFormat, "Role assignment");
 
             // No specific message for other controllers/actions in current codebase
             return string.Empty;
@@ -107,31 +107,31 @@ namespace BankingSystemAPI.Presentation.Services
 
             if (type == ControllerType.Auth)
             {
-                if (action.Contains("login", StringComparison.OrdinalIgnoreCase)) return ApiResponseMessages.Authentication.LoginSuccess;
-                if (action.Contains("logout", StringComparison.OrdinalIgnoreCase)) return ApiResponseMessages.Authentication.LogoutSuccess;
-                if (action.Contains("refresh", StringComparison.OrdinalIgnoreCase)) return ApiResponseMessages.Authentication.TokenRefreshed;
-                if (action.Contains("revoke", StringComparison.OrdinalIgnoreCase)) return ApiResponseMessages.Authentication.TokenRevoked;
-                return ApiResponseMessages.Authentication.OperationSuccess;
+                if (action.Contains("login", StringComparison.OrdinalIgnoreCase)) return string.Format(ApiResponseMessages.Generic.CompletedFormat, "Login");
+                if (action.Contains("logout", StringComparison.OrdinalIgnoreCase)) return string.Format(ApiResponseMessages.Generic.CompletedFormat, "Logout");
+                if (action.Contains("refresh", StringComparison.OrdinalIgnoreCase)) return string.Format(ApiResponseMessages.Generic.CompletedFormat, "Token refresh");
+                if (action.Contains("revoke", StringComparison.OrdinalIgnoreCase)) return string.Format(ApiResponseMessages.Generic.CompletedFormat, "Token revoke");
+                return string.Format(ApiResponseMessages.Generic.CompletedFormat, "Authentication operation");
             }
 
             if (type == ControllerType.Transaction)
             {
-                if (action.Contains("deposit", StringComparison.OrdinalIgnoreCase)) return ApiResponseMessages.Transaction.DepositSuccess;
-                if (action.Contains("withdraw", StringComparison.OrdinalIgnoreCase)) return ApiResponseMessages.Transaction.WithdrawSuccess;
-                if (action.Contains("transfer", StringComparison.OrdinalIgnoreCase)) return ApiResponseMessages.Transaction.TransferSuccess;
-                return ApiResponseMessages.Transaction.ProcessedSuccess;
+                if (action.Contains("deposit", StringComparison.OrdinalIgnoreCase)) return string.Format(ApiResponseMessages.Generic.ProcessedFormat, "Deposit transaction");
+                if (action.Contains("withdraw", StringComparison.OrdinalIgnoreCase)) return string.Format(ApiResponseMessages.Generic.ProcessedFormat, "Withdrawal transaction");
+                if (action.Contains("transfer", StringComparison.OrdinalIgnoreCase)) return string.Format(ApiResponseMessages.Generic.CompletedFormat, "Transfer transaction");
+                return string.Format(ApiResponseMessages.Generic.ProcessedFormat, "Transaction");
             }
 
             // Handle creates for common resource controllers
-            if (type == ControllerType.User) return ApiResponseMessages.Create.User.Success;
-            if (type == ControllerType.Account) return ApiResponseMessages.Create.Account.Success;
-            if (type == ControllerType.Bank) return ApiResponseMessages.Create.Bank.Success;
-            if (type == ControllerType.Currency) return ApiResponseMessages.Create.Currency.Success;
+            if (type == ControllerType.User) return string.Format(ApiResponseMessages.Generic.CreatedFormat, "User");
+            if (type == ControllerType.Account) return string.Format(ApiResponseMessages.Generic.CreatedFormat, "Account");
+            if (type == ControllerType.Bank) return string.Format(ApiResponseMessages.Generic.CreatedFormat, "Bank");
+            if (type == ControllerType.Currency) return string.Format(ApiResponseMessages.Generic.CreatedFormat, "Currency");
 
-            if (type == ControllerType.RoleClaims) return ApiResponseMessages.RolePermissions.AssignmentSuccess;
-            if (type == ControllerType.UserRoles) return ApiResponseMessages.RolePermissions.UpdateSuccess;
+            if (type == ControllerType.RoleClaims) return string.Format(ApiResponseMessages.Generic.UpdatedFormat, "Role assignment");
+            if (type == ControllerType.UserRoles) return string.Format(ApiResponseMessages.Generic.UpdatedFormat, "User role");
 
-            return ApiResponseMessages.Processing.OperationSuccess;
+            return string.Format(ApiResponseMessages.Generic.CreatedFormat, "Resource");
         }
         #endregion
     }

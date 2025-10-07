@@ -32,14 +32,14 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetByAccoun
             // Ensure caller can view the account first
             var authResult = await _accountAuth.CanViewAccountAsync(request.AccountId);
             if (authResult.IsFailure)
-                return Result<IEnumerable<TransactionResDto>>.Failure(authResult.Errors);
+                return Result<IEnumerable<TransactionResDto>>.Failure(authResult.ErrorItems);
 
             // Use authorization service to filter transactions
             var query = _uow.TransactionRepository.QueryByAccountId(request.AccountId);
             var filterResult = await _transactionAuth.FilterTransactionsAsync(query, request.PageNumber, request.PageSize);
 
             if (filterResult.IsFailure)
-                return Result<IEnumerable<TransactionResDto>>.Failure(filterResult.Errors);
+                return Result<IEnumerable<TransactionResDto>>.Failure(filterResult.ErrorItems);
 
             var (items, total) = filterResult.Value!;
 

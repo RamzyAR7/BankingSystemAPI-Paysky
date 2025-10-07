@@ -56,7 +56,7 @@
         </member>
         <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Generic">
             <summary>
-            Generic response messages
+            Generic response messages with format support
             </summary>
         </member>
         <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.ErrorPatterns">
@@ -73,46 +73,6 @@
         <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Infrastructure">
             <summary>
             Messages used by middleware and infrastructure layers
-            </summary>
-        </member>
-        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Delete">
-            <summary>
-            Delete operation messages
-            </summary>
-        </member>
-        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Update">
-            <summary>
-            Update operation messages
-            </summary>
-        </member>
-        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Create">
-            <summary>
-            Creation operation messages
-            </summary>
-        </member>
-        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Status">
-            <summary>
-            Active/Inactive status messages
-            </summary>
-        </member>
-        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Authentication">
-            <summary>
-            Authentication and processing messages
-            </summary>
-        </member>
-        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Transaction">
-            <summary>
-            Transaction processing messages
-            </summary>
-        </member>
-        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.RolePermissions">
-            <summary>
-            Role and permission messages
-            </summary>
-        </member>
-        <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.Processing">
-            <summary>
-            General processing messages
             </summary>
         </member>
         <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages.BankingErrors">

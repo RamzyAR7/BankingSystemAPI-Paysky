@@ -40,7 +40,7 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Queries.GetAllC
 
             var filterResult = await _accountAuth.FilterAccountsAsync(query, pageNumber, pageSize);
             if (filterResult.IsFailure)
-                return Result<List<CheckingAccountDto>>.Failure(filterResult.Errors);
+                return Result<List<CheckingAccountDto>>.Failure(filterResult.ErrorItems);
 
             var (items, total) = filterResult.Value!;
             var mapped = items.OfType<CheckingAccount>().Select(a => _mapper.Map<CheckingAccountDto>(a)).ToList();

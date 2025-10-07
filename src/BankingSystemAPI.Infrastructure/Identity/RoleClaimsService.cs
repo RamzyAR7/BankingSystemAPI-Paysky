@@ -101,7 +101,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 if (!removeResult.Succeeded)
                 {
                     var errors = removeResult.Errors.Select(e => e.Description);
-                    return Result<ApplicationRole>.Failure(errors);
+                    return Result<ApplicationRole>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
                 }
             }
 
@@ -118,7 +118,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 if (!addResult.Succeeded)
                 {
                     var errors = addResult.Errors.Select(e => e.Description);
-                    return Result<ApplicationRole>.Failure(errors);
+                    return Result<ApplicationRole>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
                 }
             }
 

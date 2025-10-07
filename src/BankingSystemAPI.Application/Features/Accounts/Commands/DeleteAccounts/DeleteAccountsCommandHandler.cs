@@ -16,17 +16,6 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts
     /// </summary>
     public class DeleteAccountsCommandHandler : ICommandHandler<DeleteAccountsCommand>
     {
-    #region Fields
-    #endregion
-
-    #region Constructors
-    #endregion
-
-    #region Properties
-    #endregion
-
-    #region Methods
-    #endregion
         private readonly IUnitOfWork _uow;
         private readonly IAccountAuthorizationService _accountAuth;
 
@@ -41,7 +30,7 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts
             var distinctIds = request.Ids.Distinct().ToList();
             
             if (!distinctIds.Any())
-                return Result.Failure(new[] { ApiResponseMessages.Validation.AtLeastOneAccountIdRequired });
+                return Result.ValidationFailed(ApiResponseMessages.Validation.AtLeastOneAccountIdRequired);
 
             // Get accounts that exist
             var deleteSpec = AccountsByIdsSpecification.WithTracking(distinctIds);
@@ -53,15 +42,15 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts
             
             if (missingIds.Any())
             {
-                return Result.Failure(new[] { string.Format(ApiResponseMessages.Validation.AccountsNotFoundFormat, string.Join(", ", missingIds)) });
+                return Result.ValidationFailed(string.Format(ApiResponseMessages.Validation.AccountsNotFoundFormat, string.Join(", ", missingIds)));
             }
 
             // Authorization - Check each account
             foreach (var account in accountsToDelete)
             {
                 var authResult = await _accountAuth.CanModifyAccountAsync(account.Id, AccountModificationOperation.Delete);
-                if (authResult.IsFailure)
-                    return Result.Failure(authResult.Errors);
+                    if (authResult.IsFailure)
+                        return Result.Failure(authResult.ErrorItems);
             }
 
             // Validate accounts can be deleted (no positive balance)
@@ -69,7 +58,7 @@ namespace BankingSystemAPI.Application.Features.Accounts.Commands.DeleteAccounts
             {
                 if (account.Balance > 0)
                 {
-                    return Result.Failure(new[] { string.Format(ApiResponseMessages.Validation.CannotDeleteAccountPositiveBalanceFormat, account.AccountNumber, account.Balance) });
+                    return Result.ValidationFailed(string.Format(ApiResponseMessages.Validation.CannotDeleteAccountPositiveBalanceFormat, account.AccountNumber, account.Balance));
                 }
             }
 

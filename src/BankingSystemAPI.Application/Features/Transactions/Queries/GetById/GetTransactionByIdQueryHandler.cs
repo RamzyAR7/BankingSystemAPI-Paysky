@@ -27,7 +27,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetById
             var filterResult = await _transactionAuth.FilterTransactionsAsync(query, 1, 1);
 
             if (filterResult.IsFailure)
-                return Result<TransactionResDto>.Failure(filterResult.Errors);
+                return Result<TransactionResDto>.Failure(filterResult.ErrorItems);
 
             var (items, total) = filterResult.Value!;
             var trx = items.FirstOrDefault();

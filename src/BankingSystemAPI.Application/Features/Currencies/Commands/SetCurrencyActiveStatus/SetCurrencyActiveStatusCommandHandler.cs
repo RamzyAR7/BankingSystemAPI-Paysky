@@ -36,7 +36,7 @@ namespace BankingSystemAPI.Application.Features.Currencies.Commands.SetCurrencyA
             {
                 // Use standardized update message and include structured fields
                 _logger.LogInformation("{Message} CurrencyId={CurrencyId}, IsActive={IsActive}", 
-                    ApiResponseMessages.Update.Currency.Success, request.Id, request.IsActive);
+                    string.Format(ApiResponseMessages.Generic.UpdatedFormat, "Currency"), request.Id, request.IsActive);
             })
             .OnFailure(errors => 
             {

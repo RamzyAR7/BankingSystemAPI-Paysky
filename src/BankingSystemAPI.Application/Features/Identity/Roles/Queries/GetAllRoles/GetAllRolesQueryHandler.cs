@@ -31,7 +31,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Queries.GetAllRol
         {
             var authorizationResult = await ValidateAuthorizationAsync();
             if (authorizationResult.IsFailure)
-                return Result<List<RoleResDto>>.Failure(authorizationResult.Errors);
+                return Result<List<RoleResDto>>.Failure(authorizationResult.ErrorItems);
 
             var rolesResult = await RetrieveRolesAsync();
             
@@ -87,7 +87,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Queries.GetAllRol
             var rolesResult = await _roleService.GetAllRolesAsync();
             return rolesResult.IsSuccess
                 ? Result<List<RoleResDto>>.Success(rolesResult.Value!)
-                : Result<List<RoleResDto>>.Failure(rolesResult.Errors);
+                : Result<List<RoleResDto>>.Failure(rolesResult.ErrorItems);
         }
     }
 }

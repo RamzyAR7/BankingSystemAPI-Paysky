@@ -1,5 +1,6 @@
 ﻿#region Usings
 using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Authorization;
@@ -24,22 +25,22 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUserBy
 
         public async Task<Result<UserResDto>> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
         {
+            if (_userAuthorizationService == null)
+                return Result<UserResDto>.Failure(new ResultError(ErrorType.Forbidden, "Authorization service not available."));
 
             var authResult = await _userAuthorizationService.CanViewUserAsync(request.UserId);
-
-            if(!authResult)
+            if (!authResult)
             {
-                return Result<UserResDto>.Failure(authResult.ErrorMessage);
-            }          
-            // The UserService now returns Result<UserResDto> - will fail if user not found
-            var userResult = await _userService.GetUserByIdAsync(request.UserId);
-            
-            if (!userResult.IsSuccess)
-            {
-                return Result<UserResDto>.Failure(userResult.Errors);
+                return Result<UserResDto>.Failure(new ResultError(ErrorType.Forbidden, authResult.ErrorMessage ?? "Forbidden"));
             }
 
-            return Result<UserResDto>.Success(userResult.Value!);
+            var userResult = await _userService.GetUserByIdAsync(request.UserId);
+            if (!userResult.IsSuccess || userResult.Value == null)
+            {
+                return Result<UserResDto>.Failure(userResult.ErrorItems);
+            }
+
+            return Result<UserResDto>.Success(userResult.Value);
         }
     }
 }

@@ -30,7 +30,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetInter
             // Authorization - check if user can view the account
             var authResult = await _accountAuth.CanViewAccountAsync(request.AccountId);
             if (authResult.IsFailure)
-                return Result<InterestLogsPagedDto>.Failure(authResult.Errors);
+                return Result<InterestLogsPagedDto>.Failure(authResult.ErrorItems);
 
             var pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
             var pageSize = request.PageSize < 1 ? 10 : request.PageSize;

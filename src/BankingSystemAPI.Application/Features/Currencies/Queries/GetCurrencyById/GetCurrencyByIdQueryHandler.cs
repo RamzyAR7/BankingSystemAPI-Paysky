@@ -28,7 +28,7 @@ namespace BankingSystemAPI.Application.Features.Currencies.Queries.GetCurrencyBy
         {
             var currencyResult = await LoadCurrencyAsync(request.Id);
             if (currencyResult.IsFailure)
-                return Result<CurrencyDto>.Failure(currencyResult.Errors);
+                return Result<CurrencyDto>.Failure(currencyResult.ErrorItems);
 
             var mappedResult = currencyResult.Map(currency => _mapper.Map<CurrencyDto>(currency));
 

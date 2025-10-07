@@ -30,11 +30,11 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetBalance
             // Chain account retrieval, authorization, and balance extraction using ResultExtensions
             var accountResult = await LoadAccountAsync(request.AccountId);
             if (accountResult.IsFailure)
-                return Result<decimal>.Failure(accountResult.Errors);
+                return Result<decimal>.Failure(accountResult.ErrorItems);
 
             var authResult = await ValidateAuthorizationAsync(request.AccountId);
             if (authResult.IsFailure)
-                return Result<decimal>.Failure(authResult.Errors);
+                return Result<decimal>.Failure(authResult.ErrorItems);
 
             var balance = accountResult.Value!.Balance;
 
@@ -68,7 +68,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetBalance
                 var authResult = await _accountAuth.CanViewAccountAsync(accountId);
                 return authResult.IsSuccess 
                     ? Result.Success() 
-                    : Result.Failure(authResult.Errors);
+                    : Result.Failure(authResult.ErrorItems);
             }
             catch (Exception ex)
             {

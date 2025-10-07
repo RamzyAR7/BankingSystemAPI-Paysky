@@ -31,19 +31,19 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
             // Validate user exists and is active
             var userResult = await ValidateUserExistsAsync(request.Email);
             if (userResult.IsFailure)
-                return Result<AuthResultDto>.Failure(userResult.Errors);
+                return Result<AuthResultDto>.Failure(userResult.ErrorItems);
 
             var activeResult = ValidateUserActive(userResult.Value!);
             if (activeResult.IsFailure)
-                return Result<AuthResultDto>.Failure(activeResult.Errors);
+                return Result<AuthResultDto>.Failure(activeResult.ErrorItems);
 
             var bankResult = await ValidateBankActive(userResult.Value!);
             if (bankResult.IsFailure)
-                return Result<AuthResultDto>.Failure(bankResult.Errors);
+                return Result<AuthResultDto>.Failure(bankResult.ErrorItems);
 
             var roleResult = await ValidateUserRole(userResult.Value!);
             if (roleResult.IsFailure)
-                return Result<AuthResultDto>.Failure(roleResult.Errors);
+                return Result<AuthResultDto>.Failure(roleResult.ErrorItems);
 
             // Execute login
             var loginResult = await ExecuteLoginAsync(request, userResult.Value!);
@@ -88,7 +88,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
             var bankActiveResult = await _userService.IsBankActiveAsync(userDto.BankId.Value);
             if (!bankActiveResult.IsSuccess)
             {
-                return Result<UserResDto>.Failure(bankActiveResult.Errors);
+                return Result<UserResDto>.Failure(bankActiveResult.ErrorItems);
             }
 
             return bankActiveResult.Value
@@ -101,7 +101,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
             var userRoleResult = await _userService.GetUserRoleAsync(userDto.Id);
             if (!userRoleResult.IsSuccess)
             {
-                return Result<UserResDto>.Failure(userRoleResult.Errors);
+                return Result<UserResDto>.Failure(userRoleResult.ErrorItems);
             }
 
             return string.IsNullOrEmpty(userRoleResult.Value)

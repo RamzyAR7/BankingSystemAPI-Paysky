@@ -1387,7 +1387,7 @@ public class TransferCommandHandler : ICommandHandler<TransferCommand>
 - [ ] **User Roles**: Permission system and access levels
 - [ ] **Transaction Flow**: Money movement and validation
 - [ ] **Compliance Requirements**: Banking regulations awareness
-- [ ] **Future Roadmap**: Enhancement priorities
+  - [ ] **Future Roadmap**: Enhancement priorities
 
 ---
 

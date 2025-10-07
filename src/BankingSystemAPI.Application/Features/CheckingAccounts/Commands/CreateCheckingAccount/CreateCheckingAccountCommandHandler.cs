@@ -37,22 +37,22 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Create
             // Authorization
             var authResult = await _accountAuth.CanCreateAccountForUserAsync(reqDto.UserId);
             if (authResult.IsFailure)
-                return Result<CheckingAccountDto>.Failure(authResult.Errors);
+                return Result<CheckingAccountDto>.Failure(authResult.ErrorItems);
 
             // Validate currency using extensions
             var currencyResult = await ValidateCurrencyAsync(reqDto.CurrencyId);
             if (!currencyResult) // Using implicit bool operator!
-                return Result<CheckingAccountDto>.Failure(currencyResult.Errors);
+                return Result<CheckingAccountDto>.Failure(currencyResult.ErrorItems);
 
             // Validate user using extensions
             var userResult = await ValidateUserAsync(reqDto.UserId);
             if (!userResult) // Using implicit bool operator!
-                return Result<CheckingAccountDto>.Failure(userResult.Errors);
+                return Result<CheckingAccountDto>.Failure(userResult.ErrorItems);
 
             // Validate user role using extensions
             var roleValidationResult = await ValidateUserRoleAsync(reqDto.UserId);
             if (!roleValidationResult) // Using implicit bool operator!
-                return Result<CheckingAccountDto>.Failure(roleValidationResult.Errors);
+                return Result<CheckingAccountDto>.Failure(roleValidationResult.ErrorItems);
 
             // Chain successful validations and create account
             var accountResult = currencyResult

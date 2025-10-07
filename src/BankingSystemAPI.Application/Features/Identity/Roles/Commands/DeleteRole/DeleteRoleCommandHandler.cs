@@ -44,7 +44,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.DeleteRo
             // Business rule validation: Check if role exists and is not in use
             var businessValidationResult = await ValidateBusinessRulesAsync(request.RoleId);
             if (businessValidationResult.IsFailure)
-                return Result<RoleUpdateResultDto>.Failure(businessValidationResult.Errors);
+                return Result<RoleUpdateResultDto>.Failure(businessValidationResult.ErrorItems);
 
             // Execute role deletion
             var deleteResult = await ExecuteRoleDeletionAsync(request.RoleId);

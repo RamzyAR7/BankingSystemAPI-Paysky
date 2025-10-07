@@ -55,30 +55,17 @@ namespace BankingSystemAPI.Domain.Common
             _errorMessageCache = string.Join("; ", Errors);
         }
 
-        // Success factory
         public static Result Success() => new Result(true, Array.Empty<ResultError>());
 
-        // Failure factories - keep overloads for backward compatibility
-        [Obsolete("Use structured Result.Failure(ResultError...) overloads instead.")]
-        public static Result Failure(params string[] errors) =>
-            Failure(errors.Select(m => new ResultError(ErrorType.Validation, m)).ToArray());
-
-        [Obsolete("Use structured Result.Failure(IEnumerable<ResultError>) overload instead.")]
-        public static Result Failure(IEnumerable<string> errors) =>
-            Failure(errors?.Select(m => new ResultError(ErrorType.Validation, m)) ?? Enumerable.Empty<ResultError>());
-
-        // Structured failure overloads
-        public static Result Failure(params ResultError[] errors) =>
-            new Result(false, errors?.ToList().AsReadOnly() ?? new List<ResultError>().AsReadOnly());
-
-        public static Result Failure(IEnumerable<ResultError> errors) =>
-            new Result(false, errors?.ToList().AsReadOnly() ?? new List<ResultError>().AsReadOnly());
-
-        // Overloads that accept ErrorType (recommended)
+    // Removed string[] overload for Failure to enforce structured error usage
         public static Result Failure(ErrorType type, string message, ResultErrorDetails? details = null) =>
             Failure(new ResultError(type, message, details));
-
-        // Semantic factory methods - produce generic messages (domain-layer should not reference UI constants)
+        public static Result Failure(params ResultError[] errors) =>
+            new Result(false, errors?.ToList().AsReadOnly() ?? new List<ResultError>().AsReadOnly());
+        public static Result Failure(IEnumerable<ResultError> errors) =>
+            new Result(false, errors?.ToList().AsReadOnly() ?? new List<ResultError>().AsReadOnly());
+        public static Result Failure(IEnumerable<string>? messages) =>
+            Failure(messages?.Select(m => new ResultError(ErrorType.Validation, m)) ?? Array.Empty<ResultError>());
         public static Result NotFound(string entity, object id) =>
             Failure(ErrorType.NotFound, string.Format("{0} with id {1} was not found.", entity, id));
 
@@ -103,11 +90,9 @@ namespace BankingSystemAPI.Domain.Common
         public static Result AccountInactive(string accountNumber) =>
             Failure(ErrorType.BusinessRule, string.Format("Account {0} is inactive.", accountNumber));
 
-        // Combine multiple results: returns Success if all success; otherwise collects errors (preserves messages)
         public static Result Combine(params Result[] results)
         {
-            if (results == null || results.Length == 0) return Success();
-
+            // Removed IEnumerable<string> overload for Failure to enforce structured error usage
             var failures = results.Where(r => r.IsFailure).ToList();
             if (!failures.Any()) return Success();
 
@@ -115,7 +100,6 @@ namespace BankingSystemAPI.Domain.Common
             return Failure(combinedErrors);
         }
 
-        // Implicit conversion to bool for compatibility
         public static implicit operator bool(Result result) => result is not null && result.IsSuccess;
     }
 
@@ -134,11 +118,8 @@ namespace BankingSystemAPI.Domain.Common
 
         // Success / Failure factories
         public static Result<T> Success(T value) => new Result<T>(true, value, Array.Empty<ResultError>());
-        public static new Result<T> Failure(params string[] errors) =>
-            Failure(errors?.Select(m => new ResultError(ErrorType.Validation, m)) ?? Enumerable.Empty<ResultError>());
 
-        public static new Result<T> Failure(IEnumerable<string> errors) =>
-            Failure(errors?.Select(m => new ResultError(ErrorType.Validation, m)) ?? Enumerable.Empty<ResultError>());
+        #region Failure Managers
 
         public static Result<T> Failure(params ResultError[] errors) =>
             new Result<T>(false, default, errors?.ToList().AsReadOnly() ?? new List<ResultError>().AsReadOnly());
@@ -146,9 +127,10 @@ namespace BankingSystemAPI.Domain.Common
         public static Result<T> Failure(IEnumerable<ResultError> errors) =>
             new Result<T>(false, default, errors?.ToList().AsReadOnly() ?? new List<ResultError>().AsReadOnly());
 
+       
         public static Result<T> Failure(ErrorType type, string message, ResultErrorDetails? details = null) =>
             Failure(new ResultError(type, message, details));
-
+        #endregion
         // Semantic factories
         public static new Result<T> NotFound(string entity, object id) =>
             Failure(ErrorType.NotFound, string.Format("{0} with id {1} was not found.", entity, id));

@@ -41,7 +41,7 @@ namespace BankingSystemAPI.Application.Features.SavingsAccounts.Queries.GetAllIn
             // Let the authorization service filter the query
             var filterResult = await _accountAuth.FilterAccountsQueryAsync(accountQuery);
             if (filterResult.IsFailure)
-                return Result<InterestLogsPagedDto>.Failure(filterResult.Errors);
+                return Result<InterestLogsPagedDto>.Failure(filterResult.ErrorItems);
 
             var filteredAccountQuery = filterResult.Value!;
 

@@ -40,7 +40,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.CreateRo
             // Business validation: Check if role already exists
             var uniquenessValidation = await ValidateRoleUniquenessAsync(request.Name);
             if (uniquenessValidation.IsFailure)
-                return Result<RoleUpdateResultDto>.Failure(uniquenessValidation.Errors);
+                return Result<RoleUpdateResultDto>.Failure(uniquenessValidation.ErrorItems);
 
             var createResult = await CreateRoleAsync(request.Name);
             
@@ -61,7 +61,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Roles.Commands.CreateRo
         {
             var roleExists = await _roleManager.RoleExistsAsync(roleName);
             return roleExists
-                ? Result.Failure(string.Format("Role '{0}' already exists.", roleName))
+                ? Result.Failure(ErrorType.Validation, string.Format("Role '{0}' already exists.", roleName))
                 : Result.Success();
         }
 

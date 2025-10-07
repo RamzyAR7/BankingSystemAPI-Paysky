@@ -29,7 +29,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Logout
             // Convert AuthResultDto to Result<AuthResultDto> using ResultExtensions patterns
             var logoutResult = result.Succeeded
                 ? Result<AuthResultDto>.Success(result)
-                : Result<AuthResultDto>.Failure(result.Errors.Select(e => e.Description));
+                : Result<AuthResultDto>.Failure(result.Errors.Select(e => new ResultError(ErrorType.Validation, e.Description)));
 
             // Add side effects using ResultExtensions
             logoutResult.OnSuccess(() =>

@@ -42,7 +42,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             {
                 var rolesResult = await LoadAllRolesAsync();
                 if (rolesResult.IsFailure)
-                    return Result<List<RoleResDto>>.Failure(rolesResult.Errors);
+                    return Result<List<RoleResDto>>.Failure(rolesResult.ErrorItems);
 
                 var enrichedRolesResult = await EnrichRolesWithClaimsAsync(rolesResult.Value!);
                 
@@ -72,11 +72,11 @@ namespace BankingSystemAPI.Infrastructure.Services
             // Chain validation and creation using ResultExtensions
             var validationResult = ValidateCreateRoleInput(dto);
             if (validationResult.IsFailure)
-                return Result<RoleUpdateResultDto>.Failure(validationResult.Errors);
+                return Result<RoleUpdateResultDto>.Failure(validationResult.ErrorItems);
 
             var uniquenessResult = await ValidateRoleUniquenessAsync(dto.Name);
             if (uniquenessResult.IsFailure)
-                return Result<RoleUpdateResultDto>.Failure(uniquenessResult.Errors);
+                return Result<RoleUpdateResultDto>.Failure(uniquenessResult.ErrorItems);
 
             var createResult = await ExecuteRoleCreationAsync(dto);
             
@@ -99,11 +99,11 @@ namespace BankingSystemAPI.Infrastructure.Services
             // Chain validation and deletion using ResultExtensions
             var validationResult = ValidateDeleteRoleInput(roleId);
             if (validationResult.IsFailure)
-                return Result<RoleUpdateResultDto>.Failure(validationResult.Errors);
+                return Result<RoleUpdateResultDto>.Failure(validationResult.ErrorItems);
 
             var roleResult = await FindRoleForDeletionAsync(roleId);
             if (roleResult.IsFailure)
-                return Result<RoleUpdateResultDto>.Failure(roleResult.Errors);
+                return Result<RoleUpdateResultDto>.Failure(roleResult.ErrorItems);
 
             var deleteResult = await ExecuteRoleDeletionAsync(roleResult.Value!);
             
@@ -127,7 +127,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             // Validate input using ResultExtensions
             var validationResult = ValidateRoleIdInput(roleId);
             if (validationResult.IsFailure)
-                return Result<bool>.Failure(validationResult.Errors);
+                return Result<bool>.Failure(validationResult.ErrorItems);
 
             try
             {
@@ -221,7 +221,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 if (!identityResult.Succeeded)
                 {
                     var errors = identityResult.Errors.Select(e => e.Description);
-                    return Result<RoleUpdateResultDto>.Failure(errors);
+                    return Result<RoleUpdateResultDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
                 }
 
                 var result = new RoleUpdateResultDto
@@ -267,7 +267,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 if (!identityResult.Succeeded)
                 {
                     var errors = identityResult.Errors.Select(e => e.Description);
-                    return Result<RoleUpdateResultDto>.Failure(errors);
+                    return Result<RoleUpdateResultDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
                 }
 
                 var result = new RoleUpdateResultDto

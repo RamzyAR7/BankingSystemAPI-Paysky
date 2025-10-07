@@ -93,7 +93,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         {
             var scopeResult = await GetScopeAsync();
             if (scopeResult.IsFailure)
-                return Result<(IEnumerable<Transaction> Transactions, int TotalCount)>.Failure(scopeResult.Errors);
+                return Result<(IEnumerable<Transaction> Transactions, int TotalCount)>.Failure(scopeResult.ErrorItems);
 
             var filteringResult = await ApplyScopeFilteringAsync(query, scopeResult.Value, pageNumber, pageSize);
 
@@ -287,10 +287,10 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         // Error Handling Helpers
         private Result HandleScopeError(Result<AccessScope> scopeResult) => 
-            Result.BadRequest(scopeResult.Errors.FirstOrDefault() ?? AuthorizationConstants.ErrorMessages.SystemError);
+            Result.BadRequest(scopeResult.ErrorItems.FirstOrDefault()?.Message ?? AuthorizationConstants.ErrorMessages.SystemError);
 
         private Result HandleAccountError(Result<Account> accountResult) => 
-            Result.BadRequest(accountResult.Errors.FirstOrDefault() ?? ApiResponseMessages.Validation.AccountNotFound);
+            Result.BadRequest(accountResult.ErrorItems.FirstOrDefault()?.Message ?? ApiResponseMessages.Validation.AccountNotFound);
 
         #endregion
 

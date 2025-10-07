@@ -96,7 +96,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
             }
             else
             {
-                _logger.LogError(ApiResponseMessages.Logging.TransactionDepositFailed, req.AccountId, req.Amount, string.Join(", ", executionResult.Errors));
+                _logger.LogError(ApiResponseMessages.Logging.TransactionDepositFailed, req.AccountId, req.Amount, string.Join(", ", executionResult.ErrorItems.Select(e => e.Message)));
             }
 
             return executionResult;
@@ -135,7 +135,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
             if (authResult.IsFailure)
                 return Result<TransactionResDto>.Failure(authResult.ErrorItems);
 
-            Transaction trx = null;
+            Transaction? trx = null;
 
             try
             {
@@ -185,7 +185,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
                     await _uow.SaveAsync();
                 });
 
-                var dto = _mapper.Map<TransactionResDto>(trx);
+                var dto = _mapper.Map<TransactionResDto>(trx!);
                 return Result<TransactionResDto>.Success(dto);
             }
             catch (BusinessRuleException ex)

@@ -4,6 +4,7 @@ using BankingSystemAPI.Application.DTOs.Auth;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Messaging;
+using BankingSystemAPI.Domain.Constant;
 #endregion
 
 
@@ -35,8 +36,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.RevokeTok
 
             if (!result.Succeeded)
             {
-                var errors = result.Errors.Select(e => e.Description);
-                return Result<AuthResultDto>.Failure(errors);
+                return Result<AuthResultDto>.Failure(result.Errors.Select(e => new ResultError(ErrorType.Validation, e.Description)));
             }
 
             return Result<AuthResultDto>.Success(result);

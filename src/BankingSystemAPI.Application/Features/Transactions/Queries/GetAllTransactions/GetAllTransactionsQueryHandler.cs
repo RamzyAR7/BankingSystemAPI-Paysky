@@ -31,7 +31,7 @@ namespace BankingSystemAPI.Application.Features.Transactions.Queries.GetAllTrans
             var filterResult = await _transactionAuth.FilterTransactionsAsync(query, request.PageNumber, request.PageSize);
             
             if (filterResult.IsFailure)
-                return Result<IEnumerable<TransactionResDto>>.Failure(filterResult.Errors);
+                return Result<IEnumerable<TransactionResDto>>.Failure(filterResult.ErrorItems);
             
             var (items, total) = filterResult.Value!;
             var dtoItems = items.Select(i => _mapper.Map<TransactionResDto>(i)).ToList();

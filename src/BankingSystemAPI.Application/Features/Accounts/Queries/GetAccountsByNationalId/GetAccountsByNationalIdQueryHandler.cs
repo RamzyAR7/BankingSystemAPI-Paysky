@@ -44,7 +44,7 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByNa
             {
                 var authResult = await _accountAuth.CanViewAccountAsync(acc.Id);
                 if (authResult.IsFailure)
-                    return Result<List<AccountDto>>.Failure(authResult.Errors);
+                    return Result<List<AccountDto>>.Failure(authResult.ErrorItems);
             }
 
             var mapped = accounts.Select(a => _mapper.Map<AccountDto>(a)).ToList();

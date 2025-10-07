@@ -37,7 +37,7 @@ namespace BankingSystemAPI.Application.Features.Identity.RoleClaims.Queries.GetA
             
             if (!claimsResult.IsSuccess)
             {
-                return Result<ICollection<RoleClaimsResDto>>.Failure(claimsResult.Errors);
+                return Result<ICollection<RoleClaimsResDto>>.Failure(claimsResult.ErrorItems);
             }
 
             return Result<ICollection<RoleClaimsResDto>>.Success(claimsResult.Value!);

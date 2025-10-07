@@ -37,7 +37,7 @@ namespace BankingSystemAPI.Application.Features.CheckingAccounts.Commands.Update
         {
             var authResult = await _accountAuth.CanModifyAccountAsync(request.Id, AccountModificationOperation.Edit);
             if (authResult.IsFailure)
-                return Result<CheckingAccountDto>.Failure(authResult.ErrorItems);
+                return Result<CheckingAccountDto>.Failure(authResult.ErrorItems.ToArray());
 
             var spec = new CheckingAccountByIdSpecification(request.Id);
             var account = await _uow.AccountRepository.FindAsync(spec);

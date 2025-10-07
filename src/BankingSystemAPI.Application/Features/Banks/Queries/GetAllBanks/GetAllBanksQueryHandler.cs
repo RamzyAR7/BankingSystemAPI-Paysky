@@ -47,7 +47,7 @@ namespace BankingSystemAPI.Application.Features.Banks.Queries.GetAllBanks
             // Validate and normalize parameters using functional approach
             var parametersResult = ValidateAndNormalizeParameters(request);
             if (!parametersResult) // Using implicit bool operator!
-                return Result<List<BankSimpleResDto>>.Failure(parametersResult.Errors);
+                return Result<List<BankSimpleResDto>>.Failure(parametersResult.ErrorItems);
 
             var queryResult = await ExecuteQueryAsync(parametersResult.Value!);
             

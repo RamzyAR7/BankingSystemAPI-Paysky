@@ -36,7 +36,8 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByUs
             // Validate input
             if (string.IsNullOrWhiteSpace(request.UserId))
             {
-                return Result<List<AccountDto>>.Failure(new[] { ApiResponseMessages.Validation.FieldRequiredFormat.Replace("{0}", "UserId") });
+                var err = new ResultError(ErrorType.Validation, ApiResponseMessages.Validation.FieldRequiredFormat.Replace("{0}", "UserId"));
+                return Result<List<AccountDto>>.Failure(err);
             }
 
             // Ensure target user exists - return NotFound instead of empty list when user does not exist
@@ -49,13 +50,13 @@ namespace BankingSystemAPI.Application.Features.Accounts.Queries.GetAccountsByUs
             // Explicit user-level authorization: validate access to the target user
             var userAuthResult = await _userAuth.CanViewUserAsync(request.UserId);
             if (userAuthResult.IsFailure)
-                return Result<List<AccountDto>>.Failure(userAuthResult.Errors);
+                return Result<List<AccountDto>>.Failure(userAuthResult.ErrorItems);
 
             var accountQuery = _uow.AccountRepository.QueryByUserId(request.UserId).AsQueryable();
             var filterResult = await _accountAuth.FilterAccountsQueryAsync(accountQuery);
             
             if (filterResult.IsFailure)
-                return Result<List<AccountDto>>.Failure(filterResult.Errors);
+                return Result<List<AccountDto>>.Failure(filterResult.ErrorItems);
             
             var filteredQuery = filterResult.Value!;
 

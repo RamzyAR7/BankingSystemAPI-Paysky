@@ -67,7 +67,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUsersB
                 var actingUserResult = await _userService.GetUserByIdAsync(actingUserId);
                 if (!actingUserResult.IsSuccess)
                 {
-                    return Result<IList<UserResDto>>.Failure(actingUserResult.Errors);
+                    return Result<IList<UserResDto>>.Failure(actingUserResult.ErrorItems);
                 }
 
                 var actingUser = actingUserResult.Value!;
@@ -80,10 +80,10 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Queries.GetUsersB
 
             // Get users by bank ID using UserService
             var result = await _userService.GetUsersByBankIdAsync(targetBankId);
-            
+
             if (!result.IsSuccess)
             {
-                return Result<IList<UserResDto>>.Failure(result.Errors);
+                return Result<IList<UserResDto>>.Failure(result.ErrorItems);
             }
 
             return Result<IList<UserResDto>>.Success(result.Value!);

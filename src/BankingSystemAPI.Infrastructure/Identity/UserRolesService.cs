@@ -2,6 +2,7 @@
 using BankingSystemAPI.Application.DTOs.User;
 using BankingSystemAPI.Application.Interfaces.Identity;
 using BankingSystemAPI.Domain.Common;
+using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
@@ -27,7 +28,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             // Validate input
             var inputValidation = ValidateInput(dto);
             if (inputValidation.IsFailure)
-                return Result<UserRoleUpdateResultDto>.Failure(inputValidation.Errors);
+                return Result<UserRoleUpdateResultDto>.Failure(inputValidation.ErrorItems);
 
             // If a role is provided, validate that the role exists before fetching the user
             if (!string.IsNullOrWhiteSpace(dto.Role))
@@ -35,13 +36,13 @@ namespace BankingSystemAPI.Infrastructure.Services
                 var targetRoleName = dto.Role.Trim();
                 var targetRole = await _roleManager.FindByNameAsync(targetRoleName);
                 if (targetRole == null)
-                    return Result<UserRoleUpdateResultDto>.BadRequest($"Target role '{targetRoleName}' does not exist.");
+                    return Result<UserRoleUpdateResultDto>.BadRequest(string.Format(ApiResponseMessages.BankingErrors.NotFoundFormat, "Role", targetRoleName));
             }
 
             // Get user
             var userResult = await GetUserAsync(dto.UserId);
             if (userResult.IsFailure)
-                return Result<UserRoleUpdateResultDto>.Failure(userResult.Errors);
+                return Result<UserRoleUpdateResultDto>.Failure(userResult.ErrorItems);
 
             var user = userResult.Value!;
 
@@ -72,12 +73,12 @@ namespace BankingSystemAPI.Infrastructure.Services
             // Remove existing roles if any
             if (userRoles.Any())
             {
-                var removeResult = await _userManager.RemoveFromRolesAsync(user, userRoles);
-                if (!removeResult.Succeeded)
-                {
-                    var errors = removeResult.Errors.Select(e => e.Description);
-                    return Result<UserRoleUpdateResultDto>.Failure(errors);
-                }
+                    var removeResult = await _userManager.RemoveFromRolesAsync(user, userRoles);
+                        if (!removeResult.Succeeded)
+                        {
+                            var errors = removeResult.Errors.Select(e => e.Description);
+                            return Result<UserRoleUpdateResultDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
+                        }
             }
 
             // Clear FK on user
@@ -89,10 +90,10 @@ namespace BankingSystemAPI.Infrastructure.Services
                 var successResult = CreateSuccessResult(user, null);
                 return Result<UserRoleUpdateResultDto>.Success(successResult);
             }
-            else
+                else
             {
                 var errors = updateResult.Errors.Select(e => e.Description);
-                return Result<UserRoleUpdateResultDto>.Failure(errors);
+                return Result<UserRoleUpdateResultDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
             }
         }
 
@@ -103,18 +104,18 @@ namespace BankingSystemAPI.Infrastructure.Services
             // Remove existing roles
             var removeResult = await RemoveExistingRolesAsync(user);
             if (removeResult.IsFailure)
-                return Result<UserRoleUpdateResultDto>.Failure(removeResult.Errors);
+                return Result<UserRoleUpdateResultDto>.Failure(removeResult.ErrorItems);
 
             // Add new role
             var addResult = await AddNewRoleAsync(user, targetRoleName);
             if (addResult.IsFailure)
-                return Result<UserRoleUpdateResultDto>.Failure(addResult.Errors);
+                return Result<UserRoleUpdateResultDto>.Failure(addResult.ErrorItems);
 
             // Update user role FK
             var targetRole = await _roleManager.FindByNameAsync(targetRoleName);
             var updateResult = await UpdateUserRoleForeignKeyAsync(user, targetRole!);
             if (updateResult.IsFailure)
-                return Result<UserRoleUpdateResultDto>.Failure(updateResult.Errors);
+                return Result<UserRoleUpdateResultDto>.Failure(updateResult.ErrorItems);
 
             // Return success result
             var successResult = CreateSuccessResult(user, targetRoleName);
@@ -130,7 +131,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             var removeResult = await _userManager.RemoveFromRolesAsync(user, existingUserRoles);
             return removeResult.Succeeded
                 ? Result.Success()
-                : Result.Failure(removeResult.Errors.Select(e => e.Description));
+                : Result.Failure(removeResult.Errors.Select(e => e.Description).Select(d => new ResultError(ErrorType.Validation, d)));
         }
 
         private async Task<Result> AddNewRoleAsync(ApplicationUser user, string roleName)
@@ -138,7 +139,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             var addResult = await _userManager.AddToRoleAsync(user, roleName);
             return addResult.Succeeded
                 ? Result.Success()
-                : Result.Failure(addResult.Errors.Select(e => e.Description));
+                : Result.Failure(addResult.Errors.Select(e => e.Description).Select(d => new ResultError(ErrorType.Validation, d)));
         }
 
         private async Task<Result> UpdateUserRoleForeignKeyAsync(ApplicationUser user, ApplicationRole targetRole)
@@ -147,7 +148,7 @@ namespace BankingSystemAPI.Infrastructure.Services
             var finalUpdateResult = await _userManager.UpdateAsync(user);
             return finalUpdateResult.Succeeded
                 ? Result.Success()
-                : Result.Failure(finalUpdateResult.Errors.Select(e => e.Description));
+                : Result.Failure(finalUpdateResult.Errors.Select(e => e.Description).Select(d => new ResultError(ErrorType.Validation, d)));
         }
 
         private UserRoleUpdateResultDto CreateSuccessResult(ApplicationUser user, string? roleName)
