@@ -13,20 +13,10 @@ namespace BankingSystemAPI.Application.DTOs.Transactions
 {
     /// <summary>
     /// Request DTO to transfer money between accounts.
+    /// Backwards-compatible properties added for older integration tests.
     /// </summary>
     public class TransferReqDto
     {
-        #region Fields
-        #endregion
-
-        #region Constructors
-        #endregion
-
-        #region Properties
-        #endregion
-
-        #region Methods
-        #endregion
         /// <summary>
         /// Source account identifier.
         /// </summary>
@@ -44,6 +34,21 @@ namespace BankingSystemAPI.Application.DTOs.Transactions
         /// </summary>
         [Range(0.01, double.MaxValue)]
         public decimal Amount { get; set; }
+
+        // Compatibility properties expected by older tests
+        [JsonIgnore]
+        public int FromAccountId
+        {
+            get => SourceAccountId;
+            set => SourceAccountId = value;
+        }
+
+        [JsonIgnore]
+        public int ToAccountId
+        {
+            get => TargetAccountId;
+            set => TargetAccountId = value;
+        }
     }
 }
 
