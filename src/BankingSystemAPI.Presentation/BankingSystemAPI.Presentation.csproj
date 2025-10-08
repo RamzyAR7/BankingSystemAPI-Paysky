@@ -27,7 +27,4 @@
     <ProjectReference Include="..\BankingSystemAPI.Domain\BankingSystemAPI.Domain.csproj" />
     <ProjectReference Include="..\BankingSystemAPI.Infrastructure\BankingSystemAPI.Infrastructure.csproj" />
   </ItemGroup>
-	<ItemGroup>
-		<InternalsVisibleTo Include="BankingSystemAPI.IntegrationTests" />
-	</ItemGroup>
 </Project>
