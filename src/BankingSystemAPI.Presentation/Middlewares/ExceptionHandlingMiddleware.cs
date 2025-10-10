@@ -11,10 +11,12 @@ using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Presentation.Helpers;
 using BankingSystemAPI.Domain.Constant;
+using System.Text.Json.Serialization;
 #endregion
 
 namespace BankingSystemAPI.Presentation.Middlewares
 {
+    #region Class
     /// <summary>
     /// Enhanced middleware to handle infrastructure and system-level exceptions with comprehensive ResultExtensions patterns.
     /// Optimized for .NET 8 with modern async patterns and performance improvements.
@@ -22,6 +24,7 @@ namespace BankingSystemAPI.Presentation.Middlewares
     /// </summary>
     public class ExceptionHandlingMiddleware
     {
+        #region Fields
         private readonly RequestDelegate _next;
         private readonly ILogger<ExceptionHandlingMiddleware> _logger;
 
@@ -30,15 +33,19 @@ namespace BankingSystemAPI.Presentation.Middlewares
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = false,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
+        #endregion
 
+        #region Constructor
         public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
         {
             _next = next;
             _logger = logger;
         }
+        #endregion
 
+        #region Public Methods
         public async Task InvokeAsync(HttpContext context)
         {
             var requestId = GenerateRequestId();
@@ -59,7 +66,9 @@ namespace BankingSystemAPI.Presentation.Middlewares
                 await HandleExceptionAsync(context, ex, requestId);
             }
         }
+        #endregion
 
+        #region Private Methods
         private static string GenerateRequestId()
         {
             // Use Span<T> for better performance in .NET 8
@@ -157,49 +166,9 @@ namespace BankingSystemAPI.Presentation.Middlewares
                 return new object();
             }
         }
+        #endregion
 
-        // New static method to handle background/unobserved exceptions using same logic
-        public static void HandleBackgroundException(Exception exception, IServiceProvider services)
-        {
-            try
-            {
-                if (exception == null) return;
-
-                var logger = services.GetService<ILogger<ExceptionHandlingMiddleware>>() ?? services.GetService<ILoggerFactory>()?.CreateLogger("ExceptionHandlingMiddleware");
-                if (logger == null)
-                {
-                    // fallback to console
-                    Console.Error.WriteLine("ExceptionHandlingMiddleware logger not available");
-                    return;
-                }
-
-                var realException = GetInnermostException(exception);
-                var (statusCode, message, logLevel) = CategorizeExceptionCore(realException);
-
-                var logArgs = new object[] { "Background", "", "", realException.GetType().Name, message };
-
-                switch (logLevel)
-                {
-                    case LogLevel.Critical:
-                        logger.LogCritical(realException, ApiResponseMessages.Logging.MiddlewareExceptionHandled, logArgs);
-                        break;
-                    case LogLevel.Error:
-                        logger.LogError(realException, ApiResponseMessages.Logging.MiddlewareExceptionHandled, logArgs);
-                        break;
-                    case LogLevel.Warning:
-                        logger.LogWarning(realException, ApiResponseMessages.Logging.MiddlewareExceptionHandled, logArgs);
-                        break;
-                    default:
-                        logger.LogInformation(realException, ApiResponseMessages.Logging.MiddlewareExceptionHandled, logArgs);
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                try { Console.Error.WriteLine($"Failed while handling background exception: {ex}"); } catch { }
-            }
-        }
-
+        #region Static Methods
         private static (int StatusCode, string Message, LogLevel LogLevel) CategorizeExceptionCore(Exception exception)
         {
             var ex = exception ?? new Exception("Unknown");
@@ -303,6 +272,7 @@ namespace BankingSystemAPI.Presentation.Middlewares
 
             return current;
         }
+        #endregion
     }
+    #endregion
 }
-

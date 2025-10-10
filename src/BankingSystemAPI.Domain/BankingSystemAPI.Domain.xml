@@ -41,13 +41,6 @@
             Keeps HTTP mapping consolidated and easy to change/test.
             </summary>
         </member>
-        <member name="T:BankingSystemAPI.Domain.Common.ResultFactory">
-            <summary>
-            Helper to construct Result and Result{T} instances via reflection in a centralized place.
-            This isolates reflection usage and simplifies testing.
-            </summary>
-        </member>
-        <!-- Badly formed XML comment ignored for member "M:BankingSystemAPI.Domain.Common.ResultFactory.CreateGenericFailure(System.Type,System.Collections.Generic.IEnumerable{BankingSystemAPI.Domain.Common.ResultError})" -->
         <member name="T:BankingSystemAPI.Domain.Constant.ApiResponseMessages">
             <summary>
             Constants for API response messages to maintain consistency and improve maintainability
