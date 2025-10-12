@@ -6,12 +6,12 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace BankingSystemAPI.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class init1 : Migration
+    public partial class init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateSequence(
+            migrationBuilder.CreateSequence<int>(
                 name: "AccountIdSequence");
 
             migrationBuilder.CreateTable(

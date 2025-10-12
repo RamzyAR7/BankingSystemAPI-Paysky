@@ -22,7 +22,7 @@ namespace BankingSystemAPI.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.HasSequence("AccountIdSequence");
+            modelBuilder.HasSequence<int>("AccountIdSequence");
 
             modelBuilder.Entity("BankingSystemAPI.Domain.Entities.Account", b =>
                 {

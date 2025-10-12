@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BankingSystemAPI.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251012091232_init1")]
-    partial class init1
+    [Migration("20251012142138_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,7 +25,7 @@ namespace BankingSystemAPI.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.HasSequence("AccountIdSequence");
+            modelBuilder.HasSequence<int>("AccountIdSequence");
 
             modelBuilder.Entity("BankingSystemAPI.Domain.Entities.Account", b =>
                 {

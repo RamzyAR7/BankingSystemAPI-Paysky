@@ -21,7 +21,6 @@ using BankingSystemAPI.Infrastructure.Seeding;
 using BankingSystemAPI.Infrastructure.Services;
 using BankingSystemAPI.Infrastructure.Setting; 
 using BankingSystemAPI.Infrastructure.UnitOfWork;
-using BankingSystemAPI.Presentation.Filters;
 using BankingSystemAPI.Presentation.Middlewares;
 using BankingSystemAPI.Presentation.Swagger;
 using FluentValidation;
@@ -44,14 +43,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add logging filter as a service so DI can inject ILogger
-builder.Services.AddScoped<RequestResponseLoggingFilter>();
-
-builder.Services.AddControllers(options =>
-{
-    // register globally
-    options.Filters.AddService<RequestResponseLoggingFilter>();
-});
+builder.Services.AddControllers();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -233,6 +225,7 @@ builder.Services.AddScoped<CreateUserCommandValidator>(provider =>
 
 // Register MediatR validation behavior
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(RequestResponseLoggingBehavior<,>));
 
 #region Register Repositories and Unit of Work
 // Register Optimized Unit of Work

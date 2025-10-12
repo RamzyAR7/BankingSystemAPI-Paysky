@@ -1,5 +1,4 @@
-﻿#region Usings
-using BankingSystemAPI.Domain.Entities;
+﻿using BankingSystemAPI.Domain.Entities;
 using BankingSystemAPI.Infrastructure.Configuration_Classes;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -11,9 +10,6 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Identity;
-#endregion
-
 
 namespace BankingSystemAPI.Infrastructure.Context
 {
@@ -38,6 +34,10 @@ namespace BankingSystemAPI.Infrastructure.Context
         {
 
             base.OnModelCreating(builder);
+
+            // Define a single sequence that all Account tables will share for their primary key.
+            // This ensures that Account IDs are globally unique across all account types.
+            builder.HasSequence<int>("AccountIdSequence");
             builder.ApplyConfiguration(new BankConfiguration());
             builder.ApplyConfiguration(new ApplicationUserConfiguration());
             builder.ApplyConfiguration(new ApplicationRoleConfiguration());
@@ -52,4 +52,3 @@ namespace BankingSystemAPI.Infrastructure.Context
         }
     }
 }
-
