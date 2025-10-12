@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 using Microsoft.AspNetCore.Http;
 using BankingSystemAPI.Domain.Constant;
 
@@ -51,10 +53,28 @@ namespace BankingSystemAPI.Application.Behaviors
                 requestPayload = "***UNSERIALIZABLE_REQUEST***";
             }
 
-            _logger.LogDebug("MediatR request received: {RequestType} {Method} {Path} UserId={UserId}",
-                typeof(TRequest).Name, method, path, userId);
+            var scopeState = new Dictionary<string, object?>
+            {
+                ["RequestType"] = typeof(TRequest).Name,
+                ["Method"] = method,
+                ["Path"] = path,
+                ["UserId"] = userId,
+                ["Authenticated"] = isAuthenticated,
+                ["IP"] = ip
+            };
 
-            PrintColoredIfDev($@"
+            // Try get request id from incoming request header (set by ExceptionHandlingMiddleware), otherwise generate one
+            var requestId = httpContext?.Request?.Headers["X-Request-ID"].ToString();
+            if (string.IsNullOrWhiteSpace(requestId))
+                requestId = Guid.NewGuid().ToString();
+
+            using (LogContext.PushProperty("RequestId", requestId))
+            using (_logger.BeginScope(scopeState))
+            {
+                _logger.LogDebug("Incoming MediatR request {RequestType} {Method} {Path} UserId={UserId} Authenticated={Authenticated} IP={IP} Payload={Payload}",
+                    typeof(TRequest).Name, method, path, userId, isAuthenticated, ip, MaskSensitiveData(requestPayload));
+
+                PrintColoredIfDev($@"
 ───────────────────────────────
 # [INCOMING MEDIATR REQUEST]
 ───────────────────────────────
@@ -66,27 +86,26 @@ namespace BankingSystemAPI.Application.Behaviors
 -> Payload:     {MaskSensitiveData(requestPayload)}
 ───────────────────────────────", ConsoleColor.Cyan);
 
-            try
-            {
-                var response = await next();
-
-                sw.Stop();
-
-                string responsePayload;
                 try
                 {
-                    var options = new JsonSerializerOptions { WriteIndented = true };
-                    responsePayload = JsonSerializer.Serialize(response, options);
-                }
-                catch (Exception)
-                {
-                    responsePayload = "***UNSERIALIZABLE_RESPONSE***";
-                }
+                    var response = await next();
 
-                _logger.LogDebug("MediatR request completed: {RequestType} {ResponseType} ElapsedMs={Elapsed}",
-                    typeof(TRequest).Name, typeof(TResponse).Name, sw.ElapsedMilliseconds);
+                    sw.Stop();
 
-                PrintColoredIfDev($@"
+                    string responsePayload;
+                    try
+                    {
+                        var options = new JsonSerializerOptions { WriteIndented = true };
+                        responsePayload = JsonSerializer.Serialize(response, options);
+                    }
+                    catch (Exception)
+                    {
+                        responsePayload = "***UNSERIALIZABLE_RESPONSE***";
+                    }
+
+                    _logger.LogDebug("Outgoing MediatR response {ResponseType} DurationMs={Duration} Payload={Payload}", typeof(TResponse).Name, sw.ElapsedMilliseconds, MaskSensitiveData(responsePayload));
+
+                    PrintColoredIfDev($@"
 ───────────────────────────────
 # [OUTGOING MEDIATR RESPONSE]
 ───────────────────────────────
@@ -96,17 +115,17 @@ namespace BankingSystemAPI.Application.Behaviors
 -> Payload:     {MaskSensitiveData(responsePayload)}
 ───────────────────────────────", ConsoleColor.Green);
 
-                // Optional: central timing info (info level)
-                _logger.LogInformation(ApiResponseMessages.Infrastructure.RequestTimingLogFormat, method, path, httpContext?.Response?.StatusCode ?? 0, sw.ElapsedMilliseconds);
+                    // Optional: central timing info (info level)
+                    _logger.LogInformation(ApiResponseMessages.Infrastructure.RequestTimingLogFormat, method, path, httpContext?.Response?.StatusCode ?? 0, sw.ElapsedMilliseconds);
 
-                return response;
-            }
-            catch (Exception ex)
-            {
-                sw.Stop();
-                _logger.LogError(ex, "Unhandled exception in MediatR handler for {RequestType} @ {Path}", typeof(TRequest).Name, path);
+                    return response;
+                }
+                catch (Exception ex)
+                {
+                    sw.Stop();
+                    _logger.LogError(ex, "Unhandled exception in MediatR handler for {RequestType} @ {Path}", typeof(TRequest).Name, path);
 
-                PrintColoredIfDev($@"
+                    PrintColoredIfDev($@"
 ───────────────────────────────
 # [EXCEPTION DURING MEDIATR HANDLING]
 ───────────────────────────────
@@ -117,7 +136,11 @@ namespace BankingSystemAPI.Application.Behaviors
 {ex.StackTrace}
 ───────────────────────────────", ConsoleColor.Red);
 
-                throw;
+                    _logger.LogError(ex, "Exception during MediatR handling {RequestType} DurationMs={Duration} UserId={UserId}",
+                        typeof(TRequest).Name, sw.ElapsedMilliseconds, userId);
+
+                    throw;
+                }
             }
         }
 

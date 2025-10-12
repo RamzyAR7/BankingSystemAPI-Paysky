@@ -38,8 +38,12 @@ using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.Services;
 using BankingSystemAPI.Infrastructure.Cache;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Serilog;
 #endregion
 
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -343,6 +347,11 @@ builder.Services.AddAuthentication(options =>
 });
 #endregion
 
+#region use Serilog
+builder.Host.UseSerilog((ctx, lc) => lc
+    .ReadFrom.Configuration(ctx.Configuration));
+#endregion
+
 var app = builder.Build();
 
 #region Seeding Data
@@ -390,28 +399,39 @@ using (var scope = app.Services.CreateScope())
 }
 #endregion
 
-// Configure the HTTP request pipeline.
-app.UseMiddleware<ExceptionHandlingMiddleware>();
-
-// Add timing middleware after exception middleware so exceptions are still captured
-app.UseMiddleware<RequestTimingMiddleware>();
-
-if (app.Environment.IsDevelopment())
+try
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    Log.Information("Starting web application");
+    // Configure the HTTP request pipeline.
+    app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+    // Add timing middleware after exception middleware so exceptions are still captured
+    app.UseMiddleware<RequestTimingMiddleware>();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+
+    app.UseHttpsRedirection();
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    // Enable rate limiting middleware globally (policies selected via EnableRateLimiting attribute)
+    app.UseRateLimiter();
+
+    app.MapControllers();
+
+    // After building services, expose ServiceProvider for legacy constructors
+    app.Run();
 }
-
-app.UseHttpsRedirection();
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-// Enable rate limiting middleware globally (policies selected via EnableRateLimiting attribute)
-app.UseRateLimiter();
-
-app.MapControllers();
-
-// After building services, expose ServiceProvider for legacy constructors
-app.Run();
-
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application start-up failed");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

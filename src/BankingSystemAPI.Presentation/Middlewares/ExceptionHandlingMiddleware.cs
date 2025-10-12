@@ -12,6 +12,7 @@ using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Presentation.Helpers;
 using BankingSystemAPI.Domain.Constant;
 using System.Text.Json.Serialization;
+using Serilog.Context;
 #endregion
 
 namespace BankingSystemAPI.Presentation.Middlewares
@@ -51,19 +52,22 @@ namespace BankingSystemAPI.Presentation.Middlewares
             var requestId = GenerateRequestId();
             SetRequestContext(context, requestId);
 
-            try
+            using (LogContext.PushProperty("RequestId", requestId))
             {
-                await _next(context);
+                try
+                {
+                    await _next(context);
 
-                // Use ResultExtensions for successful request logging with performance tracking
-                var successResult = Result.Success();
-                successResult.OnSuccess(() =>
-                    _logger.LogDebug("{RequestId} {Path} {Method} {StatusCode} - MiddlewareRequestCompleted",
-                        requestId, context.Request.Path, context.Request.Method, context.Response.StatusCode));
-            }
-            catch (Exception ex)
-            {
-                await HandleExceptionAsync(context, ex, requestId);
+                    // Use ResultExtensions for successful request logging with performance tracking
+                    var successResult = Result.Success();
+                    successResult.OnSuccess(() =>
+                        _logger.LogDebug("{RequestId} {Path} {Method} {StatusCode} - MiddlewareRequestCompleted",
+                            requestId, context.Request.Path, context.Request.Method, context.Response.StatusCode));
+                }
+                catch (Exception ex)
+                {
+                    await HandleExceptionAsync(context, ex, requestId);
+                }
             }
         }
         #endregion
