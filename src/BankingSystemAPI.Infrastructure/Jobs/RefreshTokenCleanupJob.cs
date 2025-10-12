@@ -19,11 +19,13 @@ namespace BankingSystemAPI.Infrastructure.Jobs
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<RefreshTokenCleanupJob> _logger;
+        private readonly IHostEnvironment _env;
 
-        public RefreshTokenCleanupJob(IServiceScopeFactory scopeFactory, ILogger<RefreshTokenCleanupJob> logger)
+        public RefreshTokenCleanupJob(IServiceScopeFactory scopeFactory, ILogger<RefreshTokenCleanupJob> logger, IHostEnvironment env)
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
+            _env = env;
         }
 
         /// <summary>
@@ -34,11 +36,13 @@ namespace BankingSystemAPI.Infrastructure.Jobs
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            var cyan = "\u001b[36m";
-            var reset = "\u001b[0m";
-
-            var scanMsg = string.Format("{0}[CleanupJob] Scanning for expired/inactive refresh tokens...{1}", cyan, reset);
-            Console.WriteLine(scanMsg);
+            _logger.LogInformation("[CleanupJob] Scanning for expired/inactive refresh tokens...");
+            if (_env.IsDevelopment())
+            {
+                var cyan = "\u001b[36m";
+                var reset = "\u001b[0m";
+                Console.WriteLine(string.Format("{0}[CleanupJob] Scanning for expired/inactive refresh tokens...{1}", cyan, reset));
+            }
 
             const int batchSize = 100; // Tune as needed for your DB
             int totalTokens = 0;
@@ -99,11 +103,16 @@ namespace BankingSystemAPI.Infrastructure.Jobs
             }
 
             var jobEnd = DateTime.UtcNow;
-            var foundMsg = string.Format("{0}[CleanupJob] Found {1} tokens to clean.{2}", cyan, totalTokens, reset);
-            Console.WriteLine(foundMsg);
-            var removedMsg = string.Format("{0}[CleanupJob] Removed {1} expired/invalid refresh tokens.{2}", cyan, removedTokens, reset);
-            Console.WriteLine(removedMsg);
             _logger.LogInformation("CleanupJobRunCompleted: Found={TotalTokens}, Removed={RemovedTokens}, DurationSeconds={Duration}", totalTokens, removedTokens, (jobEnd - jobStart).TotalSeconds);
+            if (_env.IsDevelopment())
+            {
+                var cyan = "\u001b[36m";
+                var reset = "\u001b[0m";
+                var foundMsg = string.Format("{0}[CleanupJob] Found {1} tokens to clean.{2}", cyan, totalTokens, reset);
+                Console.WriteLine(foundMsg);
+                var removedMsg = string.Format("{0}[CleanupJob] Removed {1} expired/invalid refresh tokens.{2}", cyan, removedTokens, reset);
+                Console.WriteLine(removedMsg);
+            }
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)

@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text.Json;
-using System.Threading.Tasks;
 using BankingSystemAPI.Domain.Common;
 using BankingSystemAPI.Domain.Extensions;
 using BankingSystemAPI.Presentation.Helpers;
@@ -52,7 +51,9 @@ namespace BankingSystemAPI.Presentation.Middlewares
             var requestId = GenerateRequestId();
             SetRequestContext(context, requestId);
 
-            using (LogContext.PushProperty("RequestId", requestId))
+            var traceId = System.Diagnostics.Activity.Current?.TraceId.ToString();
+            using (LogContext.PushProperty(LoggingConstants.RequestIdProperty, requestId))
+            using (LogContext.PushProperty(LoggingConstants.TraceIdProperty, traceId))
             {
                 try
                 {

@@ -64,11 +64,13 @@ namespace BankingSystemAPI.Application.Behaviors
             };
 
             // Try get request id from incoming request header (set by ExceptionHandlingMiddleware), otherwise generate one
-            var requestId = httpContext?.Request?.Headers["X-Request-ID"].ToString();
+            var requestId = httpContext?.Request?.Headers[LoggingConstants.RequestIdHeader].ToString();
             if (string.IsNullOrWhiteSpace(requestId))
                 requestId = Guid.NewGuid().ToString();
+            var traceId = System.Diagnostics.Activity.Current?.TraceId.ToString();
 
-            using (LogContext.PushProperty("RequestId", requestId))
+            using (LogContext.PushProperty(LoggingConstants.RequestIdProperty, requestId))
+            using (LogContext.PushProperty(LoggingConstants.TraceIdProperty, traceId))
             using (_logger.BeginScope(scopeState))
             {
                 _logger.LogDebug("Incoming MediatR request {RequestType} {Method} {Path} UserId={UserId} Authenticated={Authenticated} IP={IP} Payload={Payload}",

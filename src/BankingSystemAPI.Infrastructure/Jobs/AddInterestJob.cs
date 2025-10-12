@@ -17,19 +17,24 @@ namespace BankingSystemAPI.Infrastructure.Jobs
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<AddInterestJob> _logger;
+        private readonly IHostEnvironment _env;
 
-        public AddInterestJob(IServiceScopeFactory scopeFactory, ILogger<AddInterestJob> logger)
+        public AddInterestJob(IServiceScopeFactory scopeFactory, ILogger<AddInterestJob> logger, IHostEnvironment env)
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
+            _env = env;
         }
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var originalColor = Console.ForegroundColor;
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobStartedFormat, nameof(AddInterestJob), DateTime.UtcNow));
-            Console.ForegroundColor = originalColor;
             _logger.LogInformation(ApiResponseMessages.Infrastructure.JobStartedFormat, nameof(AddInterestJob), DateTime.UtcNow);
+            if (_env.IsDevelopment())
+            {
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobStartedFormat, nameof(AddInterestJob), DateTime.UtcNow));
+                Console.ForegroundColor = originalColor;
+            }
 
             const int batchSize = 100; // Tune as needed for your DB
             while (!stoppingToken.IsCancellationRequested)
@@ -94,9 +99,12 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                                         await uow.AccountRepository.UpdateAsync(accountBase);
                                         batchApplied++;
                                         _logger.LogInformation(ApiResponseMessages.Infrastructure.JobAppliedInterestFormat, nameof(AddInterestJob), interestAmount, accountBase.Id, accountBase.AccountNumber, DateTime.UtcNow);
-                                        Console.ForegroundColor = ConsoleColor.Green;
-                                        Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobAppliedInterestFormat, nameof(AddInterestJob), interestAmount, accountBase.Id, accountBase.AccountNumber, DateTime.UtcNow));
-                                        Console.ForegroundColor = originalColor;
+                                        if (_env.IsDevelopment())
+                                        {
+                                            Console.ForegroundColor = ConsoleColor.Green;
+                                            Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobAppliedInterestFormat, nameof(AddInterestJob), interestAmount, accountBase.Id, accountBase.AccountNumber, DateTime.UtcNow));
+                                            Console.ForegroundColor = originalColor;
+                                        }
                                     }
                                 }
                             }
@@ -133,17 +141,23 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                                 if (!success)
                                 {
                                     _logger.LogError(exAccount, ApiResponseMessages.Infrastructure.JobErrorProcessingAccountFormat, nameof(AddInterestJob), accountBase.Id, exAccount.Message);
-                                    Console.ForegroundColor = ConsoleColor.Yellow;
-                                    Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobErrorProcessingAccountFormat, nameof(AddInterestJob), accountBase.Id, exAccount.Message));
-                                    Console.ForegroundColor = originalColor;
+                                    if (_env.IsDevelopment())
+                                    {
+                                        Console.ForegroundColor = ConsoleColor.Yellow;
+                                        Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobErrorProcessingAccountFormat, nameof(AddInterestJob), accountBase.Id, exAccount.Message));
+                                        Console.ForegroundColor = originalColor;
+                                    }
                                 }
                             }
                             catch (Exception exAccount)
                             {
                                 _logger.LogError(exAccount, ApiResponseMessages.Infrastructure.JobErrorProcessingAccountFormat, nameof(AddInterestJob), accountBase.Id, exAccount.Message);
-                                Console.ForegroundColor = ConsoleColor.Yellow;
-                                Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobErrorProcessingAccountFormat, nameof(AddInterestJob), accountBase.Id, exAccount.Message));
-                                Console.ForegroundColor = originalColor;
+                                if (_env.IsDevelopment())
+                                {
+                                    Console.ForegroundColor = ConsoleColor.Yellow;
+                                    Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobErrorProcessingAccountFormat, nameof(AddInterestJob), accountBase.Id, exAccount.Message));
+                                    Console.ForegroundColor = originalColor;
+                                }
                             }
                         }
 
@@ -165,9 +179,12 @@ namespace BankingSystemAPI.Infrastructure.Jobs
 
                     var jobEnd = DateTime.UtcNow;
                     _logger.LogInformation(ApiResponseMessages.Infrastructure.JobRunCompletedFormat, nameof(AddInterestJob), totalAccounts, appliedCount, DateTime.UtcNow, (jobEnd - jobStart).TotalSeconds);
-                    Console.ForegroundColor = ConsoleColor.Cyan;
-                    Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobRunCompletedFormat, nameof(AddInterestJob), totalAccounts, appliedCount, DateTime.UtcNow, (jobEnd - jobStart).TotalSeconds));
-                    Console.ForegroundColor = originalColor;
+                    if (_env.IsDevelopment())
+                    {
+                        Console.ForegroundColor = ConsoleColor.Cyan;
+                        Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobRunCompletedFormat, nameof(AddInterestJob), totalAccounts, appliedCount, DateTime.UtcNow, (jobEnd - jobStart).TotalSeconds));
+                        Console.ForegroundColor = originalColor;
+                    }
 
                     // Run every 5 minutes for testing if any account uses every5minutes
                     // Note: we looked at the snapshot of accounts in this run; to decide delay accurately check DB again next run
@@ -183,9 +200,12 @@ namespace BankingSystemAPI.Infrastructure.Jobs
                 catch (Exception exRun)
                 {
                     _logger.LogError(exRun, ApiResponseMessages.Infrastructure.JobRunFailedFormat, nameof(AddInterestJob));
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobRunFailedFormat, nameof(AddInterestJob)) + $": {exRun.Message}");
-                    Console.ForegroundColor = originalColor;
+                    if (_env.IsDevelopment())
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.JobRunFailedFormat, nameof(AddInterestJob)) + $": {exRun.Message}");
+                        Console.ForegroundColor = originalColor;
+                    }
 
                     // Backoff a bit on error to avoid tight error loops
                     await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);

@@ -1,6 +1,8 @@
 ﻿#region Usings
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
+using System.Diagnostics;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System;
@@ -18,11 +20,13 @@ namespace BankingSystemAPI.Presentation.Middlewares
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<RequestTimingMiddleware> _logger;
+        private readonly IHostEnvironment _env;
 
-        public RequestTimingMiddleware(RequestDelegate next, ILogger<RequestTimingMiddleware> logger)
+        public RequestTimingMiddleware(RequestDelegate next, ILogger<RequestTimingMiddleware> logger, IHostEnvironment env)
         {
             _next = next ?? throw new ArgumentNullException(nameof(next));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _env = env ?? throw new ArgumentNullException(nameof(env));
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -43,23 +47,25 @@ namespace BankingSystemAPI.Presentation.Middlewares
                 // Log structured message using centralized format
                 _logger.LogInformation(ApiResponseMessages.Infrastructure.RequestTimingLogFormat, method, path, status, elapsed);
 
-                // Console colored output to differentiate timing logs
-                var original = Console.ForegroundColor;
-                try
+                // Also optionally write colored console output in Development for quick visual feedback
+                if (_env.IsDevelopment())
                 {
-                    // Choose color based on duration
-                    if (elapsed >= 2000)
-                        Console.ForegroundColor = ConsoleColor.Red; // slow
-                    else if (elapsed >= 500)
-                        Console.ForegroundColor = ConsoleColor.Yellow; // medium
-                    else
-                        Console.ForegroundColor = ConsoleColor.Magenta; // fast
+                    var original = Console.ForegroundColor;
+                    try
+                    {
+                        if (elapsed >= 2000)
+                            Console.ForegroundColor = ConsoleColor.Red; // slow
+                        else if (elapsed >= 500)
+                            Console.ForegroundColor = ConsoleColor.Yellow; // medium
+                        else
+                            Console.ForegroundColor = ConsoleColor.Magenta; // fast
 
-                    Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.RequestTimingConsoleFormat, DateTime.UtcNow, method, path, status, elapsed));
-                }
-                finally
-                {
-                    Console.ForegroundColor = original;
+                        Console.WriteLine(string.Format(ApiResponseMessages.Infrastructure.RequestTimingConsoleFormat, DateTime.UtcNow, method, path, status, elapsed));
+                    }
+                    finally
+                    {
+                        Console.ForegroundColor = original;
+                    }
                 }
             }
         }
