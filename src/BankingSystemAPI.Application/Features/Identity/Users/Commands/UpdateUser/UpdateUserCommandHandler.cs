@@ -107,24 +107,34 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.UpdateUs
         private List<string> CheckForConflicts(UpdateUserCommand request, IList<UserResDto> usersInBank)
         {
             var conflicts = new List<string>();
+            // Normalize incoming values (trim) to avoid false positives due to whitespace.
+            var newUsername = request.UserEdit.Username?.Trim();
+            var newEmail = request.UserEdit.Email?.Trim();
+            var newNationalId = request.UserEdit.NationalId?.Trim();
+            var newPhone = request.UserEdit.PhoneNumber?.Trim();
+            var newFullName = request.UserEdit.FullName?.Trim();
 
             var conflictingUser = usersInBank.FirstOrDefault(u =>
-                u.Id != request.UserId &&
-                (string.Equals(u.Username, request.UserEdit.Username, StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(u.Email, request.UserEdit.Email, StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(u.NationalId, request.UserEdit.NationalId, StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(u.PhoneNumber, request.UserEdit.PhoneNumber, StringComparison.OrdinalIgnoreCase)));
+                u.Id != request.UserId && (
+                    string.Equals(u.Username?.Trim(), newUsername, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(u.Email?.Trim(), newEmail, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(u.NationalId?.Trim(), newNationalId, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(u.PhoneNumber?.Trim(), newPhone, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(u.FullName?.Trim(), newFullName, StringComparison.OrdinalIgnoreCase)
+                ));
 
             if (conflictingUser != null)
             {
-                if (string.Equals(conflictingUser.Username, request.UserEdit.Username, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(conflictingUser.Username?.Trim(), newUsername, StringComparison.OrdinalIgnoreCase))
                     conflicts.Add("username");
-                if (string.Equals(conflictingUser.Email, request.UserEdit.Email, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(conflictingUser.Email?.Trim(), newEmail, StringComparison.OrdinalIgnoreCase))
                     conflicts.Add("email");
-                if (string.Equals(conflictingUser.NationalId, request.UserEdit.NationalId, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(conflictingUser.NationalId?.Trim(), newNationalId, StringComparison.OrdinalIgnoreCase))
                     conflicts.Add("national ID");
-                if (string.Equals(conflictingUser.PhoneNumber, request.UserEdit.PhoneNumber, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(conflictingUser.PhoneNumber?.Trim(), newPhone, StringComparison.OrdinalIgnoreCase))
                     conflicts.Add("phone number");
+                if (string.Equals(conflictingUser.FullName?.Trim(), newFullName, StringComparison.OrdinalIgnoreCase))
+                    conflicts.Add("full name");
             }
 
             return conflicts;

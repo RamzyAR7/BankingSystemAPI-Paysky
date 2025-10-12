@@ -17,17 +17,6 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
 {
     public class ScopeResolver : IScopeResolver
     {
-        #region Fields
-        #endregion
-
-        #region Constructors
-        #endregion
-
-        #region Properties
-        #endregion
-
-        #region Methods
-        #endregion
         private readonly ICurrentUserService _currentUser;
         private readonly ILogger<ScopeResolver> _logger;
 
@@ -47,10 +36,10 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
                 // Use ResultExtensions for consistent logging patterns
                 var result = Result<AccessScope>.Success(scope);
                 result.OnSuccess(() =>
-                    {
-                        _logger.LogDebug(ApiResponseMessages.Logging.ScopeResolved,
-                            _currentUser.UserId, role.Name, scope);
-                    });
+                {
+                    _logger.LogDebug(ApiResponseMessages.Logging.ScopeResolved,
+                        _currentUser.UserId, role.Name, scope);
+                });
 
                 return scope;
             }
@@ -74,14 +63,14 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
             var scopeResult = ProcessRoleToScope(roleName);
 
             scopeResult.OnSuccess(() =>
-                {
-                    _logger.LogDebug("[AUTHORIZATION] Role processed successfully: {Role} -> {Scope}",
-                        roleName, scopeResult.Value);
-                })
-                .OnFailure(errors =>
-                {
-                    _logger.LogWarning("[AUTHORIZATION] Role processing failed: {Role}, using default scope", roleName);
-                });
+            {
+                _logger.LogDebug("[AUTHORIZATION] Role processed successfully: {Role} -> {Scope}",
+                    roleName, scopeResult.Value);
+            })
+            .OnFailure(errors =>
+            {
+                _logger.LogWarning("[AUTHORIZATION] Role processing failed: {Role}, using default scope", roleName);
+            });
 
             return scopeResult ? scopeResult.Value : AccessScope.Self;
         }

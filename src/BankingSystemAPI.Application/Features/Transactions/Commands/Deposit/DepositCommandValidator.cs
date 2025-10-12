@@ -12,17 +12,6 @@ namespace BankingSystemAPI.Application.Features.Transactions.Commands.Deposit
     /// </summary>
     public class DepositCommandValidator : AbstractValidator<DepositCommand>
     {
-        #region Fields
-        #endregion
-
-        #region Constructors
-        #endregion
-
-        #region Properties
-        #endregion
-
-        #region Methods
-        #endregion
         public DepositCommandValidator()
         {
             RuleFor(x => x.Req).NotNull().WithMessage(string.Format(ApiResponseMessages.Validation.RequiredDataFormat, "Request body"));

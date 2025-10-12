@@ -60,6 +60,8 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
             return loginResult;
         }
 
+        #region helper methods
+
         private async Task<Result<UserResDto>> ValidateUserExistsAsync(string email)
         {
             var userResult = await _userService.GetUserByEmailAsync(email);
@@ -128,6 +130,6 @@ namespace BankingSystemAPI.Application.Features.Identity.Auth.Commands.Login
 
             return Result<AuthResultDto>.Success(result);
         }
+        #endregion
     }
 }
-

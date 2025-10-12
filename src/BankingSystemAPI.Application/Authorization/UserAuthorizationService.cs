@@ -26,7 +26,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
     /// </summary>
     public class UserAuthorizationService : IUserAuthorizationService
     {
-        #region Private Fields - Organized by Responsibility
+        #region Private Fields
 
         // Core Dependencies
         private readonly ICurrentUserService _currentUser;
@@ -52,7 +52,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Public Interface Implementation - Ordered by Operation Impact
+        #region Public Interface Implementation
 
         /// <summary>
         /// Validates view access with minimal security impact
@@ -171,7 +171,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Core Authorization Logic - Organized by Validation Type
+        #region Core Authorization Logic
 
         /// <summary>
         /// Validates view authorization with hierarchical scope checking
@@ -232,7 +232,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Bank-Level Authorization - Organized by Security Layer
+        #region Bank-Level Authorization
 
         /// <summary>
         /// Bank-level view validation with role and bank isolation checks
@@ -276,7 +276,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Self-Modification Rules - Organized by Operation Risk
+        #region Self-Modification Rules
 
         /// <summary>
         /// Self-modification validation with operation-specific rules
@@ -311,7 +311,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Role Validation - Organized by Target Role Hierarchy
+        #region Role Validation
 
         /// <summary>
         /// Role validation for view operations with self-access bypass
@@ -349,7 +349,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Data Filtering - Organized by Scope Complexity
+        #region Data Filtering
 
         /// <summary>
         /// Apply scope-based filtering with proper data isolation
@@ -460,7 +460,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Helper Methods - Organized by Function Category
+        #region Helper Methods
 
         // Core Data Access Helpers
         private async Task<Result<AccessScope>> GetScopeAsync()
@@ -546,7 +546,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Logging Methods - Organized by Log Level and Category
+        #region Logging Methods
 
         private void LogAuthorizationResult(
             AuthorizationCheckType checkType,
@@ -622,4 +622,3 @@ namespace BankingSystemAPI.Application.AuthorizationServices
         #endregion
     }
 }
-

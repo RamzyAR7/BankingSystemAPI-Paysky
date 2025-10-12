@@ -47,18 +47,26 @@ namespace BankingSystemAPI.Infrastructure.Services
             if (validationResult.IsFailure)
                 return Result<UserResDto>.Failure(validationResult.ErrorItems);
 
-            var user = await _userManager.Users
-                .Include(u => u.Accounts).ThenInclude(a => a.Currency)
-                .Include(u => u.Bank)
-                .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.UserName == username);
+            ApplicationUser? user;
+            try
+            {
+                user = await _userManager.Users
+                    .Include(u => u.Accounts).ThenInclude(a => a.Currency)
+                    .Include(u => u.Bank)
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.UserName == username);
+            }
+            catch (InvalidOperationException)
+            {
+                user = _userManager.Users
+                    .Include(u => u.Accounts).ThenInclude(a => a.Currency)
+                    .Include(u => u.Bank)
+                    .Include(u => u.Role)
+                    .FirstOrDefault(u => u.UserName == username);
+            }
 
             var result = user.ToResult(ApiResponseMessages.Validation.UserNotFound)
                 .Map(u => _mapper.Map<UserResDto>(u));
-
-            result.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.UserRetrievedByUsername, username))
-                  .OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByUsernameFailed, username, string.Join(", ", errors)));
-
             return result;
         }
 
@@ -68,18 +76,26 @@ namespace BankingSystemAPI.Infrastructure.Services
             if (validationResult.IsFailure)
                 return Result<UserResDto>.Failure(validationResult.ErrorItems);
 
-            var user = await _userManager.Users
-                .Include(u => u.Accounts).ThenInclude(a => a.Currency)
-                .Include(u => u.Bank)
-                .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Id == userId);
+            ApplicationUser? user;
+            try
+            {
+                user = await _userManager.Users
+                    .Include(u => u.Accounts).ThenInclude(a => a.Currency)
+                    .Include(u => u.Bank)
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+            }
+            catch (InvalidOperationException)
+            {
+                user = _userManager.Users
+                    .Include(u => u.Accounts).ThenInclude(a => a.Currency)
+                    .Include(u => u.Bank)
+                    .Include(u => u.Role)
+                    .FirstOrDefault(u => u.Id == userId);
+            }
 
             var result = user.ToResult(ApiResponseMessages.Validation.UserNotFound)
                 .Map(u => _mapper.Map<UserResDto>(u));
-
-            result.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.UserRetrievedById, userId))
-                  .OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByIdFailed, userId, string.Join(", ", errors)));
-
             return result;
         }
 
@@ -89,18 +105,26 @@ namespace BankingSystemAPI.Infrastructure.Services
             if (validationResult.IsFailure)
                 return Result<UserResDto>.Failure(validationResult.ErrorItems);
 
-            var user = await _userManager.Users
-                .Include(u => u.Accounts).ThenInclude(a => a.Currency)
-                .Include(u => u.Bank)
-                .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Email == email);
+            ApplicationUser? user;
+            try
+            {
+                user = await _userManager.Users
+                    .Include(u => u.Accounts).ThenInclude(a => a.Currency)
+                    .Include(u => u.Bank)
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.Email == email);
+            }
+            catch (InvalidOperationException)
+            {
+                user = _userManager.Users
+                    .Include(u => u.Accounts).ThenInclude(a => a.Currency)
+                    .Include(u => u.Bank)
+                    .Include(u => u.Role)
+                    .FirstOrDefault(u => u.Email == email);
+            }
 
             var result = user.ToResult(ApiResponseMessages.Validation.UserNotFound)
                 .Map(u => _mapper.Map<UserResDto>(u));
-
-            result.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.UserRetrievedByEmail, email))
-                  .OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByEmailFailed, email, string.Join(", ", errors)));
-
             return result;
         }
 
@@ -114,15 +138,23 @@ namespace BankingSystemAPI.Infrastructure.Services
             if (validationResult.IsFailure)
                 return Result<string?>.Failure(validationResult.ErrorItems);
 
-            var user = await _userManager.Users
-                .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Id == userId);
+            ApplicationUser? user;
+            try
+            {
+                user = await _userManager.Users
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+            }
+            catch (InvalidOperationException)
+            {
+                user = _userManager.Users
+                    .Include(u => u.Role)
+                    .FirstOrDefault(u => u.Id == userId);
+            }
 
             if (user == null)
             {
-                var result = Result<string?>.Failure(new ResultError(ErrorType.NotFound, ApiResponseMessages.Validation.UserNotFound));
-                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRoleRetrieveFailed, userId, string.Join(", ", errors)));
-                return result;
+                return Result<string?>.Failure(new ResultError(ErrorType.NotFound, ApiResponseMessages.Validation.UserNotFound));
             }
 
             string? roleName = null;
@@ -136,9 +168,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 roleName = roles.FirstOrDefault();
             }
 
-            var successResult = Result<string?>.Success(roleName);
-            successResult.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.UserRoleRetrieved, userId));
-            return successResult;
+            return Result<string?>.Success(roleName);
         }
 
         public async Task<Result<IList<UserResDto>>> GetUsersByBankIdAsync(int bankId)
@@ -151,19 +181,14 @@ namespace BankingSystemAPI.Infrastructure.Services
                 .ToListAsync();
 
             var userDtos = _mapper.Map<List<UserResDto>>(users);
-            var result = Result<IList<UserResDto>>.Success(userDtos);
-
-            result.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.UsersRetrievedForBankId, users.Count, bankId));
-            return result;
+            return Result<IList<UserResDto>>.Success(userDtos);
         }
 
         public async Task<Result<bool>> IsBankActiveAsync(int bankId)
         {
             if (bankId <= 0)
             {
-                var validationResult = Result<bool>.BadRequest(ApiResponseMessages.Validation.BankIdGreaterThanZero);
-                validationResult.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByIdFailed, bankId, "Invalid BankId"));
-                return validationResult;
+                return Result<bool>.BadRequest(ApiResponseMessages.Validation.BankIdGreaterThanZero);
             }
 
             var contextBank = await _userManager.Users
@@ -172,9 +197,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 .FirstOrDefaultAsync();
 
             var isActive = contextBank?.IsActive ?? false;
-            var result = Result<bool>.Success(isActive);
-            result.OnSuccess(() => _logger.LogDebug(ApiResponseMessages.Logging.BankActiveStatusChecked, bankId, isActive));
-            return result;
+            return Result<bool>.Success(isActive);
         }
 
         #endregion
@@ -183,20 +206,80 @@ namespace BankingSystemAPI.Infrastructure.Services
 
         public async Task<Result<UserResDto>> CreateUserAsync(UserReqDto user)
         {
-            var existingUser = await _userManager.FindByNameAsync(user.Username);
-            if (existingUser != null)
+            // Normalize inputs (trim) and prepare lowercase variants for comparisons
+            var normalizedUsername = user.Username?.Trim();
+            var normalizedEmail = user.Email?.Trim();
+            var normalizedNationalId = string.IsNullOrWhiteSpace(user.NationalId) ? null : user.NationalId.Trim();
+            var normalizedPhone = string.IsNullOrWhiteSpace(user.PhoneNumber) ? null : user.PhoneNumber.Trim();
+            var normalizedFullName = string.IsNullOrWhiteSpace(user.FullName) ? null : user.FullName.Trim();
+
+            var usernameLower = normalizedUsername?.ToLowerInvariant();
+            var emailLower = normalizedEmail?.ToLowerInvariant();
+            var nationalIdLower = normalizedNationalId?.ToLowerInvariant();
+            var phoneLower = normalizedPhone?.ToLowerInvariant();
+            var fullNameLower = normalizedFullName?.ToLowerInvariant();
+
+            // Single-query conflict check scoped by BankId to reduce DB round-trips.
+            var conflictsQuery = _userManager.Users
+                .Where(u => u.BankId == user.BankId && (
+                    u.UserName.ToLower() == usernameLower ||
+                    u.Email.ToLower() == emailLower ||
+                    (nationalIdLower != null && u.NationalId.ToLower() == nationalIdLower) ||
+                    (phoneLower != null && u.PhoneNumber.ToLower() == phoneLower) ||
+                    (fullNameLower != null && u.FullName.ToLower() == fullNameLower)
+                ));
+
+            List<ApplicationUser> conflicts;
+            try
             {
-                var result = Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.UsernameAlreadyExists);
-                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailedUsernameExists, user.Username));
-                return result;
+                conflicts = await conflictsQuery.ToListAsync();
+            }
+            catch (InvalidOperationException)
+            {
+                // In unit tests the IQueryable may not support async. Fall back to synchronous enumeration.
+                conflicts = conflictsQuery.ToList();
             }
 
-            existingUser = await _userManager.FindByEmailAsync(user.Email);
-            if (existingUser != null)
+            if (conflicts.Any())
             {
-                var result = Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.EmailAlreadyExists);
-                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailedEmailExists, user.Email));
-                return result;
+                if (conflicts.Any(u => u.UserName == user.Username))
+                {
+                    var result = Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.UsernameAlreadyExists);
+                    result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailedUsernameExists, user.Username));
+                    return result;
+                }
+
+                if (conflicts.Any(u => u.Email == user.Email))
+                {
+                    var result = Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.EmailAlreadyExists);
+                    result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailedEmailExists, user.Email));
+                    return result;
+                }
+
+                if (!string.IsNullOrWhiteSpace(user.NationalId) && conflicts.Any(u => u.NationalId == user.NationalId))
+                {
+                    var result = Result<UserResDto>.BadRequest(string.Format(ApiResponseMessages.Validation.UserConflictExistsFormat, "National ID"));
+                    result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailed, user.Username, string.Join(", ", errors)));
+                    return result;
+                }
+
+                if (!string.IsNullOrWhiteSpace(user.PhoneNumber) && conflicts.Any(u => u.PhoneNumber == user.PhoneNumber))
+                {
+                    var result = Result<UserResDto>.BadRequest(string.Format(ApiResponseMessages.Validation.UserConflictExistsFormat, "Phone number"));
+                    result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailed, user.Username, string.Join(", ", errors)));
+                    return result;
+                }
+
+                if (!string.IsNullOrWhiteSpace(user.FullName) && conflicts.Any(u => u.FullName == user.FullName))
+                {
+                    var result = Result<UserResDto>.BadRequest(string.Format(ApiResponseMessages.Validation.UserConflictExistsFormat, "Full name"));
+                    result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailed, user.Username, string.Join(", ", errors)));
+                    return result;
+                }
+
+                var fallback = Result<UserResDto>.BadRequest("A conflicting user already exists in the specified bank.");
+                fallback.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailed, user.Username, string.Join(", ", errors)));
+                return fallback;
             }
 
             var entity = _mapper.Map<ApplicationUser>(user);
@@ -222,26 +305,59 @@ namespace BankingSystemAPI.Infrastructure.Services
                 entity.RoleId = string.Empty;
             }
 
-            var identityResult = await _userManager.CreateAsync(entity, user.Password!);
-            if (!identityResult.Succeeded)
+            try
             {
-                var errors = identityResult.Errors.Select(e => e.Description);
-                var result = Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
-                result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.UserCreationFailed, user.Username, string.Join(", ", errs)));
+                // Ensure normalized fields are set so validators and DB comparisons work as expected
+                entity.NormalizedUserName = _userManager.NormalizeName(entity.UserName ?? string.Empty);
+                entity.NormalizedEmail = _userManager.NormalizeEmail(entity.Email ?? string.Empty);
+
+                var identityResult = await _userManager.CreateAsync(entity, user.Password!);
+                if (!identityResult.Succeeded)
+                {
+                    var errors = identityResult.Errors.Select(e => e.Description);
+                    var resultErrors = errors.Select(d => new ResultError(ErrorType.Validation, d));
+                    _logger.LogWarning("User creation failed for {Username}: {Errors}", user.Username, string.Join("; ", errors));
+                    return Result<UserResDto>.Failure(resultErrors);
+                }
+            }
+            catch (DbUpdateException dbEx)
+            {
+                // Log and return a friendly conflict message. Try to infer field from inner message.
+                _logger.LogError(dbEx, "Database update exception while creating user: {Username}", user.Username);
+                var inner = dbEx.InnerException?.Message ?? dbEx.Message;
+                var msg = "A conflicting user already exists in the specified bank.";
+
+                var innerLower = inner?.ToLowerInvariant() ?? string.Empty;
+                if (innerLower.Contains("username") || innerLower.Contains("user_name") || innerLower.Contains("username"))
+                    msg = ApiResponseMessages.Validation.UsernameAlreadyExists;
+                else if (innerLower.Contains("email"))
+                    msg = ApiResponseMessages.Validation.EmailAlreadyExists;
+                else if (innerLower.Contains("nationalid"))
+                    msg = string.Format(ApiResponseMessages.Validation.UserConflictExistsFormat, "National ID");
+                else if (innerLower.Contains("phonenumber") || innerLower.Contains("phone_number"))
+                    msg = string.Format(ApiResponseMessages.Validation.UserConflictExistsFormat, "Phone number");
+                else if (innerLower.Contains("fullname") || innerLower.Contains("full_name"))
+                    msg = string.Format(ApiResponseMessages.Validation.UserConflictExistsFormat, "Full name");
+
+                var result = Result<UserResDto>.BadRequest(msg);
+                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserCreationFailed, user.Username, string.Join(", ", errors)));
                 return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error while creating user: {Username}", user.Username);
+                return Result<UserResDto>.BadRequest(ApiResponseMessages.Infrastructure.UnexpectedErrorDetailed);
             }
 
             if (targetRole != null && !string.IsNullOrEmpty(targetRole.Name))
             {
                 var roleResult = await _userManager.AddToRoleAsync(entity, targetRole.Name);
-                if (!roleResult.Succeeded)
-                {
-                    await _userManager.DeleteAsync(entity);
-                    var errors = roleResult.Errors.Select(e => e.Description);
-                    var result = Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
-                    result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.UserCreationFailed, user.Username, string.Join(", ", errs)));
-                    return result;
-                }
+                    if (!roleResult.Succeeded)
+                    {
+                        await _userManager.DeleteAsync(entity);
+                        var errors = roleResult.Errors.Select(e => e.Description);
+                        return Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
+                    }
             }
 
             var createdUser = await _userManager.Users
@@ -250,9 +366,7 @@ namespace BankingSystemAPI.Infrastructure.Services
                 .FirstOrDefaultAsync(u => u.Id == entity.Id);
 
             var userDto = _mapper.Map<UserResDto>(createdUser ?? entity);
-            var successResult = Result<UserResDto>.Success(userDto);
-            successResult.OnSuccess(() => _logger.LogInformation(ApiResponseMessages.Logging.UserCreated, user.Username));
-            return successResult;
+            return Result<UserResDto>.Success(userDto);
         }
 
         public async Task<Result<UserResDto>> UpdateUserAsync(string userId, UserEditDto user)
@@ -269,26 +383,62 @@ namespace BankingSystemAPI.Infrastructure.Services
 
             if (existingUser == null)
             {
-                var result = Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.UserNotFound);
-                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByIdFailed, userId, string.Join(", ", errors)));
-                return result;
+                return Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.UserNotFound);
             }
+            // Normalize incoming values (trim) and map into entity
+            var normalizedEmail = user.Email?.Trim();
+            var normalizedUsername = user.Username?.Trim();
+            var normalizedNationalId = string.IsNullOrWhiteSpace(user.NationalId) ? null : user.NationalId.Trim();
+            var normalizedPhone = string.IsNullOrWhiteSpace(user.PhoneNumber) ? null : user.PhoneNumber.Trim();
+            var normalizedFullName = string.IsNullOrWhiteSpace(user.FullName) ? null : user.FullName.Trim();
 
+            // Map other fields via AutoMapper then override with normalized values
             _mapper.Map(user, existingUser);
 
-            var identityResult = await _userManager.UpdateAsync(existingUser);
-            if (!identityResult.Succeeded)
+            if (normalizedEmail != null) existingUser.Email = normalizedEmail;
+            if (normalizedUsername != null) existingUser.UserName = normalizedUsername;
+            if (normalizedNationalId != null) existingUser.NationalId = normalizedNationalId;
+            if (normalizedPhone != null) existingUser.PhoneNumber = normalizedPhone;
+            if (normalizedFullName != null) existingUser.FullName = normalizedFullName;
+
+            try
             {
-                var errors = identityResult.Errors.Select(e => e.Description);
-                var result = Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
-                result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.UserUpdateFailed, userId, string.Join(", ", errs)));
+                var identityResult = await _userManager.UpdateAsync(existingUser);
+                if (!identityResult.Succeeded)
+                {
+                    var errors = identityResult.Errors.Select(e => e.Description);
+                    return Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
+                }
+            }
+            catch (DbUpdateException dbEx)
+            {
+                _logger.LogError(dbEx, "Database update exception while updating user: {UserId}", userId);
+                var inner = dbEx.InnerException?.Message ?? dbEx.Message;
+                var innerLower = inner?.ToLowerInvariant() ?? string.Empty;
+                var msg = "A conflicting user already exists in the specified bank.";
+
+                if (innerLower.Contains("username") || innerLower.Contains("user_name"))
+                    msg = ApiResponseMessages.Validation.UsernameAlreadyExists;
+                else if (innerLower.Contains("email"))
+                    msg = ApiResponseMessages.Validation.EmailAlreadyExists;
+                else if (innerLower.Contains("nationalid"))
+                    msg = string.Format(ApiResponseMessages.Validation.UserConflictExistsFormat, "National ID");
+                else if (innerLower.Contains("phonenumber") || innerLower.Contains("phone_number"))
+                    msg = string.Format(ApiResponseMessages.Validation.UserConflictExistsFormat, "Phone number");
+                else if (innerLower.Contains("fullname") || innerLower.Contains("full_name"))
+                    msg = string.Format(ApiResponseMessages.Validation.UserConflictExistsFormat, "Full name");
+
+                var result = Result<UserResDto>.BadRequest(msg);
+                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserUpdateFailed, userId, string.Join(", ", errors)));
                 return result;
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error while updating user: {UserId}", userId);
+                return Result<UserResDto>.BadRequest(ApiResponseMessages.Infrastructure.UnexpectedErrorDetailed);
+            }
 
-            var userDto = _mapper.Map<UserResDto>(existingUser);
-            var successResult = Result<UserResDto>.Success(userDto);
-            successResult.OnSuccess(() => _logger.LogInformation(ApiResponseMessages.Logging.UserUpdated, userId));
-            return successResult;
+            return Result<UserResDto>.Success(_mapper.Map<UserResDto>(existingUser));
         }
 
         public async Task<Result<UserResDto>> ChangeUserPasswordAsync(string userId, ChangePasswordReqDto dto)
@@ -305,9 +455,7 @@ namespace BankingSystemAPI.Infrastructure.Services
 
             if (existingUser == null)
             {
-                var result = Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.UserNotFound);
-                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByIdFailed, userId, string.Join(", ", errors)));
-                return result;
+                return Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.UserNotFound);
             }
 
             IdentityResult changeResult;
@@ -326,15 +474,10 @@ namespace BankingSystemAPI.Infrastructure.Services
             if (!changeResult.Succeeded)
             {
                 var errors = changeResult.Errors.Select(e => e.Description);
-                var result = Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
-                result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.PasswordChangeFailed, userId, string.Join(", ", errs)));
-                return result;
+                return Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
             }
 
-            var userDto = _mapper.Map<UserResDto>(existingUser);
-            var successResult = Result<UserResDto>.Success(userDto);
-            successResult.OnSuccess(() => _logger.LogInformation(ApiResponseMessages.Logging.PasswordChanged, userId));
-            return successResult;
+            return Result<UserResDto>.Success(_mapper.Map<UserResDto>(existingUser));
         }
 
         public async Task<Result<UserResDto>> DeleteUserAsync(string userId)
@@ -352,9 +495,7 @@ namespace BankingSystemAPI.Infrastructure.Services
 
             if (existingUser == null)
             {
-                var result = Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.UserNotFound);
-                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByIdFailed, userId, string.Join(", ", errors)));
-                return result;
+                return Result<UserResDto>.BadRequest(ApiResponseMessages.Validation.UserNotFound);
             }
 
             var userDto = _mapper.Map<UserResDto>(existingUser); // Map before deletion
@@ -363,25 +504,17 @@ namespace BankingSystemAPI.Infrastructure.Services
             if (!identityResult.Succeeded)
             {
                 var errors = identityResult.Errors.Select(e => e.Description);
-                var result = Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
-                result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.UserDeletionFailed, userId, string.Join(", ", errs)));
-                return result;
+                return Result<UserResDto>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
             }
 
-            var successResult = Result<UserResDto>.Success(userDto);
-            successResult.OnSuccess(() => _logger.LogInformation(ApiResponseMessages.Logging.UserDeleted, userId));
-            return successResult;
+            return Result<UserResDto>.Success(userDto);
         }
 
         public async Task<Result<bool>> DeleteRangeOfUsersAsync(IEnumerable<string> userIds)
         {
             var userIdsList = userIds.ToList();
             if (!userIdsList.Any())
-            {
-                var result = Result<bool>.BadRequest(ApiResponseMessages.Validation.NoUserIdsProvided);
-                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.BulkUserDeletionFailed, "NoIds", string.Join(", ", errors)));
-                return result;
-            }
+                return Result<bool>.BadRequest(ApiResponseMessages.Validation.NoUserIdsProvided);
 
             foreach (var userId in userIdsList)
             {
@@ -390,18 +523,11 @@ namespace BankingSystemAPI.Infrastructure.Services
                 {
                     var identityResult = await _userManager.DeleteAsync(existingUser);
                     if (!identityResult.Succeeded)
-                    {
-                        var errors = identityResult.Errors.Select(e => e.Description);
-                        var result = Result<bool>.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
-                        result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.BulkUserDeletionFailed, userId, string.Join(", ", errs)));
-                        return result;
-                    }
+                        return Result<bool>.Failure(identityResult.Errors.Select(e => new ResultError(ErrorType.Validation, e.Description)));
                 }
             }
 
-            var successResult = Result<bool>.Success(true);
-            successResult.OnSuccess(() => _logger.LogInformation(ApiResponseMessages.Logging.BulkUserDeletionCompleted, userIdsList.Count));
-            return successResult;
+            return Result<bool>.Success(true);
         }
 
         public async Task<Result> SetUserActiveStatusAsync(string userId, bool isActive)
@@ -413,11 +539,7 @@ namespace BankingSystemAPI.Infrastructure.Services
 
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
-            {
-                var result = Result.BadRequest(ApiResponseMessages.Validation.UserNotFound);
-                result.OnFailure(errors => _logger.LogWarning(ApiResponseMessages.Logging.UserRetrieveByIdFailed, userId, string.Join(", ", errors)));
-                return result;
-            }
+                return Result.BadRequest(ApiResponseMessages.Validation.UserNotFound);
 
             // Prevent deactivation of SuperAdmin users
             var roles = await _userManager.GetRolesAsync(user);
@@ -432,16 +554,9 @@ namespace BankingSystemAPI.Infrastructure.Services
             var identityResult = await _userManager.UpdateAsync(user);
 
             if (!identityResult.Succeeded)
-            {
-                var errors = identityResult.Errors.Select(e => e.Description);
-                var result = Result.Failure(errors.Select(d => new ResultError(ErrorType.Validation, d)));
-                result.OnFailure(errs => _logger.LogError(ApiResponseMessages.Logging.SetUserActiveStatusFailed, userId, string.Join(", ", errs)));
-                return result;
-            }
+                return Result.Failure(identityResult.Errors.Select(e => new ResultError(ErrorType.Validation, e.Description)));
 
-            var successResult = Result.Success();
-            successResult.OnSuccess(() => _logger.LogInformation(ApiResponseMessages.Logging.SetUserActiveStatusChanged, isActive, userId));
-            return successResult;
+            return Result.Success();
         }
 
         #endregion
@@ -458,4 +573,3 @@ namespace BankingSystemAPI.Infrastructure.Services
         #endregion
     }
 }
-

@@ -97,14 +97,12 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
                             var currentUserRole = await _currentUserService.GetRoleFromStoreAsync();
                             var isSuperAdmin = string.Equals(currentUserRole.Name, UserRole.SuperAdmin.ToString(), StringComparison.OrdinalIgnoreCase);
 
-                            // Role is required only for SuperAdmin
+                            // SuperAdmin must provide a role.
                             if (isSuperAdmin)
-                            {
                                 return !string.IsNullOrWhiteSpace(role);
-                            }
 
-                            // For non-SuperAdmin, role is optional (will be set to Client by handler)
-                            return true;
+                            // Non-SuperAdmin must NOT set a role in the request (handler assigns Client role).
+                            return string.IsNullOrWhiteSpace(role);
                         }
                         catch
                         {
@@ -125,13 +123,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
             }
             else
             {
-                // Fallback: when no current user service, require role (backward compatibility)
+                // Fallback: when no current user service, do not enforce role requirement here.
+                // Role existence and assignment will be validated/assigned by the handler.
                 RuleFor(x => x.UserRequest.Role)
-                    .NotEmpty()
-                    .WithMessage(ApiResponseMessages.Validation.RoleRequiredForSuperAdmin)
                     .MaximumLength(100)
                     .WithMessage(ApiResponseMessages.Validation.RoleNameCannotExceed)
                     .Must(BeValidRoleFormat)
+                    .When(x => !string.IsNullOrWhiteSpace(x.UserRequest.Role))
                     .WithMessage(ApiResponseMessages.Validation.RoleNameInvalidFormat);
             }
         }
@@ -152,19 +150,19 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
                             // BankId validation based on user role
                             if (isSuperAdmin)
                             {
-                                // SuperAdmin can specify any bank or no bank
-                                return !bankId.HasValue || bankId.Value > 0;
+                                // SuperAdmin must provide a valid BankId
+                                return bankId.HasValue && bankId.Value > 0;
                             }
                             else
                             {
-                                // Non-SuperAdmin: BankId will be set by handler, so it's optional in request
-                                return !bankId.HasValue || bankId.Value > 0;
+                                // Non-SuperAdmin must NOT specify BankId in the request (handler will set it)
+                                return !bankId.HasValue;
                             }
                         }
                         catch
                         {
                             // Fail-safe: require valid BankId if provided
-                            return !bankId.HasValue || bankId.Value > 0;
+                            return bankId.HasValue && bankId.Value > 0;
                         }
                     })
                     .WithMessage(ApiResponseMessages.Validation.BankIdMustBeGreaterThanZero)
@@ -172,11 +170,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
             }
             else
             {
-                // Fallback: standard BankId validation
+                // Fallback: when no current user service is available, do not strictly require BankId here.
+                // Handlers will set BankId for non-SuperAdmin flows; validators should be tolerant in this case.
+                // However keep a lightweight check if a BankId is provided.
                 RuleFor(x => x.UserRequest.BankId)
                     .GreaterThan(0)
                     .WithMessage(ApiResponseMessages.Validation.BankIdMustBeGreaterThanZero)
-                    .When(x => x.UserRequest.BankId.HasValue);
+                    .When(x => x.UserRequest.BankId.HasValue && x.UserRequest.BankId.Value != 0);
             }
         }
 

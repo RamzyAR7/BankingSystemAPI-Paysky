@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BankingSystemAPI.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251003040934_init")]
-    partial class init
+    [Migration("20251012091232_init1")]
+    partial class init1
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,7 +25,7 @@ namespace BankingSystemAPI.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.HasSequence<int>("AccountIdSequence");
+            modelBuilder.HasSequence("AccountIdSequence");
 
             modelBuilder.Entity("BankingSystemAPI.Domain.Entities.Account", b =>
                 {
@@ -98,7 +98,6 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TransactionCurrency")
-                        .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
@@ -225,13 +224,11 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                         .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")
-                        .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+                        .HasDatabaseName("UserNameIndex");
 
                     b.HasIndex("RoleId");
 
-                    b.HasIndex("Email", "BankId")
+                    b.HasIndex("FullName", "BankId")
                         .IsUnique()
                         .HasFilter("[BankId] IS NOT NULL");
 
@@ -239,11 +236,17 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[BankId] IS NOT NULL");
 
-                    b.HasIndex("PhoneNumber", "BankId")
+                    b.HasIndex("NormalizedEmail", "BankId")
                         .IsUnique()
-                        .HasFilter("[BankId] IS NOT NULL");
+                        .HasDatabaseName("IX_AspNetUsers_NormalizedEmail_BankId")
+                        .HasFilter("[NormalizedEmail] IS NOT NULL AND [BankId] IS NOT NULL");
 
-                    b.HasIndex("UserName", "BankId")
+                    b.HasIndex("NormalizedUserName", "BankId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_AspNetUsers_NormalizedUserName_BankId")
+                        .HasFilter("[NormalizedUserName] IS NOT NULL AND [BankId] IS NOT NULL");
+
+                    b.HasIndex("PhoneNumber", "BankId")
                         .IsUnique()
                         .HasFilter("[BankId] IS NOT NULL");
 

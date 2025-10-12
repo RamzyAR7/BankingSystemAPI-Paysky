@@ -13,17 +13,6 @@ namespace BankingSystemAPI.Infrastructure.Migrations
     [DbContext(typeof(ApplicationDbContext))]
     partial class ApplicationDbContextModelSnapshot : ModelSnapshot
     {
-    #region Fields
-    #endregion
-
-    #region Constructors
-    #endregion
-
-    #region Properties
-    #endregion
-
-    #region Methods
-    #endregion
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
@@ -33,7 +22,7 @@ namespace BankingSystemAPI.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.HasSequence<int>("AccountIdSequence");
+            modelBuilder.HasSequence("AccountIdSequence");
 
             modelBuilder.Entity("BankingSystemAPI.Domain.Entities.Account", b =>
                 {
@@ -232,13 +221,11 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                         .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")
-                        .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+                        .HasDatabaseName("UserNameIndex");
 
                     b.HasIndex("RoleId");
 
-                    b.HasIndex("Email", "BankId")
+                    b.HasIndex("FullName", "BankId")
                         .IsUnique()
                         .HasFilter("[BankId] IS NOT NULL");
 
@@ -246,11 +233,17 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[BankId] IS NOT NULL");
 
-                    b.HasIndex("PhoneNumber", "BankId")
+                    b.HasIndex("NormalizedEmail", "BankId")
                         .IsUnique()
-                        .HasFilter("[BankId] IS NOT NULL");
+                        .HasDatabaseName("IX_AspNetUsers_NormalizedEmail_BankId")
+                        .HasFilter("[NormalizedEmail] IS NOT NULL AND [BankId] IS NOT NULL");
 
-                    b.HasIndex("UserName", "BankId")
+                    b.HasIndex("NormalizedUserName", "BankId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_AspNetUsers_NormalizedUserName_BankId")
+                        .HasFilter("[NormalizedUserName] IS NOT NULL AND [BankId] IS NOT NULL");
+
+                    b.HasIndex("PhoneNumber", "BankId")
                         .IsUnique()
                         .HasFilter("[BankId] IS NOT NULL");
 
@@ -701,4 +694,3 @@ namespace BankingSystemAPI.Infrastructure.Migrations
         }
     }
 }
-

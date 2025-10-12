@@ -7,6 +7,7 @@ using BankingSystemAPI.Application.Interfaces.Authorization;
 using BankingSystemAPI.Application.Interfaces.Messaging;
 using BankingSystemAPI.Domain.Constant;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 #endregion
 
 
@@ -52,15 +53,15 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.DeleteUs
 
             var deleteResult = await ExecuteUserDeletionAsync(request.UserId);
 
-            // Add side effects using ResultExtensions
-            deleteResult.OnSuccess(() =>
-                {
-                    _logger.LogInformation(ApiResponseMessages.Logging.UserDeleted, request.UserId);
-                })
-                .OnFailure(errors =>
-                {
-                    _logger.LogWarning(ApiResponseMessages.Logging.UserDeletionFailed, request.UserId, string.Join(", ", errors));
-                });
+            // Log using Result API (IsSuccess / Errors)
+            if (deleteResult.IsSuccess)
+            {
+                _logger.LogInformation(ApiResponseMessages.Logging.UserDeleted, request.UserId);
+            }
+            else
+            {
+                _logger.LogWarning(ApiResponseMessages.Logging.UserDeletionFailed, request.UserId, string.Join(", ", deleteResult.Errors ?? Enumerable.Empty<string>()));
+            }
 
             return deleteResult;
         }

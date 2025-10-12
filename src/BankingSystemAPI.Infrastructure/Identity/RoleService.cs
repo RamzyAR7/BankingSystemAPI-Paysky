@@ -46,17 +46,6 @@ namespace BankingSystemAPI.Infrastructure.Services
 
                 var enrichedRolesResult = await EnrichRolesWithClaimsAsync(rolesResult.Value!);
 
-                // Add side effects using ResultExtensions
-                enrichedRolesResult.OnSuccess(() =>
-                    {
-                        _logger.LogDebug(ApiResponseMessages.Logging.RoleRetrieved, enrichedRolesResult.Value!.Count);
-                    })
-                    .OnFailure(errors =>
-                    {
-                        _logger.LogWarning(ApiResponseMessages.Logging.RoleRetrieveFailed,
-                            string.Join(", ", errors));
-                    });
-
                 return enrichedRolesResult;
             }
             catch (System.Exception ex)
@@ -80,17 +69,6 @@ namespace BankingSystemAPI.Infrastructure.Services
 
             var createResult = await ExecuteRoleCreationAsync(dto);
 
-            // Add side effects using ResultExtensions
-            createResult.OnSuccess(() =>
-                {
-                    _logger.LogInformation(ApiResponseMessages.Logging.RoleCreated, dto.Name);
-                })
-                .OnFailure(errors =>
-                {
-                    _logger.LogWarning(ApiResponseMessages.Logging.RoleCreateFailed,
-                        dto.Name, string.Join(", ", errors));
-                });
-
             return createResult;
         }
 
@@ -106,18 +84,6 @@ namespace BankingSystemAPI.Infrastructure.Services
                 return Result<RoleUpdateResultDto>.Failure(roleResult.ErrorItems);
 
             var deleteResult = await ExecuteRoleDeletionAsync(roleResult.Value!);
-
-            // Add side effects using ResultExtensions
-            deleteResult.OnSuccess(() =>
-                {
-                    _logger.LogInformation(ApiResponseMessages.Logging.RoleDeleted,
-                        roleId, roleResult.Value!.Name);
-                })
-                .OnFailure(errors =>
-                {
-                    _logger.LogWarning(ApiResponseMessages.Logging.RoleDeleteFailed,
-                        roleId, string.Join(", ", errors));
-                });
 
             return deleteResult;
         }
@@ -138,11 +104,6 @@ namespace BankingSystemAPI.Infrastructure.Services
                 // Combine results using ResultExtensions
                 var combinedUsage = fkUsageResult.Value || roleTableUsageResult.Value;
                 var result = Result<bool>.Success(combinedUsage);
-
-                // Add side effects using ResultExtensions
-                result.OnSuccess(() =>
-                    _logger.LogDebug(ApiResponseMessages.Logging.RoleUsageCheckCompleted,
-                        roleId, combinedUsage, fkUsageResult.Value, roleTableUsageResult.Value));
 
                 return result;
             }

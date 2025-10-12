@@ -69,12 +69,13 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.CreateUs
 
             try
             {
-                await _userAuthorizationService.CanCreateUserAsync();
-                return Result.Success();
+                return await _userAuthorizationService.CanCreateUserAsync();
             }
             catch (Exception ex)
             {
-                return Result.Forbidden($"Authorization failed: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error while checking create-user authorization.");
+                // Do not expose raw exception text to callers.
+                return Result.Forbidden("Authorization failed due to an internal error.");
             }
         }
 

@@ -30,9 +30,9 @@ namespace BankingSystemAPI.Application.Authorization.Helpers
             // Use ResultExtensions patterns for consistent logging
             var result = Result<bool>.Success(isMatch);
             result.OnSuccess(() =>
-                {
-                    _logger?.LogDebug(ApiResponseMessages.Logging.RoleCheck, role, expectedRole, isMatch);
-                });
+            {
+                _logger?.LogDebug(ApiResponseMessages.Logging.RoleCheck, role, expectedRole, isMatch);
+            });
 
             return isMatch;
         }

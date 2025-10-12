@@ -28,20 +28,13 @@ namespace BankingSystemAPI.Infrastructure.Services
         public async Task<Result<RoleClaimsUpdateResultDto>> UpdateRoleClaimsAsync(UpdateRoleClaimsDto dto)
         {
             // Chain validation and update operations using ResultExtensions
-            return await ValidateInputAsync(dto)
+            var result = await ValidateInputAsync(dto)
                 .BindAsync(async validDto => await FindRoleAsync(validDto.RoleName))
                 .BindAsync(async role => await RemoveExistingClaimsAsync(role))
                 .BindAsync(async role => await AddNewClaimsAsync(role, dto.Claims))
-                .MapAsync(role => Task.FromResult(CreateSuccessResultAsync(role, dto.Claims)))
-                .OnSuccess(() =>
-                {
-                    _logger.LogInformation("Role claims updated successfully for role: {RoleName}", dto.RoleName);
-                })
-                .OnFailure(errors =>
-                {
-                    _logger.LogWarning("Role claims update failed for role: {RoleName}. Errors: {Errors}",
-                        dto?.RoleName, string.Join(", ", errors));
-                });
+                .MapAsync(role => Task.FromResult(CreateSuccessResultAsync(role, dto.Claims)));
+
+            return result;
         }
 
         public Task<Result<ICollection<RoleClaimsResDto>>> GetAllClaimsByGroup()

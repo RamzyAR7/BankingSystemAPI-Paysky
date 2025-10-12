@@ -43,6 +43,7 @@ namespace BankingSystemAPI.Infrastructure.Identity
             _logger = logger;
         }
 
+        #region Main Methods
         public async Task<AuthResultDto> LoginAsync(LoginReqDto request)
         {
             // Use ResultExtensions for validation chain
@@ -56,39 +57,16 @@ namespace BankingSystemAPI.Infrastructure.Identity
 
             var loginResult = CreateSuccessAuthResult(tokenResult.Value!);
 
-            // Add side effects using ResultExtensions
-            var result = Result<AuthResultDto>.Success(loginResult);
-            result.OnSuccess(() =>
-                {
-                    _logger.LogInformation("User logged in successfully: {Email}", request.Email);
-                })
-                .OnFailure(errors =>
-                {
-                    _logger.LogWarning("Login failed for: {Email}. Errors: {Errors}",
-                        request.Email, string.Join(", ", errors));
-                });
-
             return loginResult;
         }
 
         public async Task<AuthResultDto> LogoutAsync(string userId)
         {
-            var userResult = await FindUserForLogoutAsync(userId);
+            var userResult = await FindUserByIdWithRefreshTokensAsync(userId);
             if (userResult.IsFailure)
                 return CreateFailureAuthResult(userResult.Errors);
 
-            var logoutResult = await ExecuteLogoutAsync(userResult.Value!, userId);
-
-            // Add side effects using ResultExtensions
-            logoutResult.OnSuccess(() =>
-                {
-                    _logger.LogInformation("User logged out successfully: {UserId}", userId);
-                })
-                .OnFailure(errors =>
-                {
-                    _logger.LogWarning("Logout failed for: {UserId}. Errors: {Errors}",
-                        userId, string.Join(", ", errors));
-                });
+            var logoutResult = await RevokeAllActiveRefreshTokensAsync(userResult.Value!, updateSecurityStamp: true, deleteCookie: true);
 
             return logoutResult.IsSuccess
                 ? CreateSuccessLogoutResult()
@@ -103,17 +81,6 @@ namespace BankingSystemAPI.Infrastructure.Identity
 
             var refreshResult = await ExecuteTokenRefreshAsync(tokenValidationResult.Value!);
 
-            // Add side effects using ResultExtensions
-            refreshResult.OnSuccess(() =>
-                {
-                    _logger.LogDebug("Token refreshed successfully for user: {UserId}", tokenValidationResult.Value!.User.Id);
-                })
-                .OnFailure(errors =>
-                {
-                    _logger.LogWarning("Token refresh failed. Errors: {Errors}",
-                        string.Join(", ", errors));
-                });
-
             return refreshResult.IsSuccess
                 ? refreshResult.Value!
                 : CreateFailureAuthResult(refreshResult.Errors);
@@ -121,30 +88,19 @@ namespace BankingSystemAPI.Infrastructure.Identity
 
         public async Task<AuthResultDto> RevokeTokenAsync(string userId)
         {
-            var userResult = await FindUserForTokenRevocationAsync(userId);
+            var userResult = await FindUserByIdWithRefreshTokensAsync(userId);
             if (userResult.IsFailure)
                 return CreateFailureAuthResult(userResult.Errors);
 
-            var revokeResult = await ExecuteTokenRevocationAsync(userResult.Value!, userId);
-
-            // Add side effects using ResultExtensions
-            revokeResult.OnSuccess(() =>
-                {
-                    _logger.LogInformation("Tokens revoked successfully for user: {UserId}", userId);
-                })
-                .OnFailure(errors =>
-                {
-                    _logger.LogWarning("Token revocation failed for: {UserId}. Errors: {Errors}",
-                        userId, string.Join(", ", errors));
-                });
+            var revokeResult = await RevokeAllActiveRefreshTokensAsync(userResult.Value!, updateSecurityStamp: false, deleteCookie: false);
 
             return revokeResult.IsSuccess
                 ? CreateSuccessRevocationResult()
                 : CreateFailureAuthResult(revokeResult.Errors);
         }
+        #endregion
 
-        #region Private Helper Methods Using ResultExtensions
-
+        #region ResultExtensions
         private async Task<Result<ApplicationUser>> ValidateAndFindUserAsync(LoginReqDto request)
         {
             var user = await _userManager.Users
@@ -161,68 +117,13 @@ namespace BankingSystemAPI.Infrastructure.Identity
                 : Result<ApplicationUser>.BadRequest("Email or Password is incorrect!");
         }
 
-        private async Task<Result<TokenData>> GenerateAuthTokensAsync(ApplicationUser user)
-        {
-            try
-            {
-                var rolesList = await _userManager.GetRolesAsync(user);
-                var jwtSecurityToken = await CreateJwtToken(user);
-
-                // Clean up inactive tokens
-                var inactiveTokens = user.RefreshTokens.Where(t => !t.IsActive).ToList();
-                foreach (var inactive in inactiveTokens)
-                {
-                    user.RefreshTokens.Remove(inactive);
-                }
-
-                var refreshToken = GenerateRefreshToken();
-                user.RefreshTokens.Add(refreshToken);
-                await _userManager.UpdateAsync(user);
-                SetRefreshTokenInCookie(refreshToken);
-
-                var tokenData = new TokenData
-                {
-                    JwtToken = jwtSecurityToken,
-                    RefreshToken = refreshToken,
-                    Roles = rolesList.ToList(),
-                    User = user
-                };
-
-                return Result<TokenData>.Success(tokenData);
-            }
-            catch (Exception ex)
-            {
-                return Result<TokenData>.BadRequest($"Failed to generate tokens: {ex.Message}");
-            }
-        }
-
-        private async Task<Result<ApplicationUser>> FindUserForLogoutAsync(string userId)
+        private async Task<Result<ApplicationUser>> FindUserByIdWithRefreshTokensAsync(string userId)
         {
             var user = await _userManager.Users
                 .Include(u => u.RefreshTokens)
                 .SingleOrDefaultAsync(u => u.Id == userId);
 
             return user.ToResult($"User with ID '{userId}' not found.");
-        }
-
-        private async Task<Result> ExecuteLogoutAsync(ApplicationUser user, string userId)
-        {
-            try
-            {
-                // Revoke all active refresh tokens
-                foreach (var token in user.RefreshTokens.Where(t => t.IsActive))
-                    token.RevokedOn = DateTime.UtcNow;
-
-                await _userManager.UpdateSecurityStampAsync(user);
-                await _userManager.UpdateAsync(user);
-
-                _httpContextAccessor.HttpContext?.Response.Cookies.Delete("refreshToken");
-                return Result.Success();
-            }
-            catch (Exception ex)
-            {
-                return Result.BadRequest($"Failed to logout user: {ex.Message}");
-            }
         }
 
         private async Task<Result<RefreshTokenValidationResult>> ValidateRefreshTokenAsync(string? tokenFromRequest)
@@ -269,86 +170,6 @@ namespace BankingSystemAPI.Infrastructure.Identity
             return Result.Success();
         }
 
-        // Continue with existing helper methods...
-        private async Task<Result<AuthResultDto>> ExecuteTokenRefreshAsync(RefreshTokenValidationResult validationResult)
-        {
-            try
-            {
-                var user = validationResult.User;
-                var oldRefreshToken = validationResult.RefreshToken;
-
-                // Clean up and create new tokens
-                var inactiveTokens = user.RefreshTokens.Where(t => !t.IsActive).ToList();
-                foreach (var inactive in inactiveTokens)
-                {
-                    user.RefreshTokens.Remove(inactive);
-                }
-
-                oldRefreshToken.RevokedOn = DateTime.UtcNow;
-                var newRefreshToken = GenerateRefreshToken();
-                user.RefreshTokens.Add(newRefreshToken);
-                await _userManager.UpdateAsync(user);
-                SetRefreshTokenInCookie(newRefreshToken);
-
-                var jwtToken = await CreateJwtToken(user);
-                var roles = await _userManager.GetRolesAsync(user);
-
-                var authResult = new AuthResultDto
-                {
-                    AuthData = new AuthResDto
-                    {
-                        IsAuthenticated = true,
-                        Email = user.Email,
-                        Username = user.UserName,
-                        Roles = roles.ToList(),
-                        Token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
-                        ExpiresOn = jwtToken.ValidTo,
-                        RefreshTokenExpiration = newRefreshToken.ExpiresOn,
-                        AbsoluteExpiresOn = newRefreshToken.AbsoluteExpiresOn
-                    },
-                    Succeeded = true
-                };
-
-                return Result<AuthResultDto>.Success(authResult);
-            }
-            catch (Exception ex)
-            {
-                return Result<AuthResultDto>.BadRequest($"Failed to refresh token: {ex.Message}");
-            }
-        }
-
-        private async Task<Result<ApplicationUser>> FindUserForTokenRevocationAsync(string userId)
-        {
-            var user = await _userManager.Users
-                .Include(u => u.RefreshTokens)
-                .SingleOrDefaultAsync(u => u.Id == userId);
-
-            return user.ToResult($"User with ID '{userId}' not found.");
-        }
-
-        private async Task<Result> ExecuteTokenRevocationAsync(ApplicationUser user, string userId)
-        {
-            var activeTokens = user.RefreshTokens.Where(x => x.IsActive).ToList();
-            if (!activeTokens.Any())
-                return Result.BadRequest("No active tokens found for user.");
-
-            try
-            {
-                foreach (var refreshToken in activeTokens)
-                {
-                    refreshToken.RevokedOn = DateTime.UtcNow;
-                }
-
-                await _userManager.UpdateAsync(user);
-                return Result.Success();
-            }
-            catch (Exception ex)
-            {
-                return Result.BadRequest($"Failed to revoke tokens: {ex.Message}");
-            }
-        }
-
-        // Result creation helpers
         private AuthResultDto CreateFailureAuthResult(IReadOnlyList<string> errors)
         {
             var result = new AuthResultDto { Succeeded = false };
@@ -391,7 +212,53 @@ namespace BankingSystemAPI.Infrastructure.Identity
 
         #endregion
 
-        #region Original Helper Methods (unchanged for stability)
+        #region Token Generation and Management
+
+        private async Task<Result<TokenData>> GenerateAuthTokensAsync(ApplicationUser user)
+        {
+            try
+            {
+                var rolesList = await _userManager.GetRolesAsync(user);
+                var jwtSecurityToken = await CreateJwtToken(user);
+                var refreshToken = await ReplaceRefreshTokenAsync(user, null);
+
+                var tokenData = new TokenData
+                {
+                    JwtToken = jwtSecurityToken,
+                    RefreshToken = refreshToken,
+                    Roles = rolesList.ToList(),
+                    User = user
+                };
+
+                return Result<TokenData>.Success(tokenData);
+            }
+            catch (Exception ex)
+            {
+                return Result<TokenData>.BadRequest($"Failed to generate tokens: {ex.Message}");
+            }
+        }
+
+        private async Task<RefreshToken> ReplaceRefreshTokenAsync(ApplicationUser user, RefreshToken? oldRefreshToken)
+        {
+            // Clean up inactive tokens
+            var inactiveTokens = user.RefreshTokens.Where(t => !t.IsActive).ToList();
+            foreach (var inactive in inactiveTokens)
+            {
+                user.RefreshTokens.Remove(inactive);
+            }
+
+            if (oldRefreshToken != null)
+            {
+                oldRefreshToken.RevokedOn = DateTime.UtcNow;
+            }
+
+            var newRefreshToken = GenerateRefreshToken();
+            user.RefreshTokens.Add(newRefreshToken);
+            await _userManager.UpdateAsync(user);
+            SetRefreshTokenInCookie(newRefreshToken);
+
+            return newRefreshToken;
+        }
 
         private async Task<JwtSecurityToken> CreateJwtToken(ApplicationUser user)
         {
@@ -471,6 +338,72 @@ namespace BankingSystemAPI.Infrastructure.Identity
 
         #endregion
 
+        #region Helpers Methods
+        private async Task<Result> RevokeAllActiveRefreshTokensAsync(ApplicationUser user, bool updateSecurityStamp = false, bool deleteCookie = false)
+        {
+            var activeTokens = user.RefreshTokens.Where(x => x.IsActive).ToList();
+            if (!activeTokens.Any() && !updateSecurityStamp && !deleteCookie)
+                return Result.BadRequest("No active tokens found for user.");
+
+            try
+            {
+                foreach (var refreshToken in activeTokens)
+                {
+                    refreshToken.RevokedOn = DateTime.UtcNow;
+                }
+
+                if (updateSecurityStamp)
+                    await _userManager.UpdateSecurityStampAsync(user);
+
+                await _userManager.UpdateAsync(user);
+
+                if (deleteCookie)
+                    _httpContextAccessor.HttpContext?.Response.Cookies.Delete("refreshToken");
+
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                return Result.BadRequest($"Failed to revoke tokens: {ex.Message}");
+            }
+        }
+        private async Task<Result<AuthResultDto>> ExecuteTokenRefreshAsync(RefreshTokenValidationResult validationResult)
+        {
+            try
+            {
+                var user = validationResult.User;
+                var oldRefreshToken = validationResult.RefreshToken;
+                // Replace refresh token (cleanup inactive, revoke old, add new, persist and set cookie)
+                var newRefreshToken = await ReplaceRefreshTokenAsync(user, oldRefreshToken);
+
+                var jwtToken = await CreateJwtToken(user);
+                var roles = await _userManager.GetRolesAsync(user);
+
+                var authResult = new AuthResultDto
+                {
+                    AuthData = new AuthResDto
+                    {
+                        IsAuthenticated = true,
+                        Email = user.Email,
+                        Username = user.UserName,
+                        Roles = roles.ToList(),
+                        Token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
+                        ExpiresOn = jwtToken.ValidTo,
+                        RefreshTokenExpiration = newRefreshToken.ExpiresOn,
+                        AbsoluteExpiresOn = newRefreshToken.AbsoluteExpiresOn
+                    },
+                    Succeeded = true
+                };
+
+                return Result<AuthResultDto>.Success(authResult);
+            }
+            catch (Exception ex)
+            {
+                return Result<AuthResultDto>.BadRequest($"Failed to refresh token: {ex.Message}");
+            }
+        }
+        #endregion
+
         #region Helper Classes
 
         private class TokenData
@@ -486,7 +419,6 @@ namespace BankingSystemAPI.Infrastructure.Identity
             public ApplicationUser User { get; set; } = null!;
             public RefreshToken RefreshToken { get; set; } = null!;
         }
-
         #endregion
     }
 }

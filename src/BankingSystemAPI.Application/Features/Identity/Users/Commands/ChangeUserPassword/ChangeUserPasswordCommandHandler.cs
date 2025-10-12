@@ -110,7 +110,7 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
 
             if (isActingAdmin && !isSelf)
             {
-                // Admin cannot change another admin's password
+                // Admin can't change another admin's password
                 if (isTargetAdmin)
                 {
                     return Result<PasswordChangeContext>.Forbidden(ApiResponseMessages.Validation.NotAuthorizedToChangePassword);
@@ -225,30 +225,6 @@ namespace BankingSystemAPI.Application.Features.Identity.Users.Commands.ChangeUs
 
             // Default to requiring current password for security
             return true;
-        }
-
-        /// <summary>
-        /// Enhances password change error messages with more specific user-friendly messages
-        /// </summary>
-        private IEnumerable<string> EnhancePasswordChangeErrors(IReadOnlyList<string> originalErrors, PasswordChangeContext context, PasswordChangeRules rules)
-        {
-            var enhancedErrors = new List<string>();
-
-            foreach (var error in originalErrors)
-            {
-                // ASP.NET Identity returns "Incorrect password." for wrong current password
-                if (error.Equals("Incorrect password.", StringComparison.OrdinalIgnoreCase))
-                {
-                    enhancedErrors.Add(ApiResponseMessages.Validation.IncorrectCurrentPassword);
-                }
-                // Keep other errors as-is for simplicity
-                else
-                {
-                    enhancedErrors.Add(error);
-                }
-            }
-
-            return enhancedErrors.Any() ? enhancedErrors : originalErrors;
         }
 
         private class PasswordChangeContext

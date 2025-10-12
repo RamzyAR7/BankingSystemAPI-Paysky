@@ -45,11 +45,27 @@ namespace BankingSystemAPI.Infrastructure.Configuration_Classes
             builder.Property(u => u.RoleId)
                 .IsRequired();
 
-            // Composite Indexes (Unique per Bank)
-            builder.HasIndex(u => new { u.UserName, u.BankId }).IsUnique();
-            builder.HasIndex(u => new { u.Email, u.BankId }).IsUnique();
-            builder.HasIndex(u => new { u.NationalId, u.BankId }).IsUnique();
-            builder.HasIndex(u => new { u.PhoneNumber, u.BankId }).IsUnique();
+            builder.HasIndex(u => u.NormalizedUserName)
+                .HasDatabaseName("UserNameIndex")
+                .IsUnique(false);
+
+            builder.HasIndex(u => u.NormalizedEmail)
+                .HasDatabaseName("EmailIndex")
+                .IsUnique(false);
+
+            builder.HasIndex(u => new { u.NormalizedUserName, u.BankId })
+                .HasDatabaseName("IX_AspNetUsers_NormalizedUserName_BankId")
+                .IsUnique()
+                .HasFilter("[NormalizedUserName] IS NOT NULL AND [BankId] IS NOT NULL");
+
+            builder.HasIndex(u => new { u.NormalizedEmail, u.BankId })
+                .HasDatabaseName("IX_AspNetUsers_NormalizedEmail_BankId")
+                .IsUnique()
+                .HasFilter("[NormalizedEmail] IS NOT NULL AND [BankId] IS NOT NULL");
+
+            builder.HasIndex(u => new { u.NationalId, u.BankId }).IsUnique().HasFilter("[BankId] IS NOT NULL");
+            builder.HasIndex(u => new { u.PhoneNumber, u.BankId }).IsUnique().HasFilter("[BankId] IS NOT NULL");
+            builder.HasIndex(u => new { u.FullName, u.BankId }).IsUnique().HasFilter("[BankId] IS NOT NULL");
 
             builder.HasMany(u => u.Accounts)
                 .WithOne(a => a.User)

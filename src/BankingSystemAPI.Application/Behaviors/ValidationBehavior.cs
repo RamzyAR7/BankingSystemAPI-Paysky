@@ -2,11 +2,9 @@
 using FluentValidation;
 using MediatR;
 using BankingSystemAPI.Domain.Common;
-using BankingSystemAPI.Domain.Extensions;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
 using BankingSystemAPI.Domain.Constant;
-using FluentValidation.Results;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -31,25 +29,15 @@ namespace BankingSystemAPI.Application.Behaviors
         {
             if (!_validators.Any())
             {
-                var noValidatorsResult = Result.Success();
-                noValidatorsResult.OnSuccess(() =>
-                    _logger.LogDebug(ApiResponseMessages.Logging.ValidationPipelineNoValidators, typeof(TRequest).Name));
-
+                _logger.LogDebug(ApiResponseMessages.Logging.ValidationPipelineNoValidators, typeof(TRequest).Name);
                 return await next();
             }
 
             var validationResult = await ExecuteValidationAsync(request, cancellationToken);
-
             if (validationResult.IsFailure)
-            {
                 return CreateValidationFailureResponse(validationResult.ErrorItems, typeof(TRequest).Name);
-            }
 
-            // Log successful validation using ResultExtensions
-            validationResult.OnSuccess(() =>
-                _logger.LogDebug(ApiResponseMessages.Logging.ValidationPipelinePassed,
-                    typeof(TRequest).Name, _validators.Count()));
-
+            _logger.LogDebug(ApiResponseMessages.Logging.ValidationPipelinePassed, typeof(TRequest).Name, _validators.Count());
             return await next();
         }
 
@@ -69,80 +57,58 @@ namespace BankingSystemAPI.Application.Behaviors
                 if (!failures.Any())
                     return Result.Success();
 
-                // Convert FluentValidation failures to structured ResultError items
+                // Convert FluentValidation failures to structured ResultError items and return failure
                 var structuredErrors = failures
                     .Select(f => new ResultError(
                         ErrorType.Validation,
                         f.ErrorMessage ?? "Validation failed",
-                        new ResultErrorDetails(
-                            Field: f.PropertyName,
-                            Code: f.ErrorCode,
-                            Metadata: f.AttemptedValue
-                        )
-                    ))
+                        new ResultErrorDetails(f.PropertyName, f.ErrorCode, f.AttemptedValue)))
                     .ToList();
 
-                var validationFailureResult = Result.Failure(structuredErrors);
+                _logger.LogWarning(ApiResponseMessages.Logging.ValidationPipelineFailed,
+                    typeof(TRequest).Name, string.Join(", ", structuredErrors.Select(e => e.Message)), _validators.Count());
 
-                // Use ResultExtensions for structured validation failure logging (OnFailure supplies string list)
-                validationFailureResult.OnFailure(errs =>
-                    _logger.LogWarning(ApiResponseMessages.Logging.ValidationPipelineFailed,
-                        typeof(TRequest).Name, string.Join(", ", errs), _validators.Count()));
-
-                return validationFailureResult;
+                return Result.Failure(structuredErrors);
             }
             catch (Exception ex)
             {
                 var exceptionResult = Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
-                exceptionResult.OnFailure(errors =>
-                    _logger.LogError(ex, ApiResponseMessages.Logging.ValidationPipelineException, typeof(TRequest).Name));
-
+                _logger.LogError(ex, ApiResponseMessages.Logging.ValidationPipelineException, typeof(TRequest).Name);
                 return exceptionResult;
             }
         }
 
         private TResponse CreateValidationFailureResponse(IReadOnlyList<ResultError> errors, string requestTypeName)
         {
-            // If the pipeline response is a Result (non-generic)
+            // Non-generic Result
             if (typeof(TResponse) == typeof(Result))
             {
-                var failure = Result.Failure(errors);
-                // Use ResultExtensions for logging
-                failure.OnFailure(errs =>
-                    _logger.LogInformation(ApiResponseMessages.Logging.ValidationPipelineReturningFailure, "Result", requestTypeName));
-                return (TResponse)(object)failure;
+                _logger.LogInformation(ApiResponseMessages.Logging.ValidationPipelineReturningFailure, "Result", requestTypeName);
+                return (TResponse)(object)Result.Failure(errors);
             }
 
-            // If the pipeline response is Result<T>, construct a failed Result<T> dynamically - reflection
+            // Result<T> handling via small helper
             var responseType = typeof(TResponse);
             if (responseType.IsGenericType && responseType.GetGenericTypeDefinition() == typeof(Result<>))
             {
                 var genericArg = responseType.GetGenericArguments()[0];
-                var resultGenericType = typeof(Result<>).MakeGenericType(genericArg);
-                var failureMethod = resultGenericType.GetMethod("Failure", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(IEnumerable<ResultError>) }, null);
-
-                if (failureMethod != null)
+                var failureInstance = CreateGenericFailure(genericArg, errors);
+                if (failureInstance != null)
                 {
-                    var failureInstance = failureMethod.Invoke(null, new object[] { errors });
-
-                    // Use ResultExtensions patterns for logging generic result failures
-                    var logResult = Result.Success();
-                    logResult.OnSuccess(() =>
-                        _logger.LogInformation(ApiResponseMessages.Logging.ValidationPipelineReturningFailure,
-                            genericArg.Name, requestTypeName));
-
-                    return (TResponse)failureInstance!;
+                    _logger.LogInformation(ApiResponseMessages.Logging.ValidationPipelineReturningFailure, genericArg.Name, requestTypeName);
+                    return (TResponse)failureInstance;
                 }
             }
 
-            // Fallback to throwing exception for non-Result types with enhanced logging
-            var exceptionResult = Result.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, "Unsupported response type for validation failure"));
-            exceptionResult.OnFailure(errs =>
-                _logger.LogError(ApiResponseMessages.Logging.ValidationPipelineUnsupportedResponse,
-                    typeof(TResponse).Name, requestTypeName));
-
+            _logger.LogError(ApiResponseMessages.Logging.ValidationPipelineUnsupportedResponse, typeof(TResponse).Name, requestTypeName);
             throw new ValidationException(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, $"Validation failed for {requestTypeName}: {string.Join(", ", errors.Select(e => e.Message))}"));
+        }
+
+        private static object? CreateGenericFailure(Type genericArg, IEnumerable<ResultError> errors)
+        {
+            var resultGenericType = typeof(Result<>).MakeGenericType(genericArg);
+            var failureMethod = resultGenericType.GetMethod("Failure", new[] { typeof(IEnumerable<ResultError>) });
+            return failureMethod?.Invoke(null, new object[] { errors });
         }
     }
 }
-

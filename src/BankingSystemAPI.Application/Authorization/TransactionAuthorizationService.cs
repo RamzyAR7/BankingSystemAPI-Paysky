@@ -26,7 +26,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
     public class TransactionAuthorizationService : ITransactionAuthorizationService
     {
 
-        #region Private Fields - Organized by Responsibility
+        #region Private Fields
 
         // Core Dependencies
         private readonly ICurrentUserService _currentUser;
@@ -52,7 +52,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Public Interface Implementation - Ordered by Operation Impact
+        #region Public Interface Implementation
 
         /// <summary>
         /// Validates money transfer initiation with high security impact
@@ -104,7 +104,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Core Authorization Logic - Organized by Validation Type
+        #region Core Authorization Logic
 
         /// <summary>
         /// Validates transfer authorization with hierarchical scope checking for financial operations
@@ -131,7 +131,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Bank-Level Authorization - Organized by Security Layer
+        #region Bank-Level Authorization
 
         /// <summary>
         /// Self-transfer validation - users can only initiate transfers from their own accounts
@@ -171,7 +171,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Role Validation - Organized by Financial Security Requirements
+        #region Role Validation
 
         /// <summary>
         /// Role validation for source account ownership in financial transfers
@@ -187,7 +187,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Data Filtering - Organized by Scope Complexity
+        #region Data Filtering
 
         /// <summary>
         /// Apply scope-based filtering with proper financial transaction data isolation
@@ -245,7 +245,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Helper Methods - Organized by Function Category
+        #region Helper Methods
 
         // Core Data Access Helpers
         private async Task<Result<AccessScope>> GetScopeAsync()
@@ -293,7 +293,7 @@ namespace BankingSystemAPI.Application.AuthorizationServices
 
         #endregion
 
-        #region Logging Methods - Organized by Log Level and Category
+        #region Logging Methods
 
         private void LogAuthorizationResult(
             AuthorizationCheckType checkType,

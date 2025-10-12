@@ -38,6 +38,7 @@ using System.Threading.RateLimiting;
 using BankingSystemAPI.Domain.Constant;
 using BankingSystemAPI.Presentation.Services;
 using BankingSystemAPI.Infrastructure.Cache;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 #endregion
 
 
@@ -207,13 +208,18 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(option =>
 }).AddEntityFrameworkStores<ApplicationDbContext>()
   .AddDefaultTokenProviders();
 
+// Replace default IUserValidator registrations with a bank-scoped validator so
+// username/email uniqueness is checked within the same BankId only.
+builder.Services.RemoveAll<IUserValidator<ApplicationUser>>();
+builder.Services.AddTransient<IUserValidator<ApplicationUser>, BankScopedUserValidator>();
+
 #endregion
 
 // Register memory cache for repositories and services that need it
 builder.Services.AddMemoryCache();
 
 // Register ICacheService wrapper around IMemoryCache
-builder.Services.AddSingleton<ICacheService, BankingSystemAPI.Infrastructure.Cache.MemoryCacheService>();
+builder.Services.AddSingleton<ICacheService, MemoryCacheService>();
 
 // Register MediatR (use Application assembly where handlers live)
 builder.Services.AddMediatR(typeof(MappingProfile).Assembly);

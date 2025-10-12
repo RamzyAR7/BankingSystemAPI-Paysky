@@ -12,17 +12,6 @@ namespace BankingSystemAPI.Application.Interfaces.Authorization
 {
     public interface IScopeResolver
     {
-        #region Fields
-        #endregion
-
-        #region Constructors
-        #endregion
-
-        #region Properties
-        #endregion
-
-        #region Methods
-        #endregion
         Task<AccessScope> GetScopeAsync();
     }
 }

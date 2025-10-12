@@ -1,31 +1,17 @@
-﻿#region Usings
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
-#endregion
-
 
 #nullable disable
 
 namespace BankingSystemAPI.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMigration : Migration
+    public partial class init1 : Migration
     {
-        #region Fields
-        #endregion
-
-        #region Constructors
-        #endregion
-
-        #region Properties
-        #endregion
-
-        #region Methods
-        #endregion
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateSequence<int>(
+            migrationBuilder.CreateSequence(
                 name: "AccountIdSequence");
 
             migrationBuilder.CreateTable(
@@ -157,7 +143,7 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                 {
                     AccountId = table.Column<int>(type: "int", nullable: false),
                     TransactionId = table.Column<int>(type: "int", nullable: false),
-                    TransactionCurrency = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    TransactionCurrency = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
                     Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     Role = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Fees = table.Column<decimal>(type: "decimal(18,2)", nullable: false, defaultValue: 0m)
@@ -408,9 +394,9 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                 column: "BankId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_AspNetUsers_Email_BankId",
+                name: "IX_AspNetUsers_FullName_BankId",
                 table: "AspNetUsers",
-                columns: new[] { "Email", "BankId" },
+                columns: new[] { "FullName", "BankId" },
                 unique: true,
                 filter: "[BankId] IS NOT NULL");
 
@@ -420,6 +406,20 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                 columns: new[] { "NationalId", "BankId" },
                 unique: true,
                 filter: "[BankId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUsers_NormalizedEmail_BankId",
+                table: "AspNetUsers",
+                columns: new[] { "NormalizedEmail", "BankId" },
+                unique: true,
+                filter: "[NormalizedEmail] IS NOT NULL AND [BankId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUsers_NormalizedUserName_BankId",
+                table: "AspNetUsers",
+                columns: new[] { "NormalizedUserName", "BankId" },
+                unique: true,
+                filter: "[NormalizedUserName] IS NOT NULL AND [BankId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetUsers_PhoneNumber_BankId",
@@ -434,18 +434,9 @@ namespace BankingSystemAPI.Infrastructure.Migrations
                 column: "RoleId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_AspNetUsers_UserName_BankId",
-                table: "AspNetUsers",
-                columns: new[] { "UserName", "BankId" },
-                unique: true,
-                filter: "[BankId] IS NOT NULL");
-
-            migrationBuilder.CreateIndex(
                 name: "UserNameIndex",
                 table: "AspNetUsers",
-                column: "NormalizedUserName",
-                unique: true,
-                filter: "[NormalizedUserName] IS NOT NULL");
+                column: "NormalizedUserName");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Banks_Name",
@@ -548,4 +539,3 @@ namespace BankingSystemAPI.Infrastructure.Migrations
         }
     }
 }
-
