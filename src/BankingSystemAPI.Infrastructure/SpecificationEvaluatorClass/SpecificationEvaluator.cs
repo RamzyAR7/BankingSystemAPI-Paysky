@@ -10,30 +10,8 @@ namespace BankingSystemAPI.Infrastructure.SpecificationEvaluatorClass
 {
     internal static class SpecificationEvaluator
     {
-        #region Fields
-        #endregion
-
-        #region Constructors
-        #endregion
-
-        #region Properties
-        #endregion
-
-        #region Methods
-        #endregion
         public static IQueryable<T> ApplySpecification<T>(IQueryable<T> query, ISpecification<T> spec, bool evaluatePaging = true) where T : class
         {
-            #region Fields
-            #endregion
-
-            #region Constructors
-            #endregion
-
-            #region Properties
-            #endregion
-
-            #region Methods
-            #endregion
             if (spec == null) return query;
 
             if (spec.AsNoTracking)

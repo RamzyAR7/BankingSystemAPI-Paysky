@@ -65,18 +65,33 @@ namespace BankingSystemAPI.Application.Features.Banks.Commands.UpdateBank
             return bank.ToResult(string.Format(ApiResponseMessages.Validation.NotFoundFormat, "Bank", bankId));
         }
 
-        private Task<Result<Bank>> UpdateBankAsync(Bank bank, BankEditDto dto)
+        private async Task<Result<Bank>> UpdateBankAsync(Bank bank, BankEditDto dto)
         {
             try
             {
-                bank.Name = dto.Name.Trim();
-                return Task.FromResult(Result<Bank>.Success(bank));
+                // Normalize name for uniqueness check (case-insensitive)
+                var normalized = dto.Name.Trim();
+                var normalizedLower = normalized.ToLowerInvariant();
+
+                // Check if another bank with the same normalized name exists (exclude current bank)
+                var spec = new BankByNormalizedNameExcludingIdSpecification(normalizedLower, bank.Id);
+                var existing = await _uow.BankRepository.FindAsync(spec);
+                if (existing != null)
+                {
+                    return Result<Bank>.Failure(new List<ResultError> { new ResultError(ErrorType.Validation, string.Format(ApiResponseMessages.BankingErrors.AlreadyExistsFormat, "Bank", normalized)) });
+                }
+
+                bank.Name = normalized;
+
+                await _uow.BankRepository.UpdateAsync(bank);
+                await _uow.SaveAsync();
+
+                return Result<Bank>.Success(bank);
             }
             catch (Exception ex)
             {
-                return Task.FromResult(Result<Bank>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message)));
+                return Result<Bank>.BadRequest(string.Format(ApiResponseMessages.Infrastructure.InvalidRequestParametersFormat, ex.Message));
             }
         }
     }
 }
-
