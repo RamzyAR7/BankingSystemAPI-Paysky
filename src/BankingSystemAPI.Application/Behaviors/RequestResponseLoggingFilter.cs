@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using MediatR;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -42,124 +43,127 @@ namespace BankingSystemAPI.Application.Behaviors
             var isAuthenticated = user?.Identity?.IsAuthenticated ?? false;
             var ip = httpContext?.Connection?.RemoteIpAddress?.ToString();
 
-            string requestPayload;
-            try
-            {
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                requestPayload = JsonSerializer.Serialize(request, options);
-            }
-            catch (Exception)
-            {
-                requestPayload = "***UNSERIALIZABLE_REQUEST***";
-            }
-
-            var scopeState = new Dictionary<string, object?>
-            {
-                ["RequestType"] = typeof(TRequest).Name,
-                ["Method"] = method,
-                ["Path"] = path,
-                ["UserId"] = userId,
-                ["Authenticated"] = isAuthenticated,
-                ["IP"] = ip
-            };
-
-            // Try get request id from incoming request header (set by ExceptionHandlingMiddleware), otherwise generate one
+            // Request ID
             var requestId = httpContext?.Request?.Headers[LoggingConstants.RequestIdHeader].ToString();
             if (string.IsNullOrWhiteSpace(requestId))
                 requestId = Guid.NewGuid().ToString();
+
             var traceId = System.Diagnostics.Activity.Current?.TraceId.ToString();
 
             using (LogContext.PushProperty(LoggingConstants.RequestIdProperty, requestId))
             using (LogContext.PushProperty(LoggingConstants.TraceIdProperty, traceId))
-            using (_logger.BeginScope(scopeState))
             {
-                _logger.LogDebug("Incoming MediatR request {RequestType} {Method} {Path} UserId={UserId} Authenticated={Authenticated} IP={IP} Payload={Payload}",
-                    typeof(TRequest).Name, method, path, userId, isAuthenticated, ip, MaskSensitiveData(requestPayload));
+                _logger.LogInformation("Incoming {RequestType} {Method} {Path} UserId={UserId} Authenticated={Authenticated} IP={IP}",
+                    typeof(TRequest).Name, method, path, userId, isAuthenticated, ip);
 
-                PrintColoredIfDev($@"
+                if (_env.IsDevelopment())
+                {
+                    var requestPayload = SafeSerialize(request);
+                    PrintColored($@"
 ───────────────────────────────
 # [INCOMING MEDIATR REQUEST]
 ───────────────────────────────
--> Type:        {typeof(TRequest).Name}
--> Path:        {method} {path}
--> UserId:      {userId}
--> Authenticated:{isAuthenticated}
--> IP:          {ip}
--> Payload:     {MaskSensitiveData(requestPayload)}
+-> Type: {typeof(TRequest).Name}
+-> Path: {method} {path}
+-> UserId: {userId}
+-> Authenticated: {isAuthenticated}
+-> IP: {ip}
+-> Payload: {MaskSensitiveData(requestPayload)}
 ───────────────────────────────", ConsoleColor.Cyan);
+                }
 
                 try
                 {
                     var response = await next();
-
                     sw.Stop();
 
-                    string responsePayload;
-                    try
+                    if (_env.IsDevelopment())
                     {
-                        var options = new JsonSerializerOptions { WriteIndented = true };
-                        responsePayload = JsonSerializer.Serialize(response, options);
-                    }
-                    catch (Exception)
-                    {
-                        responsePayload = "***UNSERIALIZABLE_RESPONSE***";
-                    }
+                        var responsePayload = SafeSerialize(response);
 
-                    _logger.LogDebug("Outgoing MediatR response {ResponseType} DurationMs={Duration} Payload={Payload}", typeof(TResponse).Name, sw.ElapsedMilliseconds, MaskSensitiveData(responsePayload));
-
-                    PrintColoredIfDev($@"
+                        PrintColored($@"
 ───────────────────────────────
 # [OUTGOING MEDIATR RESPONSE]
 ───────────────────────────────
--> Type:        {typeof(TResponse).Name}
--> Duration:    {sw.ElapsedMilliseconds} ms
--> UserId:      {userId}
--> Payload:     {MaskSensitiveData(responsePayload)}
+-> Type: {typeof(TResponse).Name}
+-> Duration: {sw.ElapsedMilliseconds} ms
+-> UserId: {userId}
+-> Payload: {MaskSensitiveData(responsePayload)}
 ───────────────────────────────", ConsoleColor.Green);
 
-                    // Optional: central timing info (info level)
-                    _logger.LogInformation(ApiResponseMessages.Infrastructure.RequestTimingLogFormat, method, path, httpContext?.Response?.StatusCode ?? 0, sw.ElapsedMilliseconds);
+                        _logger.LogDebug("Response {ResponseType} DurationMs={Duration} Payload={Payload}",
+                            typeof(TResponse).Name, sw.ElapsedMilliseconds, MaskSensitiveData(responsePayload));
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Handled {RequestType} DurationMs={Duration} UserId={UserId} Path={Path}",
+                            typeof(TRequest).Name, sw.ElapsedMilliseconds, userId, path);
+                    }
 
                     return response;
                 }
                 catch (Exception ex)
                 {
                     sw.Stop();
-                    _logger.LogError(ex, "Unhandled exception in MediatR handler for {RequestType} @ {Path}", typeof(TRequest).Name, path);
 
-                    PrintColoredIfDev($@"
+                    if (_env.IsDevelopment())
+                    {
+                        PrintColored($@"
 ───────────────────────────────
 # [EXCEPTION DURING MEDIATR HANDLING]
 ───────────────────────────────
--> Type:        {typeof(TRequest).Name}
--> Duration:    {sw.ElapsedMilliseconds} ms
--> UserId:      {userId}
--> Exception:   {ex.Message}
+-> Type: {typeof(TRequest).Name}
+-> Duration: {sw.ElapsedMilliseconds} ms
+-> UserId: {userId}
+-> Exception: {ex.Message}
 {ex.StackTrace}
 ───────────────────────────────", ConsoleColor.Red);
+                    }
 
-                    _logger.LogError(ex, "Exception during MediatR handling {RequestType} DurationMs={Duration} UserId={UserId}",
-                        typeof(TRequest).Name, sw.ElapsedMilliseconds, userId);
+                    _logger.LogError(ex, "Exception during handling {RequestType} Path={Path} UserId={UserId} DurationMs={Duration}",
+                        typeof(TRequest).Name, path, userId, sw.ElapsedMilliseconds);
 
                     throw;
                 }
             }
         }
 
-        private static string? MaskSensitiveData(string? input)
+        private static string SafeSerialize(object? obj)
+        {
+            try
+            {
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                return JsonSerializer.Serialize(obj, options);
+            }
+            catch
+            {
+                return "***UNSERIALIZABLE_OBJECT***";
+            }
+        }
+
+        private static string MaskSensitiveData(string? input)
         {
             if (string.IsNullOrEmpty(input))
-                return input;
+                return input ?? "";
 
-            var lowered = input.ToLowerInvariant();
-            if (lowered.Contains("password") || lowered.Contains("token") ||
-                lowered.Contains("authorization") || lowered.Contains("bearer"))
-                return "***MASKED***";
+            // Regexes for sensitive fields
+            var patterns = new[]
+            {
+                "\"password\"\\s*:\\s*\".*?\"",
+                "\"token\"\\s*:\\s*\".*?\"",
+                "\"authorization\"\\s*:\\s*\".*?\"",
+                "\"bearer\"\\s*:\\s*\".*?\"",
+                "\"secret\"\\s*:\\s*\".*?\"",
+                "\"pin\"\\s*:\\s*\".*?\""
+            };
+
+            foreach (var pattern in patterns)
+                input = Regex.Replace(input, pattern, "\"***MASKED***\"", RegexOptions.IgnoreCase);
 
             return input.Length > 1200 ? input.Substring(0, 1200) + "..." : input;
         }
 
-        private void PrintColoredIfDev(string text, ConsoleColor color)
+        private void PrintColored(string text, ConsoleColor color)
         {
             if (_env.IsDevelopment())
             {
