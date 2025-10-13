@@ -34,13 +34,8 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
         // prevent multiple disposals
         private bool _disposed;
 
-        // simple instance flag to track whether a transaction is active for this UnitOfWork
-        private bool _transactionActiveFlag;
-        private bool TransactionActive
-        {
-            get => _transactionActiveFlag;
-            set => _transactionActiveFlag = value;
-        }
+        // Transaction is considered active when we have a real transaction or a no-op transaction (InMemory provider)
+        private bool TransactionActive => _transaction != null || _noOpTransaction;
 
         public UnitOfWork(
             IUserRepository userRepository,
@@ -76,16 +71,13 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
             if (provider.Contains("InMemory", StringComparison.OrdinalIgnoreCase))
             {
                 _noOpTransaction = true;
-                TransactionActive = true;
                 return;
             }
 
             _transaction = await _context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-            TransactionActive = true;
         }
 
-        // Parameterless wrapper to satisfy IUnitOfWork
-        public Task BeginTransactionAsync() => BeginTransactionAsync(CancellationToken.None);
+        // (removed redundant parameterless overload)
 
         public async Task CommitAsync(CancellationToken cancellationToken = default)
         {
@@ -95,7 +87,6 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
                 {
                     await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                     _noOpTransaction = false;
-                    TransactionActive = false;
                     return;
                 }
 
@@ -111,8 +102,7 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
             }
         }
 
-        // Parameterless wrapper to satisfy IUnitOfWork
-        public Task CommitAsync() => CommitAsync(CancellationToken.None);
+        // (removed redundant parameterless overload)
 
         public async Task RollbackAsync(CancellationToken cancellationToken = default)
         {
@@ -128,7 +118,6 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
                             entry.State = EntityState.Detached;
                     }
                     _noOpTransaction = false;
-                    TransactionActive = false;
                     return;
                 }
 
@@ -143,13 +132,12 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
             }
         }
 
-        // Parameterless wrapper to satisfy IUnitOfWork
-        public Task RollbackAsync() => RollbackAsync(CancellationToken.None);
+        // (removed redundant parameterless overload)
 
         public async Task SaveAsync(CancellationToken cancellationToken = default)
         {
             // If in transaction mode, defer the save
-            if (TransactionActive)
+            if (_transaction != null || _noOpTransaction)
             {
                 // Changes will be saved during CommitAsync
                 return;
@@ -158,8 +146,7 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
             await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        // Parameterless wrapper to satisfy IUnitOfWork
-        public Task SaveAsync() => SaveAsync(CancellationToken.None);
+        // (removed redundant parameterless overload)
 
         public async Task ReloadTrackedEntitiesAsync(CancellationToken cancellationToken = default)
         {
@@ -184,7 +171,7 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
         }
 
         // Parameterless wrapper to satisfy IUnitOfWork
-        public Task ReloadTrackedEntitiesAsync() => ReloadTrackedEntitiesAsync(CancellationToken.None);
+        // (removed redundant parameterless overload)
 
         #endregion
 
@@ -212,7 +199,6 @@ namespace BankingSystemAPI.Infrastructure.UnitOfWork
                 await _transaction.DisposeAsync().ConfigureAwait(false);
                 _transaction = null;
             }
-            TransactionActive = false;
         }
 
         public void Dispose()
