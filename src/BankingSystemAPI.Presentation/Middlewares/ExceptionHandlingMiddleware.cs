@@ -16,7 +16,6 @@ using Serilog.Context;
 
 namespace BankingSystemAPI.Presentation.Middlewares
 {
-    #region Class
     /// <summary>
     /// Enhanced middleware to handle infrastructure and system-level exceptions with comprehensive ResultExtensions patterns.
     /// Optimized for .NET 8 with modern async patterns and performance improvements.
@@ -279,5 +278,4 @@ namespace BankingSystemAPI.Presentation.Middlewares
         }
         #endregion
     }
-    #endregion
 }
